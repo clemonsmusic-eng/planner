@@ -18,7 +18,7 @@ import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
 
-function createExampleProject(teamMembers: TeamMember[]): Project {
+function createExampleProject(teamMembers: TeamMember[], lists: ListCategory[] = []): Project {
   const inputs: ProjectInputs = {
     clientName: 'Jim Doyle',
     projectName: 'Doyle Move – First Colonial Inn',
@@ -46,7 +46,7 @@ function createExampleProject(teamMembers: TeamMember[]): Project {
     inputs,
     schedule: null,
   };
-  project.schedule = generateSchedule(inputs, teamMembers, DEFAULT_PHASE_TEMPLATES);
+  project.schedule = generateSchedule(inputs, teamMembers, DEFAULT_PHASE_TEMPLATES, lists);
   return project;
 }
 
@@ -170,7 +170,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
     if (projects.length === 0) {
-      const example = createExampleProject(teamMembers);
+      const example = createExampleProject(teamMembers, lists);
       projects = [example];
       saveProjects(projects);
     }
@@ -193,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   function generateAndSaveSchedule(projectId: string) {
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
-    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates);
+    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 

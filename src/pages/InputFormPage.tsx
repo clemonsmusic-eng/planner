@@ -286,7 +286,7 @@ export function InputFormPage() {
             <SelectField
               value={inputs.flexibilityLevel}
               onChange={(v) => update('flexibilityLevel', v as FlexibilityLevel)}
-              options={['Low', 'Medium', 'High']}
+              options={state.lists.find(l => l.id === 'flexibility')?.items ?? ['Low', 'Medium', 'High']}
             />
           </FormField>
         </Card>
@@ -325,7 +325,7 @@ export function InputFormPage() {
             <SelectField
               value={inputs.densityLevel}
               onChange={(v) => update('densityLevel', v as DensityLevel)}
-              options={['Light', 'Moderate', 'Heavy']}
+              options={state.lists.find(l => l.id === 'density')?.items ?? ['Light', 'Moderate', 'Heavy']}
             />
           </FormField>
         </Card>

@@ -10,6 +10,7 @@ import type {
   TeamMember,
   AvailabilitySlot,
   PhaseTemplate,
+  ListCategory,
 } from '../types';
 import {
   addWorkdays,
@@ -23,6 +24,8 @@ import {
   getPreMoveTeamSize,
   getMoveDayTeamSize,
   getRoleQualifiers,
+  parseTeamSizeTable,
+  lookupTeamSize,
 } from './data';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,7 +78,8 @@ function resolveShift(
 export function generateSchedule(
   inputs: ProjectInputs,
   teamMembers: TeamMember[],
-  phaseTemplates: PhaseTemplate[]
+  phaseTemplates: PhaseTemplate[],
+  lists: ListCategory[] = []
 ): ScheduleResult {
   const {
     targetMoveDate,
@@ -91,11 +95,16 @@ export function generateSchedule(
 
   // ── 1. Team sizes (needed for sort day calculation) ──────────────────────────
 
+  const getItems = (id: string) => lists.find(l => l.id === id)?.items ?? [];
+  const sqftTable     = parseTeamSizeTable(getItems('sqft-ranges'));
+  const preMoveTable  = parseTeamSizeTable(getItems('pre-move-team-sizes'));
+  const moveDayTable  = parseTeamSizeTable(getItems('move-day-team-sizes'));
+
   // Pack/Sort team size: driven by origin sq ft
-  const packSortSize = getPackSortTeamSize(originSqFt);
+  const packSortSize = sqftTable.length ? lookupTeamSize(originSqFt, sqftTable) : getPackSortTeamSize(originSqFt);
   // Pre-move and Move Day: driven by destination sq ft
-  const preMoveSize  = getPreMoveTeamSize(destinationSqFt);
-  const moveDaySize  = getMoveDayTeamSize(destinationSqFt);
+  const preMoveSize  = preMoveTable.length ? lookupTeamSize(destinationSqFt, preMoveTable) : getPreMoveTeamSize(destinationSqFt);
+  const moveDaySize  = moveDayTable.length ? lookupTeamSize(destinationSqFt, moveDayTable) : getMoveDayTeamSize(destinationSqFt);
 
   // ── 2. Compute suggested dates ───────────────────────────────────────────────
 

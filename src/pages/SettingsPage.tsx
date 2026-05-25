@@ -314,6 +314,236 @@ function PhaseTemplateCard({
   );
 }
 
+// ─── Table List Card (for sqft-ranges, pre-move-team-sizes, move-day-team-sizes) ─
+
+function TableListCard({
+  list,
+  hint,
+  onChange,
+}: {
+  list: ListCategory;
+  hint: string;
+  onChange: (updated: ListCategory) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  type Row = { maxSqft: number; teamSize: number };
+
+  function parseRows(): Row[] {
+    return list.items
+      .map(item => {
+        const [a, b] = item.split(':');
+        const maxSqft = parseInt(a ?? '', 10);
+        const teamSize = parseInt(b ?? '', 10);
+        if (isNaN(maxSqft) || isNaN(teamSize)) return null;
+        return { maxSqft, teamSize };
+      })
+      .filter((r): r is Row => r !== null)
+      .sort((a, b) => a.maxSqft - b.maxSqft);
+  }
+
+  function serialize(rows: Row[]): string[] {
+    return rows.sort((a, b) => a.maxSqft - b.maxSqft).map(r => `${r.maxSqft}:${r.teamSize}`);
+  }
+
+  function updateRow(idx: number, field: 'maxSqft' | 'teamSize', val: number) {
+    const rows = parseRows();
+    rows[idx] = { ...rows[idx], [field]: val };
+    onChange({ ...list, items: serialize(rows) });
+  }
+
+  function removeRow(idx: number) {
+    const rows = parseRows();
+    rows.splice(idx, 1);
+    onChange({ ...list, items: serialize(rows) });
+  }
+
+  function addRow() {
+    const rows = parseRows();
+    const finiteRows = rows.filter(r => r.maxSqft < 9999);
+    const last = finiteRows[finiteRows.length - 1]?.maxSqft ?? 0;
+    const newRows = [
+      ...finiteRows,
+      { maxSqft: last + 200, teamSize: 2 },
+      ...rows.filter(r => r.maxSqft >= 9999),
+    ];
+    onChange({ ...list, items: serialize(newRows) });
+  }
+
+  const rows = parseRows();
+
+  return (
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
+      >
+        <div className="text-left flex-1 min-w-0">
+          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-[11px] text-ios-gray-500">{hint}</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+          className={`w-4 h-4 text-ios-gray-400 flex-shrink-0 transition-transform ml-2 ${expanded ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-ios-gray-200 px-4 py-3 space-y-2">
+          <p className="text-[11px] text-ios-gray-500">Max sq ft → team size. Use 9999 as the final "any above" row.</p>
+          {rows.map((row, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <span className="text-xs text-ios-gray-400 w-4 text-right flex-shrink-0">
+                {row.maxSqft >= 9999 ? '>' : '≤'}
+              </span>
+              {row.maxSqft < 9999 ? (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={row.maxSqft}
+                  onChange={e => updateRow(idx, 'maxSqft', parseInt(e.target.value) || 0)}
+                  className="w-[72px] min-h-[40px] rounded-xl border border-ios-gray-300 px-2 text-sm text-center bg-white"
+                />
+              ) : (
+                <div className="w-[72px] flex items-center justify-center text-sm text-ios-gray-500 min-h-[40px]">above</div>
+              )}
+              <span className="text-xs text-ios-gray-400 flex-shrink-0">sq ft →</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={row.teamSize}
+                onChange={e => updateRow(idx, 'teamSize', parseInt(e.target.value) || 1)}
+                className="w-14 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 text-sm text-center bg-white"
+              />
+              <span className="text-xs text-ios-gray-400 flex-shrink-0">ppl</span>
+              <button
+                onClick={() => removeRow(idx)}
+                className="ml-auto w-7 h-7 flex items-center justify-center text-ios-gray-400 active:text-red-500 rounded-lg"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={addRow}
+            className="w-full py-2 border border-dashed border-ios-gray-300 rounded-xl text-xs font-medium text-ios-gray-500 min-h-[36px]"
+          >
+            + Add Range
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Shift Hours Card (for shift-type-hours) ──────────────────────────────────
+
+function ShiftHoursCard({
+  list,
+  onChange,
+}: {
+  list: ListCategory;
+  onChange: (updated: ListCategory) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  type Row = { name: string; hours: number };
+
+  function parseRows(): Row[] {
+    return list.items.map(item => {
+      const eqIdx = item.indexOf('=');
+      if (eqIdx < 0) return null;
+      const name = item.slice(0, eqIdx).trim();
+      const hours = parseFloat(item.slice(eqIdx + 1).trim());
+      if (!name || isNaN(hours)) return null;
+      return { name, hours };
+    }).filter((r): r is Row => r !== null);
+  }
+
+  function serialize(rows: Row[]): string[] {
+    return rows.map(r => `${r.name}=${r.hours}`);
+  }
+
+  function updateRow(idx: number, field: 'name' | 'hours', val: string | number) {
+    const rows = parseRows();
+    rows[idx] = { ...rows[idx], [field]: val };
+    onChange({ ...list, items: serialize(rows) });
+  }
+
+  function removeRow(idx: number) {
+    const rows = parseRows();
+    rows.splice(idx, 1);
+    onChange({ ...list, items: serialize(rows) });
+  }
+
+  function addRow() {
+    const rows = parseRows();
+    onChange({ ...list, items: serialize([...rows, { name: 'New Shift', hours: 4 }]) });
+  }
+
+  const rows = parseRows();
+
+  return (
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
+      >
+        <div className="text-left flex-1 min-w-0">
+          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-[11px] text-ios-gray-500">Hours per shift block — used in sort day calculation</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+          className={`w-4 h-4 text-ios-gray-400 flex-shrink-0 transition-transform ml-2 ${expanded ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-ios-gray-200 px-4 py-3 space-y-2">
+          {rows.map((row, idx) => (
+            <div key={idx} className="flex items-center gap-3">
+              <input
+                value={row.name}
+                onChange={e => updateRow(idx, 'name', e.target.value)}
+                className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-3 text-sm bg-white"
+                placeholder="Shift name"
+              />
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0.5}
+                step={0.5}
+                value={row.hours}
+                onChange={e => updateRow(idx, 'hours', parseFloat(e.target.value) || 0)}
+                className="w-16 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 text-sm text-center bg-white"
+              />
+              <span className="text-xs text-ios-gray-400 flex-shrink-0">hrs</span>
+              <button
+                onClick={() => removeRow(idx)}
+                className="w-7 h-7 flex items-center justify-center text-ios-gray-400 active:text-red-500 rounded-lg"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={addRow}
+            className="w-full py-2 border border-dashed border-ios-gray-300 rounded-xl text-xs font-medium text-ios-gray-500 min-h-[36px]"
+          >
+            + Add Shift
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── List Category Card ───────────────────────────────────────────────────────
 
 function ListCategoryCard({
@@ -552,21 +782,30 @@ export function SettingsPage() {
         {/* ── Lists ────────────────────────────────────────────────────── */}
         <AccordionSection
           title="Lists"
-          subtitle={`${lists.length} categories (A–W)`}
+          subtitle="12 scheduling parameter lists"
           open={openSections.has('lists')}
           onToggle={() => toggleSection('lists')}
         >
           <div className="px-4 py-3 space-y-2">
             <p className="text-xs text-ios-gray-500">
-              Tap a list to expand and edit its items. The Move Types list feeds the project type dropdown.
+              Simple lists populate dropdowns. The three team-size tables (sq ft → people) and shift hours directly drive schedule generation.
             </p>
-            {lists.map((list, listIdx) => (
-              <ListCategoryCard
-                key={list.id}
-                list={list}
-                onChange={(updated) => updateList(listIdx, updated)}
-              />
-            ))}
+            {lists.map((list, listIdx) => {
+              const onChange = (updated: ListCategory) => updateList(listIdx, updated);
+              if (list.id === 'sqft-ranges') {
+                return <TableListCard key={list.id} list={list} hint="Origin sq ft → pack/sort team size" onChange={onChange} />;
+              }
+              if (list.id === 'pre-move-team-sizes') {
+                return <TableListCard key={list.id} list={list} hint="Dest sq ft → pre-move team size" onChange={onChange} />;
+              }
+              if (list.id === 'move-day-team-sizes') {
+                return <TableListCard key={list.id} list={list} hint="Dest sq ft → move day team size" onChange={onChange} />;
+              }
+              if (list.id === 'shift-type-hours') {
+                return <ShiftHoursCard key={list.id} list={list} onChange={onChange} />;
+              }
+              return <ListCategoryCard key={list.id} list={list} onChange={onChange} />;
+            })}
           </div>
         </AccordionSection>
 

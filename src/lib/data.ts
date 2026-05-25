@@ -252,31 +252,46 @@ export function getDensityMultiplier(density: DensityLevel): number {
 }
 
 // ─── Default Lists ────────────────────────────────────────────────────────────
+// These 12 lists define the scheduling parameters and dropdown options.
+// Lists 10–12 use "maxSqFt:teamSize" format; list 9 uses "ShiftName=hours".
 export const DEFAULT_LISTS: ListCategory[] = [
-  { id: 'move-types', name: 'Move Types', items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
-  { id: 'room-types', name: 'Room Types', items: ['Living Room', 'Master Bedroom', 'Bedroom', 'Kitchen', 'Dining Room', 'Bathroom', 'Garage', 'Office', 'Basement'] },
-  { id: 'item-conditions', name: 'Item Conditions', items: ['Keep', 'Donate', 'Sell', 'Discard', 'Storage', 'Pending'] },
-  { id: 'donation-sites', name: 'Donation Sites', items: ['Goodwill', 'Habitat ReStore', 'Local Church', 'SPCA Thrift', 'Other'] },
-  { id: 'auction-houses', name: 'Auction Houses', items: [] },
-  { id: 'moving-companies', name: 'Moving Companies', items: [] },
-  { id: 'junk-removal', name: 'Junk Removal', items: ['1-800-GOT-JUNK', 'College Hunks', 'Other'] },
-  { id: 'storage-facilities', name: 'Storage Facilities', items: [] },
-  { id: 'realtor-partners', name: 'Realtor Partners', items: [] },
-  { id: 'lead-sources', name: 'Lead Sources', items: ['Referral', 'Senior Living Community', 'Website', 'Social Media', 'Other'] },
-  { id: 'property-types', name: 'Property Types', items: ['Single Family Home', 'Condo', 'Apartment', 'Townhouse', 'Manufactured Home'] },
-  { id: 'special-handling', name: 'Special Handling', items: ['Piano', 'Safe', 'Large Artwork', 'Grandfather Clock', 'Antiques', 'Fine China'] },
-  { id: 'packing-materials', name: 'Packing Materials', items: ['Small Box', 'Medium Box', 'Large Box', 'Wardrobe Box', 'Dish Pack'] },
-  { id: 'insurance-types', name: 'Insurance Types', items: ['Basic', 'Enhanced', 'Full Value'] },
-  { id: 'priority-levels', name: 'Priority Levels', items: ['Urgent', 'High', 'Medium', 'Low'] },
-  { id: 'contract-status', name: 'Contract Status', items: ['Quote Sent', 'Contract Signed', 'Deposit Received', 'Balance Due', 'Complete'] },
-  { id: 'payment-methods', name: 'Payment Methods', items: ['Check', 'Cash', 'Credit Card', 'ACH'] },
-  { id: 'client-categories', name: 'Client Categories', items: ['Active Senior', 'Downsizing', 'Emergency', 'Estate', 'Couple'] },
-  { id: 'move-distance', name: 'Move Distance', items: ['Local', 'Within State', 'Regional', 'Long Distance'] },
-  { id: 'venue-types', name: 'Venue Types', items: ['Assisted Living', 'Memory Care', 'Independent Living', 'Nursing Home'] },
-  { id: 'timeline-stages', name: 'Timeline Stages', items: ['Initial Consult', 'Quote', 'Planning', 'Pack/Sort', 'Move Day', 'Complete'] },
-  { id: 'service-packages', name: 'Service Packages', items: ['Basic', 'Standard', 'Premium', 'Full Service'] },
-  { id: 'custom-tags', name: 'Custom Tags', items: ['VIP', 'Repeat Client', 'Referral Partner', 'Rush', 'Complex'] },
+  { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
+  { id: 'flexibility',         name: 'Flexibility',         items: ['Low', 'Medium', 'High'] },
+  { id: 'density',             name: 'Density',             items: ['Light', 'Moderate', 'Heavy'] },
+  { id: 'shift-type',          name: 'Shift Type',          items: ['AM', 'PM', 'Full Day'] },
+  { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },
+  { id: 'phase',               name: 'Phase',               items: ['First Visit: Planning', 'Second Visit: Initial Sort & Pack', 'Sort and Pack', 'AM Final Pack & Pre-Move', 'PM Final Pack & Pre-Move', 'AM Move Day', 'PM Move Day', 'Cleanout', 'Pickup Day'] },
+  { id: 'priority',            name: 'Priority',            items: ['Urgent', 'High', 'Medium', 'Low'] },
+  { id: 'availability-block',  name: 'Availability Block',  items: ['Full Day', 'AM', 'PM', 'Unavailable'] },
+  // Shift Type Hours: "ShiftName=hours" — used as sort-phase hour default per person
+  { id: 'shift-type-hours',    name: 'Shift Type Hours',    items: ['AM=4', 'PM=4', 'Full Day=8'] },
+  // Team size tables: "maxSqFt:teamSize" — drives scheduler (9999 = "any above")
+  { id: 'sqft-ranges',         name: 'Square Foot Ranges',  items: ['1200:2', '1500:3', '2001:4', '9999:5'] },
+  { id: 'pre-move-team-sizes', name: 'Pre-Move Team Sizes', items: ['400:2', '600:2', '800:3', '1000:4', '1200:5', '1500:6', '9999:6'] },
+  { id: 'move-day-team-sizes', name: 'Move Day Team Sizes', items: ['400:2', '600:3', '800:4', '1000:5', '1200:6', '1500:7', '1800:8', '9999:10'] },
 ];
+
+// ─── Team size table utilities ────────────────────────────────────────────────
+
+export function parseTeamSizeTable(items: string[]): Array<{ maxSqft: number; teamSize: number }> {
+  return items
+    .map(item => {
+      const [a, b] = item.split(':');
+      const maxSqft = parseInt(a ?? '', 10);
+      const teamSize = parseInt(b ?? '', 10);
+      if (isNaN(maxSqft) || isNaN(teamSize)) return null;
+      return { maxSqft, teamSize };
+    })
+    .filter((r): r is { maxSqft: number; teamSize: number } => r !== null)
+    .sort((a, b) => a.maxSqft - b.maxSqft);
+}
+
+export function lookupTeamSize(sqFt: number, table: Array<{ maxSqft: number; teamSize: number }>): number {
+  for (const row of table) {
+    if (sqFt <= row.maxSqft) return row.teamSize;
+  }
+  return table.length > 0 ? table[table.length - 1].teamSize : 2;
+}
 
 // ─── Communities ──────────────────────────────────────────────────────────────
 export const COMMUNITIES: string[] = [

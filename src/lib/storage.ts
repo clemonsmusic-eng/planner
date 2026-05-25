@@ -80,7 +80,15 @@ export function saveCommunities(communities: string[]): void {
 export function loadLists(): ListCategory[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LISTS);
-    if (raw) return JSON.parse(raw) as ListCategory[];
+    if (raw) {
+      const data = JSON.parse(raw) as ListCategory[];
+      // Migrate: if stored data is the old 23-list format (missing new parameter lists), reset to defaults
+      const hasParamLists = data.some(l => l.id === 'sqft-ranges' || l.id === 'pre-move-team-sizes');
+      if (!hasParamLists) {
+        return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
+      }
+      return data;
+    }
   } catch {}
   return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
 }
