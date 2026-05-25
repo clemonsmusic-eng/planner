@@ -4,6 +4,7 @@ import { ProjectListPage } from './pages/ProjectListPage';
 import { InputFormPage } from './pages/InputFormPage';
 import { PlanPage } from './pages/PlanPage';
 import { SchedulePage } from './pages/SchedulePage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function AppContent() {
   const { state } = useApp();
@@ -14,6 +15,7 @@ function AppContent() {
       case 'inputs':   return <InputFormPage />;
       case 'plan':     return <PlanPage />;
       case 'schedule': return <SchedulePage />;
+      case 'settings': return <SettingsPage />;
     }
   })();
 

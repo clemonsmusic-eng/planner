@@ -1,8 +1,9 @@
 import type { Project, TeamMember } from '../types';
-import { DEFAULT_TEAM_MEMBERS } from './data';
+import { DEFAULT_TEAM_MEMBERS, COMMUNITIES as DEFAULT_COMMUNITIES } from './data';
 
-const STORAGE_KEY_PROJECTS = 'st-planner-projects';
-const STORAGE_KEY_TEAM = 'st-planner-team';
+const STORAGE_KEY_PROJECTS    = 'st-planner-projects';
+const STORAGE_KEY_TEAM        = 'st-planner-team';
+const STORAGE_KEY_COMMUNITIES = 'st-planner-communities';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,9 @@ export function loadTeamMembers(): TeamMember[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAM);
     if (!raw) return DEFAULT_TEAM_MEMBERS;
-    return JSON.parse(raw) as TeamMember[];
+    const parsed = JSON.parse(raw) as TeamMember[];
+    // Backfill minHoursPerWeek for records saved before this field existed
+    return parsed.map((m) => ({ ...m, minHoursPerWeek: m.minHoursPerWeek ?? 0 }));
   } catch {
     return DEFAULT_TEAM_MEMBERS;
   }
@@ -39,5 +42,23 @@ export function saveTeamMembers(members: TeamMember[]): void {
     localStorage.setItem(STORAGE_KEY_TEAM, JSON.stringify(members));
   } catch (e) {
     console.error('Failed to save team members', e);
+  }
+}
+
+// ─── Communities ──────────────────────────────────────────────────────────────
+
+export function loadCommunities(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_COMMUNITIES);
+    if (raw) return JSON.parse(raw) as string[];
+  } catch {}
+  return [...DEFAULT_COMMUNITIES];
+}
+
+export function saveCommunities(communities: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_COMMUNITIES, JSON.stringify(communities));
+  } catch (e) {
+    console.error('Failed to save communities', e);
   }
 }

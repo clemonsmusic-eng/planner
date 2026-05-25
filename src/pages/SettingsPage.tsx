@@ -1,0 +1,384 @@
+import { useState } from 'react';
+import { useApp } from '../store/AppContext';
+import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability } from '../types';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DAYS: (keyof TeamMemberAvailability)[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const DAY_SHORT: Record<keyof TeamMemberAvailability, string> = {
+  Mon: 'Mo', Tue: 'Tu', Wed: 'We', Thu: 'Th', Fri: 'Fr', Sat: 'Sa', Sun: 'Su',
+};
+
+const SLOT_CYCLE: AvailabilitySlot[] = ['Full Day', 'AM', 'PM', 'Unavailable'];
+
+const ROLE_OPTIONS: RoleType[] = ['PM', 'Lead', 'Specialist', 'Assist PM', 'Mover'];
+
+function slotLabel(s: AvailabilitySlot): string {
+  if (s === 'Full Day') return 'FD';
+  if (s === 'AM') return 'AM';
+  if (s === 'PM') return 'PM';
+  return '—';
+}
+
+function slotColors(s: AvailabilitySlot): string {
+  if (s === 'Full Day') return 'bg-indigo-500 text-white';
+  if (s === 'AM') return 'bg-sky-400 text-white';
+  if (s === 'PM') return 'bg-amber-400 text-white';
+  return 'bg-ios-gray-200 text-ios-gray-400';
+}
+
+function nextSlot(current: AvailabilitySlot): AvailabilitySlot {
+  return SLOT_CYCLE[(SLOT_CYCLE.indexOf(current) + 1) % SLOT_CYCLE.length];
+}
+
+// ─── Member Card ──────────────────────────────────────────────────────────────
+
+interface MemberCardProps {
+  member: TeamMember;
+  onChange: (updated: TeamMember) => void;
+  onDelete: () => void;
+}
+
+function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  function cycleDay(day: keyof TeamMemberAvailability) {
+    onChange({
+      ...member,
+      availability: { ...member.availability, [day]: nextSlot(member.availability[day]) },
+    });
+  }
+
+  function toggleRole(role: RoleType) {
+    const has = member.roles.includes(role);
+    onChange({
+      ...member,
+      roles: has ? member.roles.filter((r) => r !== role) : [...member.roles, role],
+    });
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
+      {/* Collapsed header — always visible */}
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              member.isPriority ? 'bg-indigo-500' : 'bg-ios-gray-300'
+            }`}
+          />
+          <span className="font-semibold text-gray-900 truncate">{member.name}</span>
+          <span className="text-xs text-ios-gray-500 truncate hidden xs:block">
+            {member.roles.join(', ')}
+          </span>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 border-t border-ios-gray-100">
+          {/* Name + Priority */}
+          <div className="flex items-center gap-3 pt-3">
+            <input
+              value={member.name}
+              onChange={(e) => onChange({ ...member, name: e.target.value })}
+              className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base font-semibold text-gray-900"
+              placeholder="Name"
+            />
+            <button
+              onClick={() => onChange({ ...member, isPriority: !member.isPriority })}
+              className={`px-3 py-2 rounded-xl text-sm font-semibold min-h-[44px] whitespace-nowrap transition-colors ${
+                member.isPriority
+                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                  : 'bg-ios-gray-100 text-ios-gray-600 border border-ios-gray-200'
+              }`}
+            >
+              {member.isPriority ? '● Priority' : '○ Standard'}
+            </button>
+          </div>
+
+          {/* Roles */}
+          <div>
+            <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">Roles</p>
+            <div className="flex flex-wrap gap-2">
+              {ROLE_OPTIONS.map((role) => {
+                const active = member.roles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    onClick={() => toggleRole(role)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
+                      active
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-ios-gray-100 text-ios-gray-600 border border-ios-gray-200'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Hour range */}
+          <div>
+            <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">
+              Weekly Hours
+            </p>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-ios-gray-500 mb-1 block">Min</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={member.minHoursPerWeek ?? 0}
+                  onChange={(e) =>
+                    onChange({ ...member, minHoursPerWeek: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center"
+                />
+              </div>
+              <div className="flex items-end pb-2 text-ios-gray-400 font-light">—</div>
+              <div className="flex-1">
+                <label className="text-xs text-ios-gray-500 mb-1 block">Max</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={member.maxHoursPerWeek}
+                  onChange={(e) =>
+                    onChange({ ...member, maxHoursPerWeek: parseInt(e.target.value) || 0 })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Daily availability grid */}
+          <div>
+            <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">
+              Daily Availability — tap to cycle
+            </p>
+            <div className="flex gap-1">
+              {DAYS.map((day) => {
+                const slot = member.availability[day];
+                return (
+                  <button
+                    key={day}
+                    onClick={() => cycleDay(day)}
+                    className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-colors ${slotColors(slot)}`}
+                  >
+                    <span className="text-[9px] font-semibold opacity-70 leading-none">
+                      {DAY_SHORT[day]}
+                    </span>
+                    <span className="text-[11px] font-bold leading-none">{slotLabel(slot)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-3 mt-2 flex-wrap">
+              {SLOT_CYCLE.map((s) => (
+                <span key={s} className="flex items-center gap-1 text-[10px] text-ios-gray-500">
+                  <span className={`inline-block w-2 h-2 rounded-full ${slotColors(s).split(' ')[0]}`} />
+                  {s === 'Full Day' ? 'FD = Full Day' : s === 'Unavailable' ? '— = Off' : s}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Delete */}
+          <button
+            onClick={onDelete}
+            className="w-full py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold min-h-[44px]"
+          >
+            Remove {member.name}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Page ─────────────────────────────────────────────────────────────
+
+export function SettingsPage() {
+  const { state, dispatch } = useApp();
+
+  const [members, setMembers] = useState<TeamMember[]>(
+    state.teamMembers.map((m) => ({ ...m, availability: { ...m.availability } }))
+  );
+  const [communities, setCommunities] = useState<string[]>([...state.communities]);
+  const [newCommunity, setNewCommunity] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+
+  function updateMember(index: number, updated: TeamMember) {
+    setMembers((prev) => prev.map((m, i) => (i === index ? updated : m)));
+    setIsDirty(true);
+  }
+
+  function deleteMember(index: number) {
+    setMembers((prev) => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
+  }
+
+  function addMember() {
+    const newMember: TeamMember = {
+      id: `member-${Date.now()}`,
+      name: 'New Member',
+      roles: ['Specialist'],
+      availability: {
+        Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day',
+        Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable',
+      },
+      minHoursPerWeek: 0,
+      maxHoursPerWeek: 0,
+      isPriority: false,
+    };
+    setMembers((prev) => [...prev, newMember]);
+    setIsDirty(true);
+  }
+
+  function addCommunity() {
+    const trimmed = newCommunity.trim();
+    if (!trimmed) return;
+    setCommunities((prev) => [...prev, trimmed]);
+    setNewCommunity('');
+    setIsDirty(true);
+  }
+
+  function removeCommunity(index: number) {
+    setCommunities((prev) => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
+  }
+
+  function save() {
+    dispatch({ type: 'UPDATE_TEAM_MEMBERS', members });
+    dispatch({ type: 'UPDATE_COMMUNITIES', communities });
+    setIsDirty(false);
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Sticky header */}
+      <div
+        className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+      >
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+          {isDirty ? (
+            <button
+              onClick={save}
+              className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-sm font-semibold min-h-[36px]"
+            >
+              Save
+            </button>
+          ) : (
+            <span className="text-xs text-ios-gray-400">All changes saved</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* ── Team section ─────────────────────────────────────────── */}
+        <div className="px-4 pt-5 pb-1">
+          <h2 className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Team</h2>
+          <p className="text-xs text-ios-gray-500 mt-0.5">
+            Tap a member to expand. Tap availability cells to cycle: Full Day → AM → PM → Off.
+          </p>
+        </div>
+
+        <div className="px-4 py-3 space-y-3">
+          {members.map((member, i) => (
+            <MemberCard
+              key={member.id}
+              member={member}
+              onChange={(updated) => updateMember(i, updated)}
+              onDelete={() => deleteMember(i)}
+            />
+          ))}
+
+          <button
+            onClick={addMember}
+            className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            Add Team Member
+          </button>
+        </div>
+
+        {/* ── Communities section ──────────────────────────────────── */}
+        <div className="px-4 pt-4 pb-1">
+          <h2 className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Communities</h2>
+          <p className="text-xs text-ios-gray-500 mt-0.5">Senior communities available in the project dropdown.</p>
+        </div>
+
+        <div className="px-4 py-3 space-y-2">
+          {communities.map((name, i) => (
+            <div
+              key={`${name}-${i}`}
+              className="flex items-center justify-between bg-white rounded-xl px-4 min-h-[48px] border border-ios-gray-200 shadow-sm"
+            >
+              <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
+              <button
+                onClick={() => removeCommunity(i)}
+                className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
+                aria-label={`Remove ${name}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+
+          {/* Add community */}
+          <div className="flex gap-2 pt-1">
+            <input
+              value={newCommunity}
+              onChange={(e) => setNewCommunity(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
+              placeholder="Add a community…"
+              className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+            />
+            <button
+              onClick={addCommunity}
+              className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom save bar (visible when dirty and scrolled down) */}
+        {isDirty && (
+          <div className="px-4 py-4">
+            <button
+              onClick={save}
+              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-base min-h-[56px]"
+            >
+              Save All Changes
+            </button>
+          </div>
+        )}
+
+        <div className="h-8" />
+      </div>
+    </div>
+  );
+}

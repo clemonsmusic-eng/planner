@@ -24,6 +24,7 @@ export interface TeamMember {
   name: string;
   roles: RoleType[];
   availability: TeamMemberAvailability;
+  minHoursPerWeek: number;
   maxHoursPerWeek: number;
   isPriority: boolean;
 }
@@ -163,11 +164,12 @@ export interface Project {
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule';
+export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings';
 
 export interface AppState {
   projects: Project[];
   activeProjectId: string | null;
   activeTab: TabName;
   teamMembers: TeamMember[];
+  communities: string[];
 }

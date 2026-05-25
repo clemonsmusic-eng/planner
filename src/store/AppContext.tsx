@@ -6,7 +6,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult } from '../types';
-import { loadProjects, saveProjects, loadTeamMembers, saveTeamMembers } from '../lib/storage';
+import { loadProjects, saveProjects, loadTeamMembers, saveTeamMembers, loadCommunities, saveCommunities } from '../lib/storage';
 import { generateSchedule } from '../lib/scheduling';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
@@ -52,6 +52,7 @@ type Action =
   | { type: 'DELETE_PROJECT'; id: string }
   | { type: 'SET_SCHEDULE'; id: string; schedule: ScheduleResult }
   | { type: 'UPDATE_TEAM_MEMBERS'; members: TeamMember[] }
+  | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'LOAD_STATE'; state: Partial<AppState> };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -103,6 +104,11 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, teamMembers: action.members };
     }
 
+    case 'UPDATE_COMMUNITIES': {
+      saveCommunities(action.communities);
+      return { ...state, communities: action.communities };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -118,6 +124,7 @@ const initialState: AppState = {
   activeProjectId: null,
   activeTab: 'projects',
   teamMembers: [],
+  communities: [],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -138,6 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let projects = loadProjects();
     const teamMembers = loadTeamMembers();
+    const communities = loadCommunities();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers);
       projects = [example];
@@ -145,7 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     dispatch({
       type: 'LOAD_STATE',
-      state: { projects, teamMembers, activeProjectId: projects[0]?.id ?? null },
+      state: { projects, teamMembers, communities, activeProjectId: projects[0]?.id ?? null },
     });
   }, []);
 

@@ -3,7 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
-import { COMMUNITIES, MOVE_TYPES } from '../lib/data';
+import { MOVE_TYPES } from '../lib/data';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, DensityLevel, TimePreference, MoveType } from '../types';
 
 function inputClass(hasError?: boolean) {
@@ -25,7 +25,7 @@ function SectionHeader({ title, icon }: SectionHeaderProps) {
 }
 
 export function InputFormPage() {
-  const { dispatch, activeProject, generateAndSaveSchedule } = useApp();
+  const { dispatch, activeProject, generateAndSaveSchedule, state } = useApp();
   const [inputs, setInputs] = useState<ProjectInputs | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -168,7 +168,7 @@ export function InputFormPage() {
             <SelectField
               value={inputs.community}
               onChange={(v) => update('community', v)}
-              options={COMMUNITIES}
+              options={state.communities}
             />
           </FormField>
           <FormField label="Move Type" required>
