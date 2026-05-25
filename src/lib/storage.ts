@@ -1,9 +1,16 @@
-import type { Project, TeamMember } from '../types';
-import { DEFAULT_TEAM_MEMBERS, COMMUNITIES as DEFAULT_COMMUNITIES } from './data';
+import type { Project, TeamMember, PhaseTemplate } from '../types';
+import {
+  DEFAULT_TEAM_MEMBERS,
+  COMMUNITIES as DEFAULT_COMMUNITIES,
+  PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES,
+  MOVE_TYPES as DEFAULT_MOVE_TYPES,
+} from './data';
 
-const STORAGE_KEY_PROJECTS    = 'st-planner-projects';
-const STORAGE_KEY_TEAM        = 'st-planner-team';
-const STORAGE_KEY_COMMUNITIES = 'st-planner-communities';
+const STORAGE_KEY_PROJECTS        = 'st-planner-projects';
+const STORAGE_KEY_TEAM            = 'st-planner-team';
+const STORAGE_KEY_COMMUNITIES     = 'st-planner-communities';
+const STORAGE_KEY_MOVE_TYPES      = 'st-planner-move-types';
+const STORAGE_KEY_PHASE_TEMPLATES = 'st-planner-phase-templates';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -24,6 +31,8 @@ export function saveProjects(projects: Project[]): void {
     console.error('Failed to save projects', e);
   }
 }
+
+// ─── Team Members ─────────────────────────────────────────────────────────────
 
 export function loadTeamMembers(): TeamMember[] {
   try {
@@ -60,5 +69,41 @@ export function saveCommunities(communities: string[]): void {
     localStorage.setItem(STORAGE_KEY_COMMUNITIES, JSON.stringify(communities));
   } catch (e) {
     console.error('Failed to save communities', e);
+  }
+}
+
+// ─── Move Types ───────────────────────────────────────────────────────────────
+
+export function loadMoveTypes(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_MOVE_TYPES);
+    if (raw) return JSON.parse(raw) as string[];
+  } catch {}
+  return [...DEFAULT_MOVE_TYPES];
+}
+
+export function saveMoveTypes(moveTypes: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_MOVE_TYPES, JSON.stringify(moveTypes));
+  } catch (e) {
+    console.error('Failed to save move types', e);
+  }
+}
+
+// ─── Phase Templates ──────────────────────────────────────────────────────────
+
+export function loadPhaseTemplates(): PhaseTemplate[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PHASE_TEMPLATES);
+    if (raw) return JSON.parse(raw) as PhaseTemplate[];
+  } catch {}
+  return DEFAULT_PHASE_TEMPLATES.map((t) => ({ ...t }));
+}
+
+export function savePhaseTemplates(templates: PhaseTemplate[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_PHASE_TEMPLATES, JSON.stringify(templates));
+  } catch (e) {
+    console.error('Failed to save phase templates', e);
   }
 }

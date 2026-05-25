@@ -4,7 +4,6 @@ import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import { MOVE_TYPES } from '../lib/data';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, DensityLevel, TimePreference, MoveType } from '../types';
 
 function inputClass(hasError?: boolean) {
@@ -177,7 +176,7 @@ export function InputFormPage() {
             <SelectField
               value={inputs.moveType}
               onChange={(v) => update('moveType', v as MoveType)}
-              options={MOVE_TYPES}
+              options={state.moveTypes}
             />
           </FormField>
         </Card>

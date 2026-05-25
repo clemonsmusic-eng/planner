@@ -9,6 +9,7 @@ import type {
   RoleType,
   TeamMember,
   AvailabilitySlot,
+  PhaseTemplate,
 } from '../types';
 import {
   addWorkdays,
@@ -18,7 +19,6 @@ import {
   getWeekKey,
 } from './dateUtils';
 import {
-  PHASE_TEMPLATES,
   getPackSortTeamSize,
   getPreMoveTeamSize,
   getMoveDayTeamSize,
@@ -75,7 +75,8 @@ function resolveShift(
 
 export function generateSchedule(
   inputs: ProjectInputs,
-  teamMembers: TeamMember[]
+  teamMembers: TeamMember[],
+  phaseTemplates: PhaseTemplate[]
 ): ScheduleResult {
   const {
     targetMoveDate,
@@ -109,19 +110,28 @@ export function generateSchedule(
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
   const finalSettleDate = addWorkdays(moveDayDate, 2);
 
-  // Fixed hours use DEFAULT (unscaled) team sizes per the spreadsheet formula:
-  // First Visit(5) + Second Visit(8) + AM Final Pack(12) + PM Final Pack(3)
-  // + AM Move Day(16) + PM Move Day(8) = 52
-  const FIXED_HOURS = 52;
+  // Fixed-phase hours derived from editable templates
+  const th = (id: string, fallback: number) =>
+    phaseTemplates.find((t) => t.id === id)?.hours ?? fallback;
 
-  // Actual hours from fixed phases using scaled team sizes — used for the 20% cap
+  const h1  = th('phase-1',   2.5);
+  const h2  = th('phase-2',   4);
+  const h41 = th('phase-4-1', 6);
+  const h42 = th('phase-4-2', 3);
+  const h51 = th('phase-5-1', 8);
+  const h52 = th('phase-5-2', 4);
+
+  // Baseline using default team sizes (2 per phase) — matches the spreadsheet formula
+  const FIXED_HOURS = h1 * 2 + h2 * 2 + h41 * 2 + h42 * 1 + h51 * 2 + h52 * 2;
+
+  // Actual hours using scaled team sizes — used for the 20% cap check
   const fixedActualHours =
-    2.5 * 2 +                             // First Visit (always 2)
-    4   * 2 +                             // Second Visit (always 2)
-    6   * 2 +                             // AM Final Pack (always 2: PM + Assist PM)
-    3   * Math.max(1, preMoveSize - 2) +  // PM Final Pack (scaled specialists)
-    8   * 2 +                             // AM Move Day (always 2: PM + Assist PM)
-    4   * Math.max(1, moveDaySize - 2);   // PM Move Day (scaled specialists)
+    h1  * 2 +
+    h2  * 2 +
+    h41 * 2 +
+    h42 * Math.max(1, preMoveSize - 2) +
+    h51 * 2 +
+    h52 * Math.max(1, moveDaySize - 2);
 
   // Sort hours per day = packSortSize × 4 hrs/person
   const sortHoursPerDay = packSortSize * 4;
@@ -214,7 +224,7 @@ export function generateSchedule(
     date: Date,
     teamSizeOverride?: number
   ) {
-    const template = PHASE_TEMPLATES.find((p) => p.id === phaseId);
+    const template = phaseTemplates.find((p) => p.id === phaseId);
     if (!template) return;
 
     const dateStr = toISODate(date);

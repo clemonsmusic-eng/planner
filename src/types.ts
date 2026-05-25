@@ -172,4 +172,6 @@ export interface AppState {
   activeTab: TabName;
   teamMembers: TeamMember[];
   communities: string[];
+  moveTypes: string[];
+  phaseTemplates: PhaseTemplate[];
 }

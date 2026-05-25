@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability } from '../types';
+import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,6 +33,49 @@ function nextSlot(current: AvailabilitySlot): AvailabilitySlot {
   return SLOT_CYCLE[(SLOT_CYCLE.indexOf(current) + 1) % SLOT_CYCLE.length];
 }
 
+// ─── Accordion Section ────────────────────────────────────────────────────────
+
+function AccordionSection({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-4 min-h-[56px]"
+      >
+        <div className="text-left">
+          <p className="font-bold text-gray-900">{title}</p>
+          {subtitle && <p className="text-xs text-ios-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ml-3 ${open ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {open && (
+        <div className="border-t border-ios-gray-100">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Member Card ──────────────────────────────────────────────────────────────
 
 interface MemberCardProps {
@@ -60,8 +103,7 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
-      {/* Collapsed header — always visible */}
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
       <button
         onClick={() => setExpanded((e) => !e)}
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
@@ -94,7 +136,7 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             <input
               value={member.name}
               onChange={(e) => onChange({ ...member, name: e.target.value })}
-              className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base font-semibold text-gray-900"
+              className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base font-semibold text-gray-900 bg-white"
               placeholder="Name"
             />
             <button
@@ -148,7 +190,7 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
                   onChange={(e) =>
                     onChange({ ...member, minHoursPerWeek: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center"
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
                 />
               </div>
               <div className="flex items-end pb-2 text-ios-gray-400 font-light">—</div>
@@ -162,7 +204,7 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
                   onChange={(e) =>
                     onChange({ ...member, maxHoursPerWeek: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center"
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
                 />
               </div>
             </div>
@@ -213,7 +255,68 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
   );
 }
 
+// ─── Phase Template Card ──────────────────────────────────────────────────────
+
+function PhaseTemplateCard({
+  template,
+  onChange,
+}: {
+  template: PhaseTemplate;
+  onChange: (updated: PhaseTemplate) => void;
+}) {
+  const shiftLabel = template.isAM ? 'AM' : template.isPM ? 'PM' : template.shift === 'client-pref' ? 'Client Pref' : template.shift;
+
+  return (
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 px-4 py-3">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <p className="text-sm font-semibold text-gray-900 flex-1">{template.name}</p>
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-ios-gray-200 text-ios-gray-600 whitespace-nowrap flex-shrink-0">
+          {shiftLabel}
+        </span>
+      </div>
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
+            Hours / Person
+          </label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0.5}
+            step={0.5}
+            value={template.hours}
+            onChange={(e) => onChange({ ...template, hours: parseFloat(e.target.value) || template.hours })}
+            className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
+            Base Team Size
+          </label>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={template.teamSize}
+            onChange={(e) => onChange({ ...template, teamSize: parseInt(e.target.value) || template.teamSize })}
+            className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1 mt-2">
+        {template.roles.map((r, i) => (
+          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
+            {r.role}{r.isLocked ? ' 🔒' : ''}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Settings Page ─────────────────────────────────────────────────────────────
+
+type SectionKey = 'team' | 'lists' | 'templates' | 'communities';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -222,8 +325,23 @@ export function SettingsPage() {
     state.teamMembers.map((m) => ({ ...m, availability: { ...m.availability } }))
   );
   const [communities, setCommunities] = useState<string[]>([...state.communities]);
+  const [moveTypes, setMoveTypes] = useState<string[]>([...state.moveTypes]);
+  const [phaseTemplates, setPhaseTemplates] = useState<PhaseTemplate[]>(
+    state.phaseTemplates.map((t) => ({ ...t }))
+  );
   const [newCommunity, setNewCommunity] = useState('');
+  const [newMoveType, setNewMoveType] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+  const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
+
+  function toggleSection(key: SectionKey) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   function updateMember(index: number, updated: TeamMember) {
     setMembers((prev) => prev.map((m, i) => (i === index ? updated : m)));
@@ -249,6 +367,7 @@ export function SettingsPage() {
       isPriority: false,
     };
     setMembers((prev) => [...prev, newMember]);
+    setOpenSections((prev) => new Set([...prev, 'team']));
     setIsDirty(true);
   }
 
@@ -265,9 +384,29 @@ export function SettingsPage() {
     setIsDirty(true);
   }
 
+  function addMoveType() {
+    const trimmed = newMoveType.trim();
+    if (!trimmed) return;
+    setMoveTypes((prev) => [...prev, trimmed]);
+    setNewMoveType('');
+    setIsDirty(true);
+  }
+
+  function removeMoveType(index: number) {
+    setMoveTypes((prev) => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
+  }
+
+  function updatePhaseTemplate(index: number, updated: PhaseTemplate) {
+    setPhaseTemplates((prev) => prev.map((t, i) => (i === index ? updated : t)));
+    setIsDirty(true);
+  }
+
   function save() {
     dispatch({ type: 'UPDATE_TEAM_MEMBERS', members });
     dispatch({ type: 'UPDATE_COMMUNITIES', communities });
+    dispatch({ type: 'UPDATE_MOVE_TYPES', moveTypes });
+    dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
     setIsDirty(false);
   }
 
@@ -294,92 +433,169 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {/* ── Team section ─────────────────────────────────────────── */}
-        <div className="px-4 pt-5 pb-1">
-          <h2 className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Team</h2>
-          <p className="text-xs text-ios-gray-500 mt-0.5">
-            Tap a member to expand. Tap availability cells to cycle: Full Day → AM → PM → Off.
-          </p>
-        </div>
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
 
-        <div className="px-4 py-3 space-y-3">
-          {members.map((member, i) => (
-            <MemberCard
-              key={member.id}
-              member={member}
-              onChange={(updated) => updateMember(i, updated)}
-              onDelete={() => deleteMember(i)}
-            />
-          ))}
-
-          <button
-            onClick={addMember}
-            className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
-            Add Team Member
-          </button>
-        </div>
-
-        {/* ── Communities section ──────────────────────────────────── */}
-        <div className="px-4 pt-4 pb-1">
-          <h2 className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Communities</h2>
-          <p className="text-xs text-ios-gray-500 mt-0.5">Senior communities available in the project dropdown.</p>
-        </div>
-
-        <div className="px-4 py-3 space-y-2">
-          {communities.map((name, i) => (
-            <div
-              key={`${name}-${i}`}
-              className="flex items-center justify-between bg-white rounded-xl px-4 min-h-[48px] border border-ios-gray-200 shadow-sm"
+        {/* ── Team ─────────────────────────────────────────────────────── */}
+        <AccordionSection
+          title="Team"
+          subtitle={`${members.length} members`}
+          open={openSections.has('team')}
+          onToggle={() => toggleSection('team')}
+        >
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Tap a member to expand. Tap availability cells to cycle: Full Day → AM → PM → Off.
+            </p>
+            <div className="space-y-2">
+              {members.map((member, i) => (
+                <MemberCard
+                  key={member.id}
+                  member={member}
+                  onChange={(updated) => updateMember(i, updated)}
+                  onDelete={() => deleteMember(i)}
+                />
+              ))}
+            </div>
+            <button
+              onClick={addMember}
+              className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
             >
-              <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              Add Team Member
+            </button>
+          </div>
+        </AccordionSection>
+
+        {/* ── Lists ────────────────────────────────────────────────────── */}
+        <AccordionSection
+          title="Lists"
+          subtitle="Move types and other dropdown values"
+          open={openSections.has('lists')}
+          onToggle={() => toggleSection('lists')}
+        >
+          <div className="px-4 py-3 space-y-3">
+            <p className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Move Types</p>
+            <div className="space-y-2">
+              {moveTypes.map((name, i) => (
+                <div
+                  key={`${name}-${i}`}
+                  className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
+                >
+                  <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
+                  <button
+                    onClick={() => removeMoveType(i)}
+                    className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
+                    aria-label={`Remove ${name}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newMoveType}
+                onChange={(e) => setNewMoveType(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addMoveType()}
+                placeholder="Add a move type…"
+                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+              />
               <button
-                onClick={() => removeCommunity(i)}
-                className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
-                aria-label={`Remove ${name}`}
+                onClick={addMoveType}
+                className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                </svg>
+                Add
               </button>
             </div>
-          ))}
-
-          {/* Add community */}
-          <div className="flex gap-2 pt-1">
-            <input
-              value={newCommunity}
-              onChange={(e) => setNewCommunity(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
-              placeholder="Add a community…"
-              className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
-            />
-            <button
-              onClick={addCommunity}
-              className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
-            >
-              Add
-            </button>
           </div>
-        </div>
+        </AccordionSection>
 
-        {/* Bottom save bar (visible when dirty and scrolled down) */}
+        {/* ── Task Template ─────────────────────────────────────────────── */}
+        <AccordionSection
+          title="Task Template"
+          subtitle="Phase hours and base team sizes"
+          open={openSections.has('templates')}
+          onToggle={() => toggleSection('templates')}
+        >
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Edit hours per person and base team size for each phase. Changes affect schedule generation.
+              Some phases auto-scale based on square footage.
+            </p>
+            {phaseTemplates
+              .slice()
+              .sort((a, b) => Number(a.order) - Number(b.order))
+              .map((template) => {
+                const idx = phaseTemplates.findIndex((t) => t.id === template.id);
+                return (
+                  <PhaseTemplateCard
+                    key={template.id}
+                    template={template}
+                    onChange={(updated) => updatePhaseTemplate(idx, updated)}
+                  />
+                );
+              })}
+          </div>
+        </AccordionSection>
+
+        {/* ── Communities ───────────────────────────────────────────────── */}
+        <AccordionSection
+          title="Communities"
+          subtitle="Senior communities in the project dropdown"
+          open={openSections.has('communities')}
+          onToggle={() => toggleSection('communities')}
+        >
+          <div className="px-4 py-3 space-y-2">
+            {communities.map((name, i) => (
+              <div
+                key={`${name}-${i}`}
+                className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
+              >
+                <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
+                <button
+                  onClick={() => removeCommunity(i)}
+                  className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
+                  aria-label={`Remove ${name}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <input
+                value={newCommunity}
+                onChange={(e) => setNewCommunity(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
+                placeholder="Add a community…"
+                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+              />
+              <button
+                onClick={addCommunity}
+                className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </AccordionSection>
+
+        {/* Bottom save bar */}
         {isDirty && (
-          <div className="px-4 py-4">
-            <button
-              onClick={save}
-              className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-base min-h-[56px]"
-            >
-              Save All Changes
-            </button>
-          </div>
+          <button
+            onClick={save}
+            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-base min-h-[56px]"
+          >
+            Save All Changes
+          </button>
         )}
 
-        <div className="h-8" />
+        <div className="h-4" />
       </div>
     </div>
   );

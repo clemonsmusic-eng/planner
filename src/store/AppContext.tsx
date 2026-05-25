@@ -5,9 +5,16 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult } from '../types';
-import { loadProjects, saveProjects, loadTeamMembers, saveTeamMembers, loadCommunities, saveCommunities } from '../lib/storage';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate } from '../types';
+import {
+  loadProjects, saveProjects,
+  loadTeamMembers, saveTeamMembers,
+  loadCommunities, saveCommunities,
+  loadMoveTypes, saveMoveTypes,
+  loadPhaseTemplates, savePhaseTemplates,
+} from '../lib/storage';
 import { generateSchedule } from '../lib/scheduling';
+import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
 
@@ -38,7 +45,7 @@ function createExampleProject(teamMembers: TeamMember[]): Project {
     inputs,
     schedule: null,
   };
-  project.schedule = generateSchedule(inputs, teamMembers);
+  project.schedule = generateSchedule(inputs, teamMembers, DEFAULT_PHASE_TEMPLATES);
   return project;
 }
 
@@ -53,6 +60,8 @@ type Action =
   | { type: 'SET_SCHEDULE'; id: string; schedule: ScheduleResult }
   | { type: 'UPDATE_TEAM_MEMBERS'; members: TeamMember[] }
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
+  | { type: 'UPDATE_MOVE_TYPES'; moveTypes: string[] }
+  | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
   | { type: 'LOAD_STATE'; state: Partial<AppState> };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -109,6 +118,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, communities: action.communities };
     }
 
+    case 'UPDATE_MOVE_TYPES': {
+      saveMoveTypes(action.moveTypes);
+      return { ...state, moveTypes: action.moveTypes };
+    }
+
+    case 'UPDATE_PHASE_TEMPLATES': {
+      savePhaseTemplates(action.phaseTemplates);
+      return { ...state, phaseTemplates: action.phaseTemplates };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -125,6 +144,8 @@ const initialState: AppState = {
   activeTab: 'projects',
   teamMembers: [],
   communities: [],
+  moveTypes: [],
+  phaseTemplates: [],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -141,11 +162,12 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Load from localStorage on mount; seed example project if empty
   useEffect(() => {
     let projects = loadProjects();
     const teamMembers = loadTeamMembers();
     const communities = loadCommunities();
+    const moveTypes = loadMoveTypes();
+    const phaseTemplates = loadPhaseTemplates();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers);
       projects = [example];
@@ -153,7 +175,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     dispatch({
       type: 'LOAD_STATE',
-      state: { projects, teamMembers, communities, activeProjectId: projects[0]?.id ?? null },
+      state: {
+        projects,
+        teamMembers,
+        communities,
+        moveTypes,
+        phaseTemplates,
+        activeProjectId: projects[0]?.id ?? null,
+      },
     });
   }, []);
 
@@ -163,7 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   function generateAndSaveSchedule(projectId: string) {
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
-    const schedule = generateSchedule(project.inputs, state.teamMembers);
+    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 
