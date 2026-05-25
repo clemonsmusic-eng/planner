@@ -164,7 +164,7 @@ export interface Project {
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings';
+export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
 
 export interface AppState {
   projects: Project[];

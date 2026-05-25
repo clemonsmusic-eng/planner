@@ -1,26 +1,30 @@
 import { AppProvider, useApp } from './store/AppContext';
+import { MenuProvider } from './components/MenuContext';
 import { Navigation } from './components/Navigation';
-import { ProjectListPage } from './pages/ProjectListPage';
+import { HamburgerMenu } from './components/HamburgerMenu';
 import { InputFormPage } from './pages/InputFormPage';
 import { PlanPage } from './pages/PlanPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CalendarPage } from './pages/CalendarPage';
 
 function AppContent() {
   const { state } = useApp();
 
   const page = (() => {
     switch (state.activeTab) {
-      case 'projects': return <ProjectListPage />;
-      case 'inputs':   return <InputFormPage />;
-      case 'plan':     return <PlanPage />;
-      case 'schedule': return <SchedulePage />;
-      case 'settings': return <SettingsPage />;
+      case 'projects':  return <InputFormPage />;
+      case 'inputs':    return <InputFormPage />;
+      case 'plan':      return <PlanPage />;
+      case 'schedule':  return <SchedulePage />;
+      case 'settings':  return <SettingsPage />;
+      case 'calendar':  return <CalendarPage />;
     }
   })();
 
   return (
     <div className="flex flex-col min-h-screen bg-ios-gray-100">
+      <HamburgerMenu />
       {/* Page area — leaves room for bottom nav */}
       <main
         className="flex-1 overflow-hidden"
@@ -36,7 +40,9 @@ function AppContent() {
 export function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <MenuProvider>
+        <AppContent />
+      </MenuProvider>
     </AppProvider>
   );
 }

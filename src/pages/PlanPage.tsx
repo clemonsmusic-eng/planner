@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
+import { HamburgerButton } from '../components/HamburgerMenu';
 import { formatDateLabel } from '../lib/dateUtils';
 import type { ScheduleResult, TeamHoursSummary } from '../types';
 
@@ -44,12 +45,13 @@ export function PlanPage() {
           className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">
+          <div className="flex items-center gap-2">
+            <HamburgerButton />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">
                 {activeProject.inputs.clientName || 'Plan'}
               </h1>
-              <p className="text-xs text-ios-gray-600">{activeProject.inputs.community}</p>
+              <p className="text-xs text-ios-gray-600 truncate">{activeProject.inputs.community}</p>
             </div>
           </div>
         </div>

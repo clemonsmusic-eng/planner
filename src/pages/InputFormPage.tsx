@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
+import { HamburgerButton } from '../components/HamburgerMenu';
 import { MOVE_TYPES } from '../lib/data';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, DensityLevel, TimePreference, MoveType } from '../types';
 
@@ -109,19 +110,20 @@ export function InputFormPage() {
         className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 leading-tight">
+        <div className="flex items-center gap-2">
+          <HamburgerButton />
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">
               {inputs.clientName || 'New Project'}
             </h1>
             {inputs.clientName && (
-              <p className="text-xs text-ios-gray-600">{inputs.community}</p>
+              <p className="text-xs text-ios-gray-600 truncate">{inputs.community}</p>
             )}
           </div>
           <button
             onClick={handleSaveAndGenerate}
             disabled={!isFormComplete}
-            className={`px-4 py-2 rounded-xl font-semibold text-sm min-h-[44px] transition-colors ${
+            className={`flex-shrink-0 px-4 py-2 rounded-xl font-semibold text-sm min-h-[44px] transition-colors ${
               isFormComplete
                 ? saved
                   ? 'bg-green-100 text-green-800'

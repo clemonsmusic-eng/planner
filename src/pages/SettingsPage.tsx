@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
+import { HamburgerButton } from '../components/HamburgerMenu';
 import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -277,8 +278,9 @@ export function SettingsPage() {
         className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+        <div className="flex items-center gap-2">
+          <HamburgerButton />
+          <h1 className="text-xl font-bold text-gray-900 flex-1">Settings</h1>
           {isDirty ? (
             <button
               onClick={save}

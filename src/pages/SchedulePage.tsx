@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
+import { HamburgerButton } from '../components/HamburgerMenu';
 import type { ScheduleEntry, ScheduleDay } from '../types';
 
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
@@ -122,16 +123,17 @@ export function SchedulePage() {
           className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
-          <div className="flex items-center justify-between mb-2">
-            <div>
+          <div className="flex items-center gap-2 mb-2">
+            <HamburgerButton />
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl font-bold text-gray-900 leading-tight">Schedule</h1>
-              <p className="text-xs text-ios-gray-600">
+              <p className="text-xs text-ios-gray-600 truncate">
                 {activeProject.inputs.clientName || 'No project'} · {schedule?.days.length ?? 0} days
               </p>
             </div>
             <button
               onClick={() => generateAndSaveSchedule(activeProject.id)}
-              className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+              className="flex-shrink-0 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
             >
               Regenerate
             </button>
