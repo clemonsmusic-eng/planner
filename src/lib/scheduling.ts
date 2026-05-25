@@ -113,8 +113,26 @@ export function generateSchedule(
   // First Visit(5) + Second Visit(8) + AM Final Pack(12) + PM Final Pack(3)
   // + AM Move Day(16) + PM Move Day(8) = 52
   const FIXED_HOURS = 52;
+
+  // Actual hours from fixed phases using scaled team sizes — used for the 20% cap
+  const fixedActualHours =
+    2.5 * 2 +                             // First Visit (always 2)
+    4   * 2 +                             // Second Visit (always 2)
+    6   * 2 +                             // AM Final Pack (always 2: PM + Assist PM)
+    3   * Math.max(1, preMoveSize - 2) +  // PM Final Pack (scaled specialists)
+    8   * 2 +                             // AM Move Day (always 2: PM + Assist PM)
+    4   * Math.max(1, moveDaySize - 2);   // PM Move Day (scaled specialists)
+
   // Sort hours per day = packSortSize × 4 hrs/person
-  const sortDayCount = Math.max(1, Math.ceil((budgetedManHours - FIXED_HOURS) / (packSortSize * 4)));
+  const sortHoursPerDay = packSortSize * 4;
+  let sortDayCount = Math.max(1, Math.ceil((budgetedManHours - FIXED_HOURS) / sortHoursPerDay));
+
+  // Rule: total scheduled hours must not exceed 120% of budget.
+  // Reduce sort days until within cap (minimum 1 sort day).
+  const maxAllowedHours = budgetedManHours * 1.20;
+  while (sortDayCount > 1 && (fixedActualHours + sortDayCount * sortHoursPerDay) > maxAllowedHours) {
+    sortDayCount--;
+  }
 
   // Sort starts 2 workdays after secondVisit, every other workday
   const sortStartBase = addWorkdays(secondVisitDate, 2);
@@ -374,19 +392,8 @@ export function generateSchedule(
         // Skip if unavailable on this day
         if (!isMemberAvailableForShift(member, date, task.shift, overrideShift)) continue;
 
-        // Skip if already booked on this date (double-booking check)
-        // Exception: AM/PM splits on same day are allowed for different shift tasks
-        if (isBooked(member.id, task.date)) {
-          // Check if it's an AM/PM split scenario
-          const existingEntries = entries.filter(
-            (e) => e.date === task.date && e.assignedMember === member.id
-          );
-          const hasAMBooking = existingEntries.some((e) => e.shift === 'AM');
-          const hasPMBooking = existingEntries.some((e) => e.shift === 'PM');
-          if (task.shift === 'AM' && hasAMBooking) continue;
-          if (task.shift === 'PM' && hasPMBooking) continue;
-          if (task.shift === 'Full Day') continue;
-        }
+        // No double-booking: a person can only be assigned once per day
+        if (isBooked(member.id, task.date)) continue;
 
         const wkHours = getWeekHours(member.id, weekKey);
         const wouldExceed = member.maxHoursPerWeek > 0 && (wkHours + task.hours) > member.maxHoursPerWeek;
@@ -469,7 +476,7 @@ export function generateSchedule(
   const percentScheduled = budgetedManHours > 0 ? (totalScheduledHours / budgetedManHours) * 100 : 0;
 
   let scheduleStatus: ScheduleResult['status'];
-  if (percentScheduled > 100) scheduleStatus = 'OVER BUDGET';
+  if (percentScheduled > 120) scheduleStatus = 'OVER BUDGET';
   else if (percentScheduled < 85) scheduleStatus = 'UNDER SCHEDULED';
   else scheduleStatus = 'ON TRACK';
 
