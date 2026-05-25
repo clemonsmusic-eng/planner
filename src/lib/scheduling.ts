@@ -112,6 +112,7 @@ export function generateSchedule(
   const startDate = parseISO(earliestStartDate);
 
   const firstVisitDate = startDate;
+  // Keep ~2 workdays between the first and second visit (weekends skipped).
   const secondVisitDate = addWorkdays(firstVisitDate, 3);
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
   const finalSettleDate = addWorkdays(moveDayDate, 2);
@@ -150,18 +151,28 @@ export function generateSchedule(
     sortDayCount--;
   }
 
-  // Sort starts 2 workdays after secondVisit, every other workday
-  const sortStartBase = addWorkdays(secondVisitDate, 2);
+  // Sort/pack days: prioritize staff availability over spreading the days out.
+  // addWorkdays skips weekends (so weekends stay free) and we advance one workday
+  // at a time — back-to-back days at the same client are fine. Days where no team
+  // member is available are skipped in favor of the next workday.
+  const hasTeam = teamMembers.length > 0;
+  const sortStartBase = addWorkdays(secondVisitDate, 1);
   const sortDates: Date[] = [];
   {
     let cur = sortStartBase;
-    for (let i = 0; i < sortDayCount; i++) {
+    let guard = 0;
+    while (sortDates.length < sortDayCount && guard < 120) {
+      guard++;
       // Ensure sort days don't overlap with final pack day
       if (toISODate(cur) >= toISODate(finalPackDayDate)) break;
-      sortDates.push(new Date(cur));
-      cur = addWorkdays(cur, 2);
+      const availableCount = hasTeam
+        ? teamMembers.filter((m) => m.availability[getDayOfWeekKey(cur)] !== 'Unavailable').length
+        : 1;
+      if (availableCount > 0) {
+        sortDates.push(new Date(cur));
+      }
+      cur = addWorkdays(cur, 1);
     }
-    // If we didn't get enough due to cut-off, still include up to limit
   }
 
   // Cleanout dates

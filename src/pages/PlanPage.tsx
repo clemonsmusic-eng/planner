@@ -3,8 +3,9 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { HamburgerButton } from '../components/HamburgerMenu';
+import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { formatDateLabel } from '../lib/dateUtils';
-import type { ScheduleResult, TeamHoursSummary } from '../types';
+import type { ScheduleResult, TeamHoursSummary, DateOverride } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -18,9 +19,10 @@ function ChevronDownIcon() {
 
 
 export function PlanPage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride } = useApp();
   const [datesExpanded, setDatesExpanded] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [overrideDate, setOverrideDate] = useState<string | null>(null);
 
   if (!activeProject) {
     return (
@@ -115,7 +117,13 @@ export function PlanPage() {
           ) : (
             <>
               <JobSummaryCard schedule={schedule} budgetedHours={activeProject.inputs.budgetedManHours} />
-              <SuggestedDatesCard schedule={schedule} expanded={datesExpanded} onToggle={() => setDatesExpanded(!datesExpanded)} />
+              <SuggestedDatesCard
+                schedule={schedule}
+                expanded={datesExpanded}
+                onToggle={() => setDatesExpanded(!datesExpanded)}
+                overrides={activeProject.inputs.dateOverrides}
+                onOverride={(date) => setOverrideDate(date)}
+              />
               <MoveDaySnapshotCard schedule={schedule} teamMembers={state.teamMembers} moveDate={activeProject.inputs.targetMoveDate} />
               <TeamHoursCard teamHours={schedule.teamHours} />
             </>
@@ -123,6 +131,15 @@ export function PlanPage() {
         </div>
       </div>
 
+      {/* Shift Override Sheet */}
+      {overrideDate && (
+        <ShiftOverrideSheet
+          date={overrideDate}
+          current={activeProject.inputs.dateOverrides.find((o) => o.date === overrideDate)?.shift ?? null}
+          onSelect={(shift) => setShiftOverride(activeProject.id, overrideDate, shift)}
+          onClose={() => setOverrideDate(null)}
+        />
+      )}
     </>
   );
 }
@@ -226,10 +243,14 @@ function SuggestedDatesCard({
   schedule,
   expanded,
   onToggle,
+  overrides,
+  onOverride,
 }: {
   schedule: ScheduleResult;
   expanded: boolean;
   onToggle: () => void;
+  overrides: DateOverride[];
+  onOverride: (date: string) => void;
 }) {
   const { suggestedDates } = schedule;
 
@@ -279,26 +300,41 @@ function SuggestedDatesCard({
 
       {expanded && (
         <div className="px-4 pb-4 space-y-0">
-          {items.map((item, i) => (
-            <div
-              key={`${item.label}-${i}`}
-              className={`flex items-center gap-3 py-2.5 ${i < items.length - 1 ? 'border-b border-ios-gray-100' : ''}`}
-            >
+          {items.map((item, i) => {
+            const override = overrides.find((o) => o.date === item.date);
+            return (
               <div
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  item.accent ? 'bg-indigo-600' : 'bg-ios-gray-300'
-                }`}
-              />
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${item.accent ? 'text-indigo-700' : 'text-gray-900'}`}>
-                  {item.label}
-                </p>
+                key={`${item.label}-${i}`}
+                className={`flex items-center gap-3 py-2.5 ${i < items.length - 1 ? 'border-b border-ios-gray-100' : ''}`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    item.accent ? 'bg-indigo-600' : 'bg-ios-gray-300'
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${item.accent ? 'text-indigo-700' : 'text-gray-900'}`}>
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-ios-gray-500">{formatDateLabel(item.date)}</p>
+                </div>
+                {override && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0">
+                    {override.shift}
+                  </span>
+                )}
+                <button
+                  onClick={() => onOverride(item.date)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-ios-gray-100 flex-shrink-0"
+                  aria-label="Override shift"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                  </svg>
+                </button>
               </div>
-              <p className="text-sm text-ios-gray-600 flex-shrink-0">
-                {formatDateLabel(item.date)}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>

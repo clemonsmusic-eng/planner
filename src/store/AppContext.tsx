@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -59,6 +59,7 @@ type Action =
   | { type: 'UPDATE_PROJECT'; id: string; inputs: ProjectInputs }
   | { type: 'DELETE_PROJECT'; id: string }
   | { type: 'SET_SCHEDULE'; id: string; schedule: ScheduleResult }
+  | { type: 'SET_OVERRIDE'; id: string; inputs: ProjectInputs; schedule: ScheduleResult }
   | { type: 'UPDATE_TEAM_MEMBERS'; members: TeamMember[] }
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
@@ -104,6 +105,16 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_SCHEDULE': {
       const projects = state.projects.map((p) =>
         p.id === action.id ? { ...p, schedule: action.schedule } : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'SET_OVERRIDE': {
+      const projects = state.projects.map((p) =>
+        p.id === action.id
+          ? { ...p, inputs: action.inputs, schedule: action.schedule, updatedAt: new Date().toISOString() }
+          : p
       );
       saveProjects(projects);
       return { ...state, projects };
@@ -156,6 +167,7 @@ interface AppContextValue {
   dispatch: React.Dispatch<Action>;
   activeProject: Project | null;
   generateAndSaveSchedule: (projectId: string) => void;
+  setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -197,8 +209,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 
+  function setShiftOverride(projectId: string, date: string, shift: AvailabilitySlot | null) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project || !date) return;
+    const filtered = project.inputs.dateOverrides.filter((o) => o.date !== date);
+    const dateOverrides = shift
+      ? [...filtered, { id: crypto.randomUUID(), date, shift, reason: 'Manual override' }]
+      : filtered;
+    const inputs = { ...project.inputs, dateOverrides };
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists);
+    dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule }}>
+    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride }}>
       {children}
     </AppContext.Provider>
   );

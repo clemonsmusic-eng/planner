@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { HamburgerButton } from '../components/HamburgerMenu';
+import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import type { ScheduleEntry, ScheduleDay } from '../types';
 
 function ChevronDownIcon() {
@@ -29,11 +30,12 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 export function SchedulePage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride } = useApp();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [overrideDate, setOverrideDate] = useState<string | null>(null);
 
   if (!activeProject) {
     return (
@@ -244,6 +246,8 @@ export function SchedulePage() {
                   day={day}
                   collapsed={collapsedDays.has(day.date)}
                   onToggle={() => toggleDay(day.date)}
+                  hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
+                  onOverride={() => setOverrideDate(day.date)}
                 />
               ))}
             </div>
@@ -264,6 +268,16 @@ export function SchedulePage() {
           onClose={() => setShowFilterSheet(false)}
         />
       )}
+
+      {/* Shift Override Sheet */}
+      {overrideDate && (
+        <ShiftOverrideSheet
+          date={overrideDate}
+          current={activeProject.inputs.dateOverrides.find((o) => o.date === overrideDate)?.shift ?? null}
+          onSelect={(shift) => setShiftOverride(activeProject.id, overrideDate, shift)}
+          onClose={() => setOverrideDate(null)}
+        />
+      )}
     </>
   );
 }
@@ -272,10 +286,14 @@ function DaySection({
   day,
   collapsed,
   onToggle,
+  hasOverride,
+  onOverride,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
   onToggle: () => void;
+  hasOverride: boolean;
+  onOverride: () => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -284,29 +302,44 @@ function DaySection({
   return (
     <div>
       {/* Sticky section header */}
-      <button
-        onClick={onToggle}
-        className="sticky top-0 z-10 w-full flex items-center justify-between px-4 py-2.5 bg-ios-gray-100 border-b border-ios-gray-200"
+      <div
+        className="sticky top-0 z-10 w-full flex items-center px-4 py-2.5 bg-ios-gray-100 border-b border-ios-gray-200"
         style={{ top: '0' }}
       >
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold text-gray-800">{day.label}</h3>
-          {hasConflict && (
-            <span className="w-2 h-2 bg-red-500 rounded-full" />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-ios-gray-600">{day.entries.length} roles</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={`w-4 h-4 text-ios-gray-500 transition-transform ${collapsed ? '-rotate-90' : ''}`}
-          >
-            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-sm font-bold text-gray-800 truncate">{day.label}</h3>
+            {hasConflict && (
+              <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
+            )}
+            {hasOverride && (
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0">
+                Override
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+            <span className="text-xs text-ios-gray-600">{day.entries.length} roles</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`w-4 h-4 text-ios-gray-500 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+            >
+              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
+          </div>
+        </button>
+        <button
+          onClick={onOverride}
+          className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+          aria-label="Override shift"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
           </svg>
-        </div>
-      </button>
+        </button>
+      </div>
 
       {!collapsed && (
         <div className="px-4 py-2 space-y-2">
