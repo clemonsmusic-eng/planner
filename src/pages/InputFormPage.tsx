@@ -6,6 +6,15 @@ import { SelectField } from '../components/SelectField';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, DensityLevel, TimePreference, MoveType } from '../types';
 
+// Chevron icon used in project picker
+function ChevronDownIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-ios-gray-400 flex-shrink-0">
+      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function inputClass(hasError?: boolean) {
   return `w-full min-h-[44px] rounded-xl border ${hasError ? 'border-red-400' : 'border-ios-gray-300'} bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500`;
 }
@@ -28,6 +37,7 @@ export function InputFormPage() {
   const { dispatch, activeProject, generateAndSaveSchedule, state } = useApp();
   const [inputs, setInputs] = useState<ProjectInputs | null>(null);
   const [saved, setSaved] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (activeProject) {
@@ -111,14 +121,54 @@ export function InputFormPage() {
       >
         <div className="flex items-center gap-2">
           <HamburgerButton />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">
-              {inputs.clientName || 'New Project'}
-            </h1>
-            {inputs.clientName && (
-              <p className="text-xs text-ios-gray-600 truncate">{inputs.community}</p>
+          {/* Project picker */}
+          <div className="flex-1 min-w-0 relative">
+            <button
+              onClick={() => setPickerOpen(o => !o)}
+              className="flex items-center gap-1 min-w-0 max-w-full"
+            >
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-gray-900 leading-tight truncate text-left">
+                  {inputs.clientName || 'New Project'}
+                </h1>
+                {inputs.clientName && (
+                  <p className="text-xs text-ios-gray-600 truncate text-left">{inputs.community}</p>
+                )}
+              </div>
+              <ChevronDownIcon />
+            </button>
+            {pickerOpen && (
+              <div className="absolute top-full left-0 z-30 mt-1 bg-white rounded-xl shadow-lg border border-ios-gray-200 w-[260px] max-h-[280px] overflow-y-auto">
+                {state.projects
+                  .filter(p => (p.inputs.status ?? 'active') !== 'archived')
+                  .map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        dispatch({ type: 'SET_ACTIVE_PROJECT', id: p.id });
+                        dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
+                        setPickerOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-indigo-50' : 'active:bg-ios-gray-50'}`}
+                    >
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                          {p.inputs.clientName || 'Untitled'}
+                        </p>
+                        <p className="text-xs text-ios-gray-500 truncate">{p.inputs.community}</p>
+                      </div>
+                      <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                        (p.inputs.status ?? 'active') === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {(p.inputs.status ?? 'active')}
+                      </span>
+                    </button>
+                  ))}
+              </div>
             )}
           </div>
+          {/* Save button */}
           <button
             onClick={handleSaveAndGenerate}
             disabled={!isFormComplete}
@@ -176,8 +226,25 @@ export function InputFormPage() {
             <SelectField
               value={inputs.moveType}
               onChange={(v) => update('moveType', v as MoveType)}
-              options={state.moveTypes}
+              options={state.lists.find(l => l.id === 'move-types')?.items ?? []}
             />
+          </FormField>
+          <FormField label="Project Status">
+            <div className="flex rounded-xl overflow-hidden border border-ios-gray-300">
+              {(['draft', 'active', 'archived'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => update('status', s)}
+                  className={`flex-1 py-2.5 text-sm font-semibold capitalize min-h-[44px] transition-colors ${
+                    inputs.status === s
+                      ? s === 'archived' ? 'bg-ios-gray-500 text-white' : s === 'draft' ? 'bg-amber-500 text-white' : 'bg-green-600 text-white'
+                      : 'bg-white text-ios-gray-600'
+                  }`}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
           </FormField>
         </Card>
 
@@ -191,20 +258,20 @@ export function InputFormPage() {
           }
         />
         <Card className="p-4 space-y-4">
-          <FormField label="Target Move Date" required>
-            <input
-              type="date"
-              value={inputs.targetMoveDate}
-              onChange={(e) => update('targetMoveDate', e.target.value)}
-              className={inputClass(!inputs.targetMoveDate)}
-            />
-          </FormField>
           <FormField label="Earliest Start Date" required hint="First visit / planning session">
             <input
               type="date"
               value={inputs.earliestStartDate}
               onChange={(e) => update('earliestStartDate', e.target.value)}
               className={inputClass(!inputs.earliestStartDate)}
+            />
+          </FormField>
+          <FormField label="Target Move Date" required>
+            <input
+              type="date"
+              value={inputs.targetMoveDate}
+              onChange={(e) => update('targetMoveDate', e.target.value)}
+              className={inputClass(!inputs.targetMoveDate)}
             />
           </FormField>
           <FormField label="Hard Deadline">

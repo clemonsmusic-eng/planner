@@ -22,7 +22,6 @@ import {
   getPackSortTeamSize,
   getPreMoveTeamSize,
   getMoveDayTeamSize,
-  getDensityMultiplier,
   getRoleQualifiers,
 } from './data';
 
@@ -84,7 +83,6 @@ export function generateSchedule(
     budgetedManHours,
     originSqFt,
     destinationSqFt,
-    densityLevel,
     clientTimePreference,
     cleanout,
     auction,
@@ -93,12 +91,11 @@ export function generateSchedule(
 
   // ── 1. Team sizes (needed for sort day calculation) ──────────────────────────
 
-  const densityMult = getDensityMultiplier(densityLevel);
-  // Pack/Sort team size: driven by origin sq ft + density
-  const packSortSize = Math.ceil(getPackSortTeamSize(originSqFt) * densityMult);
-  // Pre-move and Move Day: driven by destination sq ft + density
-  const preMoveSize  = Math.ceil(getPreMoveTeamSize(destinationSqFt) * densityMult);
-  const moveDaySize  = Math.ceil(getMoveDayTeamSize(destinationSqFt) * densityMult);
+  // Pack/Sort team size: driven by origin sq ft
+  const packSortSize = getPackSortTeamSize(originSqFt);
+  // Pre-move and Move Day: driven by destination sq ft
+  const preMoveSize  = getPreMoveTeamSize(destinationSqFt);
+  const moveDaySize  = getMoveDayTeamSize(destinationSqFt);
 
   // ── 2. Compute suggested dates ───────────────────────────────────────────────
 

@@ -4,6 +4,14 @@ import { Card } from '../components/Card';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import type { ScheduleEntry, ScheduleDay } from '../types';
 
+function ChevronDownIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-ios-gray-400 flex-shrink-0">
+      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
 const ROLE_COLORS: Record<string, string> = {
@@ -21,10 +29,11 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 export function SchedulePage() {
-  const { dispatch, activeProject, generateAndSaveSchedule } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule } = useApp();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!activeProject) {
     return (
@@ -125,11 +134,49 @@ export function SchedulePage() {
         >
           <div className="flex items-center gap-2 mb-2">
             <HamburgerButton />
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-gray-900 leading-tight">Schedule</h1>
-              <p className="text-xs text-ios-gray-600 truncate">
-                {activeProject.inputs.clientName || 'No project'} · {schedule?.days.length ?? 0} days
-              </p>
+            {/* Project picker */}
+            <div className="flex-1 min-w-0 relative">
+              <button
+                onClick={() => setPickerOpen(o => !o)}
+                className="flex items-center gap-1 min-w-0 max-w-full"
+              >
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold text-gray-900 leading-tight text-left">Schedule</h1>
+                  <p className="text-xs text-ios-gray-600 truncate text-left">
+                    {activeProject.inputs.clientName || 'No project'} · {schedule?.days.length ?? 0} days
+                  </p>
+                </div>
+                <ChevronDownIcon />
+              </button>
+              {pickerOpen && (
+                <div className="absolute top-full left-0 z-30 mt-1 bg-white rounded-xl shadow-lg border border-ios-gray-200 w-[260px] max-h-[280px] overflow-y-auto">
+                  {state.projects
+                    .filter(p => (p.inputs.status ?? 'active') !== 'archived')
+                    .map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          dispatch({ type: 'SET_ACTIVE_PROJECT', id: p.id });
+                          setPickerOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-indigo-50' : 'active:bg-ios-gray-50'}`}
+                      >
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                            {p.inputs.clientName || 'Untitled'}
+                          </p>
+                          <p className="text-xs text-ios-gray-500 truncate">{p.inputs.community}</p>
+                        </div>
+                        <span className={`ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                          (p.inputs.status ?? 'active') === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                        }`}>
+                          {(p.inputs.status ?? 'active')}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
             <button
               onClick={() => generateAndSaveSchedule(activeProject.id)}

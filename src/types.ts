@@ -49,6 +49,13 @@ export interface PhaseTemplate {
   isPM?: boolean; // true = PM block
 }
 
+// ─── List Category ────────────────────────────────────────────────────────────
+export interface ListCategory {
+  id: string;
+  name: string;
+  items: string[];
+}
+
 // ─── Project Inputs ───────────────────────────────────────────────────────────
 export type MoveType = 'Full Move' | 'Emergency Move' | 'Downsize Only' | 'Cleanout' | 'Pack Only';
 export type FlexibilityLevel = 'Low' | 'Medium' | 'High';
@@ -78,6 +85,7 @@ export interface ProjectInputs {
   projectName: string;
   community: string;
   moveType: MoveType;
+  status: 'draft' | 'active' | 'archived';
   // Dates
   targetMoveDate: string; // ISO date string
   earliestStartDate: string; // ISO date string
@@ -172,6 +180,6 @@ export interface AppState {
   activeTab: TabName;
   teamMembers: TeamMember[];
   communities: string[];
-  moveTypes: string[];
+  lists: ListCategory[];
   phaseTemplates: PhaseTemplate[];
 }

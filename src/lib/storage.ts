@@ -1,15 +1,15 @@
-import type { Project, TeamMember, PhaseTemplate } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
   PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES,
-  MOVE_TYPES as DEFAULT_MOVE_TYPES,
+  DEFAULT_LISTS,
 } from './data';
 
 const STORAGE_KEY_PROJECTS        = 'st-planner-projects';
 const STORAGE_KEY_TEAM            = 'st-planner-team';
 const STORAGE_KEY_COMMUNITIES     = 'st-planner-communities';
-const STORAGE_KEY_MOVE_TYPES      = 'st-planner-move-types';
+const STORAGE_KEY_LISTS           = 'st-planner-lists';
 const STORAGE_KEY_PHASE_TEMPLATES = 'st-planner-phase-templates';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
@@ -18,7 +18,10 @@ export function loadProjects(): Project[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROJECTS);
     if (!raw) return [];
-    return JSON.parse(raw) as Project[];
+    return (JSON.parse(raw) as Project[]).map(p => ({
+      ...p,
+      inputs: { ...p.inputs, status: p.inputs.status ?? 'active' },
+    }));
   } catch {
     return [];
   }
@@ -72,21 +75,21 @@ export function saveCommunities(communities: string[]): void {
   }
 }
 
-// ─── Move Types ───────────────────────────────────────────────────────────────
+// ─── Lists ────────────────────────────────────────────────────────────────────
 
-export function loadMoveTypes(): string[] {
+export function loadLists(): ListCategory[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_MOVE_TYPES);
-    if (raw) return JSON.parse(raw) as string[];
+    const raw = localStorage.getItem(STORAGE_KEY_LISTS);
+    if (raw) return JSON.parse(raw) as ListCategory[];
   } catch {}
-  return [...DEFAULT_MOVE_TYPES];
+  return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
 }
 
-export function saveMoveTypes(moveTypes: string[]): void {
+export function saveLists(lists: ListCategory[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY_MOVE_TYPES, JSON.stringify(moveTypes));
+    localStorage.setItem(STORAGE_KEY_LISTS, JSON.stringify(lists));
   } catch (e) {
-    console.error('Failed to save move types', e);
+    console.error('Failed to save lists', e);
   }
 }
 

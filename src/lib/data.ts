@@ -1,4 +1,4 @@
-import type { TeamMember, PhaseTemplate, RoleType } from '../types';
+import type { TeamMember, PhaseTemplate, RoleType, ListCategory } from '../types';
 
 // ─── Team Members ─────────────────────────────────────────────────────────────
 export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
@@ -250,6 +250,33 @@ export function getDensityMultiplier(density: DensityLevel): number {
     case 'Heavy': return 1.5;
   }
 }
+
+// ─── Default Lists ────────────────────────────────────────────────────────────
+export const DEFAULT_LISTS: ListCategory[] = [
+  { id: 'move-types', name: 'Move Types', items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
+  { id: 'room-types', name: 'Room Types', items: ['Living Room', 'Master Bedroom', 'Bedroom', 'Kitchen', 'Dining Room', 'Bathroom', 'Garage', 'Office', 'Basement'] },
+  { id: 'item-conditions', name: 'Item Conditions', items: ['Keep', 'Donate', 'Sell', 'Discard', 'Storage', 'Pending'] },
+  { id: 'donation-sites', name: 'Donation Sites', items: ['Goodwill', 'Habitat ReStore', 'Local Church', 'SPCA Thrift', 'Other'] },
+  { id: 'auction-houses', name: 'Auction Houses', items: [] },
+  { id: 'moving-companies', name: 'Moving Companies', items: [] },
+  { id: 'junk-removal', name: 'Junk Removal', items: ['1-800-GOT-JUNK', 'College Hunks', 'Other'] },
+  { id: 'storage-facilities', name: 'Storage Facilities', items: [] },
+  { id: 'realtor-partners', name: 'Realtor Partners', items: [] },
+  { id: 'lead-sources', name: 'Lead Sources', items: ['Referral', 'Senior Living Community', 'Website', 'Social Media', 'Other'] },
+  { id: 'property-types', name: 'Property Types', items: ['Single Family Home', 'Condo', 'Apartment', 'Townhouse', 'Manufactured Home'] },
+  { id: 'special-handling', name: 'Special Handling', items: ['Piano', 'Safe', 'Large Artwork', 'Grandfather Clock', 'Antiques', 'Fine China'] },
+  { id: 'packing-materials', name: 'Packing Materials', items: ['Small Box', 'Medium Box', 'Large Box', 'Wardrobe Box', 'Dish Pack'] },
+  { id: 'insurance-types', name: 'Insurance Types', items: ['Basic', 'Enhanced', 'Full Value'] },
+  { id: 'priority-levels', name: 'Priority Levels', items: ['Urgent', 'High', 'Medium', 'Low'] },
+  { id: 'contract-status', name: 'Contract Status', items: ['Quote Sent', 'Contract Signed', 'Deposit Received', 'Balance Due', 'Complete'] },
+  { id: 'payment-methods', name: 'Payment Methods', items: ['Check', 'Cash', 'Credit Card', 'ACH'] },
+  { id: 'client-categories', name: 'Client Categories', items: ['Active Senior', 'Downsizing', 'Emergency', 'Estate', 'Couple'] },
+  { id: 'move-distance', name: 'Move Distance', items: ['Local', 'Within State', 'Regional', 'Long Distance'] },
+  { id: 'venue-types', name: 'Venue Types', items: ['Assisted Living', 'Memory Care', 'Independent Living', 'Nursing Home'] },
+  { id: 'timeline-stages', name: 'Timeline Stages', items: ['Initial Consult', 'Quote', 'Planning', 'Pack/Sort', 'Move Day', 'Complete'] },
+  { id: 'service-packages', name: 'Service Packages', items: ['Basic', 'Standard', 'Premium', 'Full Service'] },
+  { id: 'custom-tags', name: 'Custom Tags', items: ['VIP', 'Repeat Client', 'Referral Partner', 'Rush', 'Complex'] },
+];
 
 // ─── Communities ──────────────────────────────────────────────────────────────
 export const COMMUNITIES: string[] = [

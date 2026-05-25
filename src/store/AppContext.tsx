@@ -5,12 +5,12 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
   loadCommunities, saveCommunities,
-  loadMoveTypes, saveMoveTypes,
+  loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
 } from '../lib/storage';
 import { generateSchedule } from '../lib/scheduling';
@@ -24,6 +24,7 @@ function createExampleProject(teamMembers: TeamMember[]): Project {
     projectName: 'Doyle Move – First Colonial Inn',
     community: 'First Colonial Inn',
     moveType: 'Full Move',
+    status: 'active',
     targetMoveDate: '2026-05-15',
     earliestStartDate: '2026-04-27',
     hardDeadline: '2026-05-22',
@@ -60,7 +61,7 @@ type Action =
   | { type: 'SET_SCHEDULE'; id: string; schedule: ScheduleResult }
   | { type: 'UPDATE_TEAM_MEMBERS'; members: TeamMember[] }
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
-  | { type: 'UPDATE_MOVE_TYPES'; moveTypes: string[] }
+  | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
   | { type: 'LOAD_STATE'; state: Partial<AppState> };
 
@@ -118,9 +119,9 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, communities: action.communities };
     }
 
-    case 'UPDATE_MOVE_TYPES': {
-      saveMoveTypes(action.moveTypes);
-      return { ...state, moveTypes: action.moveTypes };
+    case 'UPDATE_LISTS': {
+      saveLists(action.lists);
+      return { ...state, lists: action.lists };
     }
 
     case 'UPDATE_PHASE_TEMPLATES': {
@@ -144,7 +145,7 @@ const initialState: AppState = {
   activeTab: 'projects',
   teamMembers: [],
   communities: [],
-  moveTypes: [],
+  lists: [],
   phaseTemplates: [],
 };
 
@@ -166,7 +167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let projects = loadProjects();
     const teamMembers = loadTeamMembers();
     const communities = loadCommunities();
-    const moveTypes = loadMoveTypes();
+    const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers);
@@ -179,7 +180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         projects,
         teamMembers,
         communities,
-        moveTypes,
+        lists,
         phaseTemplates,
         activeProjectId: projects[0]?.id ?? null,
       },

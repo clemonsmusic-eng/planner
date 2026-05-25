@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMenu } from './MenuContext';
 import { useApp } from '../store/AppContext';
 
@@ -19,6 +20,7 @@ export function HamburgerButton() {
 export function HamburgerMenu() {
   const { isOpen, close } = useMenu();
   const { state, dispatch } = useApp();
+  const [archivedOpen, setArchivedOpen] = useState(false);
 
   function selectProject(id: string) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id });
@@ -40,6 +42,7 @@ export function HamburgerMenu() {
           projectName: '',
           community: state.communities[0] ?? '',
           moveType: 'Full Move',
+          status: 'draft',
           targetMoveDate: '',
           earliestStartDate: '',
           hardDeadline: '',
@@ -66,6 +69,9 @@ export function HamburgerMenu() {
   }
 
   if (!isOpen) return null;
+
+  const activeProjects = state.projects.filter(p => (p.inputs.status ?? 'active') !== 'archived');
+  const archivedProjects = state.projects.filter(p => (p.inputs.status ?? 'active') === 'archived');
 
   return (
     <>
@@ -98,14 +104,30 @@ export function HamburgerMenu() {
           </button>
         </div>
 
-        {/* Projects section */}
         <div className="flex-1 overflow-y-auto">
-          <div className="px-4 pt-4 pb-1">
+          {/* Calendar shortcut */}
+          <div className="px-3 pt-3 pb-1">
+            <button
+              onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab: 'calendar' }); close(); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-gray-900 active:bg-ios-gray-100"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ios-gray-500 flex-shrink-0">
+                <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-semibold">Calendar</span>
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-4 my-1 border-t border-ios-gray-200" />
+
+          {/* Projects section */}
+          <div className="px-4 pt-3 pb-1">
             <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">Projects</p>
           </div>
 
           <div className="px-3 space-y-1 pb-2">
-            {state.projects.map((project) => {
+            {activeProjects.map((project) => {
               const isActive = project.id === state.activeProjectId;
               return (
                 <button
@@ -136,6 +158,50 @@ export function HamburgerMenu() {
                 </button>
               );
             })}
+
+            {/* Archived section */}
+            {archivedProjects.length > 0 && (
+              <>
+                <button
+                  onClick={() => setArchivedOpen(o => !o)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl active:bg-ios-gray-100"
+                >
+                  <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                    Archived ({archivedProjects.length})
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className={`w-4 h-4 text-ios-gray-400 transition-transform ${archivedOpen ? 'rotate-180' : ''}`}
+                  >
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                {archivedOpen && archivedProjects.map((project) => {
+                  const isActive = project.id === state.activeProjectId;
+                  return (
+                    <button
+                      key={project.id}
+                      onClick={() => selectProject(project.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors opacity-60 ${
+                        isActive ? 'bg-indigo-50' : 'hover:bg-ios-gray-50 active:bg-ios-gray-100'
+                      }`}
+                    >
+                      <div className="w-2 h-2 rounded-full flex-shrink-0 bg-ios-gray-400" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate text-ios-gray-600">
+                          {project.inputs.clientName || 'Untitled Project'}
+                        </p>
+                        {project.inputs.community && (
+                          <p className="text-xs text-ios-gray-500 truncate">{project.inputs.community}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </>
+            )}
 
             {/* New project button */}
             <button

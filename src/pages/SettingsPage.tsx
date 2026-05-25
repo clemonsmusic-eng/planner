@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate } from '../types';
+import type { AvailabilitySlot, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -314,6 +314,96 @@ function PhaseTemplateCard({
   );
 }
 
+// ─── List Category Card ───────────────────────────────────────────────────────
+
+function ListCategoryCard({
+  list,
+  onChange,
+}: {
+  list: ListCategory;
+  onChange: (updated: ListCategory) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [newItem, setNewItem] = useState('');
+
+  function addItem() {
+    const trimmed = newItem.trim();
+    if (!trimmed) return;
+    onChange({ ...list, items: [...list.items, trimmed] });
+    setNewItem('');
+  }
+
+  function removeItem(idx: number) {
+    onChange({ ...list, items: list.items.filter((_, i) => i !== idx) });
+  }
+
+  return (
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
+      >
+        <div className="text-left flex-1 min-w-0">
+          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-[11px] text-ios-gray-500">{list.items.length} item{list.items.length !== 1 ? 's' : ''}</span>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-4 h-4 text-ios-gray-400 flex-shrink-0 transition-transform ml-2 ${expanded ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-ios-gray-200 px-4 py-3 space-y-2">
+          {/* Editable name */}
+          <input
+            value={list.name}
+            onChange={(e) => onChange({ ...list, name: e.target.value })}
+            className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 bg-white"
+            placeholder="List name"
+          />
+          {/* Items */}
+          <div className="space-y-1">
+            {list.items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 min-h-[40px] border border-ios-gray-200">
+                <span className="text-sm text-gray-900 flex-1 py-2">{item}</span>
+                <button
+                  onClick={() => removeItem(idx)}
+                  className="w-7 h-7 flex items-center justify-center text-ios-gray-400 hover:text-red-500 rounded-lg"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+          {/* Add item */}
+          <div className="flex gap-2">
+            <input
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addItem()}
+              placeholder={`Add to ${list.name}…`}
+              className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-3 py-2 text-sm bg-white"
+            />
+            <button
+              onClick={addItem}
+              className="bg-indigo-600 text-white px-3 rounded-xl font-semibold text-sm min-h-[40px]"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Settings Page ─────────────────────────────────────────────────────────────
 
 type SectionKey = 'team' | 'lists' | 'templates' | 'communities';
@@ -325,12 +415,11 @@ export function SettingsPage() {
     state.teamMembers.map((m) => ({ ...m, availability: { ...m.availability } }))
   );
   const [communities, setCommunities] = useState<string[]>([...state.communities]);
-  const [moveTypes, setMoveTypes] = useState<string[]>([...state.moveTypes]);
+  const [lists, setLists] = useState<ListCategory[]>(state.lists.map(l => ({ ...l, items: [...l.items] })));
   const [phaseTemplates, setPhaseTemplates] = useState<PhaseTemplate[]>(
     state.phaseTemplates.map((t) => ({ ...t }))
   );
   const [newCommunity, setNewCommunity] = useState('');
-  const [newMoveType, setNewMoveType] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
 
@@ -384,16 +473,8 @@ export function SettingsPage() {
     setIsDirty(true);
   }
 
-  function addMoveType() {
-    const trimmed = newMoveType.trim();
-    if (!trimmed) return;
-    setMoveTypes((prev) => [...prev, trimmed]);
-    setNewMoveType('');
-    setIsDirty(true);
-  }
-
-  function removeMoveType(index: number) {
-    setMoveTypes((prev) => prev.filter((_, i) => i !== index));
+  function updateList(listIdx: number, updated: ListCategory) {
+    setLists((prev) => prev.map((l, i) => (i === listIdx ? updated : l)));
     setIsDirty(true);
   }
 
@@ -405,7 +486,7 @@ export function SettingsPage() {
   function save() {
     dispatch({ type: 'UPDATE_TEAM_MEMBERS', members });
     dispatch({ type: 'UPDATE_COMMUNITIES', communities });
-    dispatch({ type: 'UPDATE_MOVE_TYPES', moveTypes });
+    dispatch({ type: 'UPDATE_LISTS', lists });
     dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
     setIsDirty(false);
   }
@@ -471,46 +552,21 @@ export function SettingsPage() {
         {/* ── Lists ────────────────────────────────────────────────────── */}
         <AccordionSection
           title="Lists"
-          subtitle="Move types and other dropdown values"
+          subtitle={`${lists.length} categories (A–W)`}
           open={openSections.has('lists')}
           onToggle={() => toggleSection('lists')}
         >
-          <div className="px-4 py-3 space-y-3">
-            <p className="text-xs font-bold text-ios-gray-600 uppercase tracking-wider">Move Types</p>
-            <div className="space-y-2">
-              {moveTypes.map((name, i) => (
-                <div
-                  key={`${name}-${i}`}
-                  className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
-                >
-                  <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
-                  <button
-                    onClick={() => removeMoveType(i)}
-                    className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
-                    aria-label={`Remove ${name}`}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={newMoveType}
-                onChange={(e) => setNewMoveType(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addMoveType()}
-                placeholder="Add a move type…"
-                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Tap a list to expand and edit its items. The Move Types list feeds the project type dropdown.
+            </p>
+            {lists.map((list, listIdx) => (
+              <ListCategoryCard
+                key={list.id}
+                list={list}
+                onChange={(updated) => updateList(listIdx, updated)}
               />
-              <button
-                onClick={addMoveType}
-                className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
-              >
-                Add
-              </button>
-            </div>
+            ))}
           </div>
         </AccordionSection>
 

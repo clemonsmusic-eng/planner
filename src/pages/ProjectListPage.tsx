@@ -11,6 +11,7 @@ function createDefaultInputs(): ProjectInputs {
     projectName: '',
     community: 'First Colonial Inn',
     moveType: 'Full Move',
+    status: 'active',
     targetMoveDate: '',
     earliestStartDate: '',
     hardDeadline: '',
