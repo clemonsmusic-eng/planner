@@ -117,7 +117,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     hours: 4,
     teamSize: 2,
     roles: [
-      { role: 'Lead', isLocked: false },
+      { role: 'PM/Lead', isLocked: false },
       { role: 'Specialist' },
     ],
     shift: 'client-pref',
@@ -267,14 +267,15 @@ export const MOVE_TYPES: string[] = [
 ];
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
-export const ALL_ROLES: RoleType[] = ['PM', 'Lead', 'Specialist', 'Assist PM', 'Mover'];
+export const ALL_ROLES: RoleType[] = ['PM', 'Lead', 'PM/Lead', 'Specialist', 'Assist PM', 'Mover'];
 
 // Roles that qualify for each phase role slot
 export function getRoleQualifiers(role: RoleType): RoleType[] {
   switch (role) {
     case 'PM': return ['PM'];
     case 'Lead': return ['PM', 'Lead'];
-    case 'Specialist': return ['PM', 'Lead', 'Specialist', 'Assist PM', 'Mover'];
+    case 'PM/Lead': return ['PM', 'Lead'];
+    case 'Specialist': return ['PM', 'Lead', 'PM/Lead', 'Specialist', 'Assist PM', 'Mover'];
     case 'Assist PM': return ['Assist PM', 'PM'];
     case 'Mover': return ['Mover', 'Specialist'];
     default: return [role];

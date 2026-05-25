@@ -14,6 +14,7 @@ export interface TeamMemberAvailability {
 export type RoleType =
   | 'PM'
   | 'Lead'
+  | 'PM/Lead'
   | 'Specialist'
   | 'Assist PM'
   | 'Mover';

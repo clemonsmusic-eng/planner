@@ -90,7 +90,16 @@ export function generateSchedule(
     dateOverrides,
   } = inputs;
 
-  // ── 1. Compute suggested dates ───────────────────────────────────────────────
+  // ── 1. Team sizes (needed for sort day calculation) ──────────────────────────
+
+  const densityMult = getDensityMultiplier(densityLevel);
+  // Pack/Sort team size: driven by origin sq ft + density
+  const packSortSize = Math.ceil(getPackSortTeamSize(originSqFt) * densityMult);
+  // Pre-move and Move Day: driven by destination sq ft + density
+  const preMoveSize  = Math.ceil(getPreMoveTeamSize(destinationSqFt) * densityMult);
+  const moveDaySize  = Math.ceil(getMoveDayTeamSize(destinationSqFt) * densityMult);
+
+  // ── 2. Compute suggested dates ───────────────────────────────────────────────
 
   const moveDayDate = parseISO(targetMoveDate);
   const startDate = parseISO(earliestStartDate);
@@ -100,9 +109,12 @@ export function generateSchedule(
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
   const finalSettleDate = addWorkdays(moveDayDate, 2);
 
-  // Sort days calculation
-  const FIXED_HOURS = 52; // as per spec
-  const sortDayCount = Math.max(1, Math.ceil((budgetedManHours - FIXED_HOURS) / 8));
+  // Fixed hours use DEFAULT (unscaled) team sizes per the spreadsheet formula:
+  // First Visit(5) + Second Visit(8) + AM Final Pack(12) + PM Final Pack(3)
+  // + AM Move Day(16) + PM Move Day(8) = 52
+  const FIXED_HOURS = 52;
+  // Sort hours per day = packSortSize × 4 hrs/person
+  const sortDayCount = Math.max(1, Math.ceil((budgetedManHours - FIXED_HOURS) / (packSortSize * 4)));
 
   // Sort starts 2 workdays after secondVisit, every other workday
   const sortStartBase = addWorkdays(secondVisitDate, 2);
@@ -164,14 +176,7 @@ export function generateSchedule(
     overrideMap[ov.date] = ov.shift;
   }
 
-  // ── 3. Determine team sizes for each phase ───────────────────────────────────
-
-  const densityMult = getDensityMultiplier(densityLevel);
-  const packSortSize = Math.ceil(getPackSortTeamSize(originSqFt) * densityMult);
-  const preMoveSize = Math.ceil(getPreMoveTeamSize(destinationSqFt) * densityMult);
-  const moveDaySize = Math.ceil(getMoveDayTeamSize(destinationSqFt) * densityMult);
-
-  // ── 4. Build list of (phaseId, date, role, shift) tasks ──────────────────────
+  // ── 3. Build list of (phaseId, date, role, shift) tasks ─────────────────────
 
   interface Task {
     phaseId: string;
@@ -239,12 +244,14 @@ export function generateSchedule(
   }
 
   // Phase 4.1 & 4.2 – Final Pack Pre-Move (day before move)
-  addPhaseOnDate('phase-4-1', finalPackDayDate, preMoveSize);
-  addPhaseOnDate('phase-4-2', finalPackDayDate);
+  // AM is FIXED at 2 (PM + Assist PM); PM scales to preMoveSize - 2 specialists
+  addPhaseOnDate('phase-4-1', finalPackDayDate);
+  addPhaseOnDate('phase-4-2', finalPackDayDate, Math.max(1, preMoveSize - 2));
 
   // Phase 5.1 & 5.2 – Move Day
-  addPhaseOnDate('phase-5-1', moveDayDate, moveDaySize);
-  addPhaseOnDate('phase-5-2', moveDayDate);
+  // AM is FIXED at 2 (PM + Assist PM); PM scales to moveDaySize - 2 specialists
+  addPhaseOnDate('phase-5-1', moveDayDate);
+  addPhaseOnDate('phase-5-2', moveDayDate, Math.max(1, moveDaySize - 2));
 
   // Phase 6 – Cleanout (if enabled)
   for (const cd of cleanoutDates) {
@@ -302,7 +309,7 @@ export function generateSchedule(
     let assignedMemberName: string | null = null;
     let status: ScheduleEntry['status'] = 'needs-assignment';
 
-    // For locked roles (PM, Assist PM), check if already locked
+    // Only true PM and Assist PM slots are locked (not PM/Lead in Sort and Pack)
     const lockKey = task.role === 'PM' ? 'PM' : task.role === 'Assist PM' ? 'Assist PM' : null;
 
     if (lockKey && lockedRoles[lockKey]) {
