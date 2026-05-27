@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
+import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -14,7 +14,7 @@ const DAY_SHORT: Record<keyof TeamMemberAvailability, string> = {
 const SLOT_CYCLE: AvailabilitySlot[] = ['Full Day', 'AM', 'PM', 'Unavailable'];
 
 // Phase role grid
-const PHASE_ROLE_CYCLE: MemberPhaseRole[] = ['N/A', 'PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
+const ALL_SELECTABLE_ROLES: RoleType[] = ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
 
 const PHASE_CONFIG: { id: PhaseId; label: string }[] = [
   { id: 'phase-1',   label: 'Vis 1' },
@@ -28,8 +28,7 @@ const PHASE_CONFIG: { id: PhaseId; label: string }[] = [
   { id: 'phase-7',   label: 'Pickup' },
 ];
 
-function phaseRoleLabel(r: MemberPhaseRole): string {
-  if (r === 'N/A') return 'N/A';
+function roleAbbr(r: RoleType): string {
   if (r === 'Assist PM') return 'APM';
   if (r === 'PM/Lead') return 'P/L';
   if (r === 'Specialist') return 'Spec';
@@ -37,19 +36,35 @@ function phaseRoleLabel(r: MemberPhaseRole): string {
   return r; // PM, Lead
 }
 
-function phaseRoleColors(r: MemberPhaseRole): string {
-  if (r === 'N/A') return 'bg-ios-gray-200 text-ios-gray-400';
-  if (r === 'PM') return 'bg-indigo-600 text-white';
-  if (r === 'Assist PM') return 'bg-purple-500 text-white';
-  if (r === 'Lead') return 'bg-sky-500 text-white';
-  if (r === 'PM/Lead') return 'bg-indigo-400 text-white';
-  if (r === 'Specialist') return 'bg-green-500 text-white';
-  if (r === 'Mover') return 'bg-amber-500 text-white';
+function phaseRoleCellDisplay(r: MemberPhaseRole): string {
+  if (r === 'N/A') return 'N/A';
+  if (r.length === 0) return 'N/A';
+  if (r.length === 1) return roleAbbr(r[0]);
+  return roleAbbr(r[0]) + '+' + (r.length - 1);
+}
+
+function phaseRoleCellColor(r: MemberPhaseRole): string {
+  if (r === 'N/A' || r.length === 0) return 'bg-ios-gray-200 text-ios-gray-400';
+  if (r.length > 1) return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+  const single = r[0];
+  if (single === 'PM') return 'bg-indigo-600 text-white';
+  if (single === 'Assist PM') return 'bg-purple-500 text-white';
+  if (single === 'Lead') return 'bg-sky-500 text-white';
+  if (single === 'PM/Lead') return 'bg-indigo-400 text-white';
+  if (single === 'Specialist') return 'bg-green-500 text-white';
+  if (single === 'Mover') return 'bg-amber-500 text-white';
   return 'bg-ios-gray-200 text-ios-gray-400';
 }
 
-function nextPhaseRole(current: MemberPhaseRole): MemberPhaseRole {
-  return PHASE_ROLE_CYCLE[(PHASE_ROLE_CYCLE.indexOf(current) + 1) % PHASE_ROLE_CYCLE.length];
+function roleButtonColors(role: RoleType, selected: boolean): string {
+  if (!selected) return 'bg-white text-gray-700 border border-ios-gray-300';
+  if (role === 'PM') return 'bg-indigo-600 text-white border-indigo-600';
+  if (role === 'Assist PM') return 'bg-purple-500 text-white border-purple-500';
+  if (role === 'Lead') return 'bg-sky-500 text-white border-sky-500';
+  if (role === 'PM/Lead') return 'bg-indigo-400 text-white border-indigo-400';
+  if (role === 'Specialist') return 'bg-green-500 text-white border-green-500';
+  if (role === 'Mover') return 'bg-amber-500 text-white border-amber-500';
+  return 'bg-ios-gray-400 text-white border-ios-gray-400';
 }
 
 function slotLabel(s: AvailabilitySlot): string {
@@ -123,6 +138,7 @@ interface MemberCardProps {
 
 function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [activePhaseId, setActivePhaseId] = useState<PhaseId | null>(null);
 
   function cycleDay(day: keyof TeamMemberAvailability) {
     onChange({
@@ -131,23 +147,36 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
     });
   }
 
-  function cyclePhaseRole(phaseId: PhaseId) {
-    onChange({
-      ...member,
-      phaseRoles: { ...member.phaseRoles, [phaseId]: nextPhaseRole(member.phaseRoles[phaseId]) },
-    });
+  function toggleRole(phaseId: PhaseId, role: RoleType) {
+    const current = member.phaseRoles[phaseId];
+    let next: MemberPhaseRole;
+    if (current === 'N/A') {
+      next = [role];
+    } else {
+      const arr = current;
+      const without = arr.filter((r) => r !== role);
+      next = arr.includes(role) ? (without.length === 0 ? 'N/A' : without) : [...arr, role];
+    }
+    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: next } });
   }
 
-  // Compact summary of non-N/A phase roles
+  function setPhaseNA(phaseId: PhaseId) {
+    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: 'N/A' } });
+  }
+
+  // Compact summary of distinct roles across all phases
   const uniqueRoles = [...new Set(
-    PHASE_CONFIG.map(p => member.phaseRoles[p.id]).filter(r => r !== 'N/A')
+    PHASE_CONFIG.flatMap((p) => {
+      const r = member.phaseRoles[p.id];
+      return r === 'N/A' ? [] : r;
+    })
   )];
   const phaseRoleSummary = uniqueRoles.length > 0 ? uniqueRoles.join(', ') : 'No phases';
 
   return (
     <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
       <button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => { setExpanded((e) => !e); setActivePhaseId(null); }}
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -193,39 +222,76 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             </button>
           </div>
 
-          {/* Phase Roles grid */}
+          {/* Phase Roles multi-select grid */}
           <div>
             <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">
-              Phase Roles — tap to cycle
+              Phase Roles — tap a phase to pick roles
             </p>
-            {/* Two rows: phases 1–5, then 5-2 through 7 */}
             {[PHASE_CONFIG.slice(0, 5), PHASE_CONFIG.slice(5)].map((row, rowIdx) => (
               <div key={rowIdx} className={`flex gap-1 ${rowIdx === 1 ? 'mt-1' : ''}`}>
                 {row.map((phase) => {
                   const role = member.phaseRoles[phase.id];
+                  const isActive = activePhaseId === phase.id;
                   return (
                     <button
                       key={phase.id}
-                      onClick={() => cyclePhaseRole(phase.id)}
-                      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-colors ${phaseRoleColors(role)}`}
+                      onClick={() => setActivePhaseId(isActive ? null : phase.id)}
+                      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-all
+                        ${phaseRoleCellColor(role)}
+                        ${isActive ? 'ring-2 ring-offset-1 ring-indigo-500 scale-95' : ''}`}
                     >
                       <span className="text-[8px] font-semibold opacity-70 leading-none text-center">
                         {phase.label}
                       </span>
-                      <span className="text-[10px] font-bold leading-none">{phaseRoleLabel(role)}</span>
+                      <span className="text-[10px] font-bold leading-none">{phaseRoleCellDisplay(role)}</span>
                     </button>
                   );
                 })}
               </div>
             ))}
-            <div className="flex gap-3 mt-2 flex-wrap">
-              {PHASE_ROLE_CYCLE.map((r) => (
-                <span key={r} className="flex items-center gap-1 text-[10px] text-ios-gray-500">
-                  <span className={`inline-block w-2 h-2 rounded-full ${phaseRoleColors(r).split(' ')[0]}`} />
-                  {r === 'N/A' ? 'N/A = Skip' : phaseRoleLabel(r) + ' = ' + r}
-                </span>
-              ))}
-            </div>
+
+            {/* Inline role picker */}
+            {activePhaseId && (() => {
+              const current = member.phaseRoles[activePhaseId];
+              const activeLabel = PHASE_CONFIG.find(p => p.id === activePhaseId)?.label ?? '';
+              return (
+                <div className="mt-2 p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
+                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+                    {activeLabel} — tap to toggle
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setPhaseNA(activePhaseId)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${
+                        current === 'N/A'
+                          ? 'bg-ios-gray-500 text-white border-ios-gray-500'
+                          : 'bg-white text-ios-gray-500 border-ios-gray-300'
+                      }`}
+                    >
+                      N/A
+                    </button>
+                    {ALL_SELECTABLE_ROLES.map((role) => {
+                      const selected = current !== 'N/A' && current.includes(role);
+                      return (
+                        <button
+                          key={role}
+                          onClick={() => toggleRole(activePhaseId, role)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${roleButtonColors(role, selected)}`}
+                        >
+                          {role}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setActivePhaseId(null)}
+                    className="text-[10px] text-ios-gray-400 w-full text-center pt-0.5"
+                  >
+                    Done
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Hour range */}
@@ -754,10 +820,10 @@ export function SettingsPage() {
       id: `member-${Date.now()}`,
       name: 'New Member',
       phaseRoles: {
-        'phase-1': 'Specialist', 'phase-2': 'Specialist', 'phase-3': 'Specialist',
-        'phase-4-1': 'Specialist', 'phase-4-2': 'Specialist',
-        'phase-5-1': 'Specialist', 'phase-5-2': 'Specialist',
-        'phase-6': 'Specialist', 'phase-7': 'Specialist',
+        'phase-1': ['Specialist'], 'phase-2': ['Specialist'], 'phase-3': ['Specialist'],
+        'phase-4-1': ['Specialist'], 'phase-4-2': ['Specialist'],
+        'phase-5-1': ['Specialist'], 'phase-5-2': ['Specialist'],
+        'phase-6': ['Specialist'], 'phase-7': ['Specialist'],
       } as MemberPhaseRoles,
       availability: {
         Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day',

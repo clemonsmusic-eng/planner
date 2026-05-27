@@ -30,7 +30,7 @@ export type PhaseId =
   | 'phase-6'
   | 'phase-7';
 
-export type MemberPhaseRole = RoleType | 'N/A';
+export type MemberPhaseRole = RoleType[] | 'N/A';
 export type MemberPhaseRoles = Record<PhaseId, MemberPhaseRole>;
 
 export interface TeamMember {

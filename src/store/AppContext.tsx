@@ -13,7 +13,7 @@ import {
   loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
 } from '../lib/storage';
-import { generateSchedule } from '../lib/scheduling';
+import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
@@ -202,10 +202,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const activeProject =
     state.projects.find((p) => p.id === state.activeProjectId) ?? null;
 
+  /**
+   * Build a map of memberId → dateStr → shift for all projects that have
+   * higher scheduling priority than `projectId` (earlier createdAt).
+   * These bookings are treated as immovable when generating the target project's schedule.
+   */
+  function buildExternalBookings(projectId: string): ExternalBookings {
+    const sorted = [...state.projects].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const targetIdx = sorted.findIndex((p) => p.id === projectId);
+    const priorProjects = targetIdx > 0 ? sorted.slice(0, targetIdx) : [];
+
+    const bookings: ExternalBookings = {};
+    for (const prior of priorProjects) {
+      if (!prior.schedule) continue;
+      for (const day of prior.schedule.days) {
+        for (const entry of day.entries) {
+          if (!entry.assignedMember) continue;
+          if (!bookings[entry.assignedMember]) bookings[entry.assignedMember] = {};
+          const cur = bookings[entry.assignedMember][entry.date];
+          if (!cur) {
+            bookings[entry.assignedMember][entry.date] = entry.shift;
+          } else if (cur !== entry.shift) {
+            // AM + PM on same day = Full Day booked
+            bookings[entry.assignedMember][entry.date] = 'Full Day';
+          }
+        }
+      }
+    }
+    return bookings;
+  }
+
   function generateAndSaveSchedule(projectId: string) {
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
-    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists);
+    const extBookings = buildExternalBookings(projectId);
+    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 
@@ -217,7 +250,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ? [...filtered, { id: crypto.randomUUID(), date, shift, reason: 'Manual override' }]
       : filtered;
     const inputs = { ...project.inputs, dateOverrides };
-    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists);
+    const extBookings = buildExternalBookings(projectId);
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
   }
 

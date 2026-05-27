@@ -8,7 +8,6 @@ import type {
   SuggestedDates,
   RoleType,
   PhaseId,
-  MemberPhaseRole,
   TeamMember,
   AvailabilitySlot,
   PhaseTemplate,
@@ -77,11 +76,15 @@ function resolveShift(
 
 // ─── Main Scheduling Function ─────────────────────────────────────────────────
 
+// memberId → dateStr → shift already committed in a prior project
+export type ExternalBookings = Record<string, Record<string, 'AM' | 'PM' | 'Full Day'>>;
+
 export function generateSchedule(
   inputs: ProjectInputs,
   teamMembers: TeamMember[],
   phaseTemplates: PhaseTemplate[],
-  lists: ListCategory[] = []
+  lists: ListCategory[] = [],
+  existingBookings: ExternalBookings = {}
 ): ScheduleResult {
   const {
     targetMoveDate,
@@ -278,6 +281,7 @@ export function generateSchedule(
     hours: number;
     isLocked?: boolean;
     teamSizeOverride?: number;
+    shiftFlexible: boolean; // true when phase shift is 'client-pref' — can flip AM↔PM to avoid conflicts
   }
 
   const tasks: Task[] = [];
@@ -311,6 +315,7 @@ export function generateSchedule(
       roles.push({ role: 'Specialist' });
     }
 
+    const shiftFlexible = template.shift === 'client-pref';
     for (const roleSpec of roles.slice(0, size)) {
       tasks.push({
         phaseId,
@@ -321,6 +326,7 @@ export function generateSchedule(
         hours: template.minHours,
         isLocked: roleSpec.isLocked,
         teamSizeOverride: size,
+        shiftFlexible,
       });
     }
   }
@@ -393,6 +399,46 @@ export function generateSchedule(
 
   const entries: ScheduleEntry[] = [];
 
+  // ── Helper: check if a member is blocked by an external (cross-project) booking ──
+  function isExternallyBlocked(
+    memberId: string,
+    dateStr: string,
+    shift: 'AM' | 'PM' | 'Full Day'
+  ): boolean {
+    const ext = existingBookings[memberId]?.[dateStr];
+    if (!ext) return false;
+    if (ext === 'Full Day' || shift === 'Full Day') return true;
+    return ext === shift; // same half-day booked
+  }
+
+  // ── Helper: attempt to assign a candidate list for a given shift ──────────────
+  function findCandidate(
+    sorted: TeamMember[],
+    date: Date,
+    dateStr: string,
+    weekKey: string,
+    shift: 'AM' | 'PM' | 'Full Day',
+    hours: number,
+    overrideShift: AvailabilitySlot | undefined
+  ): { id: string; name: string; overMax: boolean } | null {
+    let fallback: { id: string; name: string } | null = null;
+
+    for (const member of sorted) {
+      if (!isMemberAvailableForShift(member, date, shift, overrideShift)) continue;
+      if (isBooked(member.id, dateStr)) continue;
+      if (isExternallyBlocked(member.id, dateStr, shift)) continue;
+
+      const wkHours = getWeekHours(member.id, weekKey);
+      const wouldExceed = member.maxHoursPerWeek > 0 && (wkHours + hours) > member.maxHoursPerWeek;
+      if (wouldExceed) {
+        if (!fallback) fallback = { id: member.id, name: member.name };
+        continue;
+      }
+      return { id: member.id, name: member.name, overMax: false };
+    }
+    return fallback ? { ...fallback, overMax: true } : null;
+  }
+
   for (const task of tasks) {
     const date = parseISO(task.date);
     const dayKey = getDayOfWeekKey(date);
@@ -402,6 +448,7 @@ export function generateSchedule(
     const warnings: string[] = [];
     let assignedMemberId: string | null = null;
     let assignedMemberName: string | null = null;
+    let effectiveShift = task.shift; // may flip for flexible tasks
     let status: ScheduleEntry['status'] = 'needs-assignment';
 
     // Only true PM and Assist PM slots are locked (not PM/Lead in Sort and Pack)
@@ -422,8 +469,10 @@ export function generateSchedule(
           warnings.push(`${member.name} shift conflict`);
           status = 'conflict';
         } else if (isBooked(lockedId, task.date)) {
-          // Same day different shift is OK for AM/PM split
           warnings.push(`${member.name} already booked`);
+        } else if (isExternallyBlocked(lockedId, task.date, task.shift)) {
+          warnings.push(`${member.name} booked on another project`);
+          status = 'conflict';
         }
 
         const wkHours = getWeekHours(lockedId, weekKey);
@@ -433,15 +482,11 @@ export function generateSchedule(
           status = status === 'conflict' ? 'conflict' : 'over-max';
         }
 
-        if (status !== 'conflict' && status !== 'over-max') {
-          status = 'assigned';
-        } else if (status !== 'conflict') {
-          status = 'over-max';
-        }
+        if (status !== 'conflict' && status !== 'over-max') status = 'assigned';
+        else if (status !== 'conflict') status = 'over-max';
 
         assignedMemberId = lockedId;
         assignedMemberName = member.name;
-        // Don't re-book same date – handled below
         if (!isBooked(lockedId, task.date)) {
           book(lockedId, task.date, weekKey, task.hours);
         } else {
@@ -449,54 +494,50 @@ export function generateSchedule(
         }
       }
     } else {
-      // Find best available member
+      // Build candidate list: members whose phase roles include a qualifying role
       const qualifyingRoles = getRoleQualifiers(task.role);
-
       const candidates = teamMembers.filter((m) => {
-        // Must have a qualifying phase role for this task's phase
-        const phaseRole: MemberPhaseRole | undefined = m.phaseRoles[task.phaseId as PhaseId];
+        const phaseRole = m.phaseRoles[task.phaseId as PhaseId];
         if (!phaseRole || phaseRole === 'N/A') return false;
-        if (!qualifyingRoles.includes(phaseRole as RoleType)) return false;
-        return true;
+        // phaseRole is RoleType[] — member qualifies if any selected role matches
+        return phaseRole.some((r) => qualifyingRoles.includes(r));
       });
 
-      // Sort: priority first, then by index
+      // Sort: priority members first, then by roster index
       const sorted = [...candidates].sort((a, b) => {
         if (a.isPriority !== b.isPriority) return a.isPriority ? -1 : 1;
         return teamMembers.indexOf(a) - teamMembers.indexOf(b);
       });
 
-      for (const member of sorted) {
-        // Skip if unavailable on this day
-        if (!isMemberAvailableForShift(member, date, task.shift, overrideShift)) continue;
+      // Try primary shift first
+      let found = findCandidate(sorted, date, task.date, weekKey, task.shift, task.hours, overrideShift);
 
-        // No double-booking: a person can only be assigned once per day
-        if (isBooked(member.id, task.date)) continue;
-
-        const wkHours = getWeekHours(member.id, weekKey);
-        const wouldExceed = member.maxHoursPerWeek > 0 && (wkHours + task.hours) > member.maxHoursPerWeek;
-
-        if (wouldExceed) {
-          // Flag as over-max but still assign if no better option
-          // Record this candidate as fallback
-          if (!assignedMemberId) {
-            assignedMemberId = member.id;
-            assignedMemberName = member.name;
-            warnings.push(`${member.name} over weekly max (${wkHours + task.hours} / ${member.maxHoursPerWeek})`);
-            status = 'over-max';
-          }
-          continue; // still try next for a better fit
+      // If not found and shift is flexible (client-pref), try the opposite shift
+      if (!found && task.shiftFlexible && (task.shift === 'AM' || task.shift === 'PM')) {
+        const alt: 'AM' | 'PM' = task.shift === 'AM' ? 'PM' : 'AM';
+        const altFound = findCandidate(sorted, date, task.date, weekKey, alt, task.hours, overrideShift);
+        if (altFound && !altFound.overMax) {
+          // Only flip if the alt gives a clean (not over-max) assignment
+          found = altFound;
+          effectiveShift = alt;
+        } else if (!found && altFound) {
+          found = altFound;
+          effectiveShift = alt;
         }
-
-        // Good fit
-        assignedMemberId = member.id;
-        assignedMemberName = member.name;
-        status = 'assigned';
-        warnings.length = 0;
-        break;
       }
 
-      if (assignedMemberId) {
+      if (found) {
+        assignedMemberId = found.id;
+        assignedMemberName = found.name;
+        if (found.overMax) {
+          const wkHours = getWeekHours(found.id, weekKey);
+          const m = teamMembers.find(m => m.id === found!.id)!;
+          warnings.push(`${found.name} over weekly max (${wkHours + task.hours} / ${m.maxHoursPerWeek})`);
+          status = 'over-max';
+        } else {
+          status = 'assigned';
+        }
+
         if (!isBooked(assignedMemberId, task.date)) {
           book(assignedMemberId, task.date, weekKey, task.hours);
         } else {
@@ -504,18 +545,12 @@ export function generateSchedule(
         }
 
         // Lock PM/Assist PM on first assignment
-        if (task.role === 'PM' && !lockedRoles['PM']) {
-          lockedRoles['PM'] = assignedMemberId;
-        }
-        if (task.role === 'Assist PM' && !lockedRoles['Assist PM']) {
-          lockedRoles['Assist PM'] = assignedMemberId;
-        }
+        if (task.role === 'PM' && !lockedRoles['PM']) lockedRoles['PM'] = assignedMemberId;
+        if (task.role === 'Assist PM' && !lockedRoles['Assist PM']) lockedRoles['Assist PM'] = assignedMemberId;
       }
     }
 
-    if (!assignedMemberId) {
-      status = 'needs-assignment';
-    }
+    if (!assignedMemberId) status = 'needs-assignment';
 
     entries.push({
       id: makeId('entry'),
@@ -525,7 +560,7 @@ export function generateSchedule(
       role: task.role,
       assignedMember: assignedMemberId,
       assignedMemberName,
-      shift: task.shift,
+      shift: effectiveShift,
       hours: task.hours,
       status,
       warnings,
