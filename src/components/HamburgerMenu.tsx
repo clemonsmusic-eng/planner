@@ -70,8 +70,53 @@ export function HamburgerMenu() {
 
   if (!isOpen) return null;
 
-  const activeProjects = state.projects.filter(p => (p.inputs.status ?? 'active') !== 'archived');
+  const activeProjects  = state.projects.filter(p => (p.inputs.status ?? 'active') === 'active');
+  const draftProjects   = state.projects.filter(p => (p.inputs.status ?? 'active') === 'draft');
   const archivedProjects = state.projects.filter(p => (p.inputs.status ?? 'active') === 'archived');
+
+  function ProjectRow({ project }: { project: typeof state.projects[0] }) {
+    const isSelected = project.id === state.activeProjectId;
+    const isDraft = (project.inputs.status ?? 'active') === 'draft';
+    return (
+      <button
+        onClick={() => selectProject(project.id)}
+        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
+          isSelected ? 'bg-indigo-50' : 'active:bg-ios-gray-100'
+        }`}
+      >
+        {/* Status dot */}
+        <div
+          className={`w-2 h-2 rounded-full flex-shrink-0 ${
+            isSelected
+              ? 'bg-indigo-600'
+              : isDraft
+              ? 'bg-amber-400'
+              : 'bg-ios-gray-300'
+          }`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className={`text-sm font-semibold truncate ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+              {project.inputs.clientName || 'Untitled Project'}
+            </p>
+            {isDraft && (
+              <span className="flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                Draft
+              </span>
+            )}
+          </div>
+          {project.inputs.community && (
+            <p className="text-xs text-ios-gray-500 truncate">{project.inputs.community}</p>
+          )}
+        </div>
+        {isSelected && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-indigo-600 flex-shrink-0">
+            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+          </svg>
+        )}
+      </button>
+    );
+  }
 
   return (
     <>
@@ -121,54 +166,57 @@ export function HamburgerMenu() {
           {/* Divider */}
           <div className="mx-4 my-1 border-t border-ios-gray-200" />
 
-          {/* Projects section */}
-          <div className="px-4 pt-3 pb-1">
-            <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">Projects</p>
-          </div>
+          {/* ── Active Projects ──────────────────────────────────── */}
+          {activeProjects.length > 0 && (
+            <>
+              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                  Active · {activeProjects.length}
+                </p>
+              </div>
+              <div className="px-3 space-y-1">
+                {activeProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
+              </div>
+            </>
+          )}
 
-          <div className="px-3 space-y-1 pb-2">
-            {activeProjects.map((project) => {
-              const isActive = project.id === state.activeProjectId;
-              return (
-                <button
-                  key={project.id}
-                  onClick={() => selectProject(project.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
-                    isActive ? 'bg-indigo-50' : 'hover:bg-ios-gray-50 active:bg-ios-gray-100'
-                  }`}
-                >
-                  <div
-                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      isActive ? 'bg-indigo-600' : 'bg-ios-gray-300'
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-semibold truncate ${isActive ? 'text-indigo-700' : 'text-gray-900'}`}>
-                      {project.inputs.clientName || 'Untitled Project'}
-                    </p>
-                    {project.inputs.community && (
-                      <p className="text-xs text-ios-gray-500 truncate">{project.inputs.community}</p>
-                    )}
-                  </div>
-                  {isActive && (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-indigo-600 flex-shrink-0">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
+          {/* ── Draft Projects ───────────────────────────────────── */}
+          {draftProjects.length > 0 && (
+            <>
+              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                  Drafts · {draftProjects.length}
+                </p>
+              </div>
+              <div className="px-3 space-y-1">
+                {draftProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
+              </div>
+            </>
+          )}
 
-            {/* Archived section */}
+          {/* No projects at all */}
+          {activeProjects.length === 0 && draftProjects.length === 0 && (
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">Projects</p>
+            </div>
+          )}
+
+          {/* ── Archived Projects (collapsible) ─────────────────── */}
+          <div className="px-3 pb-1 mt-1">
             {archivedProjects.length > 0 && (
               <>
                 <button
                   onClick={() => setArchivedOpen(o => !o)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl active:bg-ios-gray-100"
                 >
-                  <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
-                    Archived ({archivedProjects.length})
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-ios-gray-400" />
+                    <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                      Archived · {archivedProjects.length}
+                    </span>
+                  </div>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
@@ -178,35 +226,39 @@ export function HamburgerMenu() {
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                   </svg>
                 </button>
-                {archivedOpen && archivedProjects.map((project) => {
-                  const isActive = project.id === state.activeProjectId;
-                  return (
-                    <button
-                      key={project.id}
-                      onClick={() => selectProject(project.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors opacity-60 ${
-                        isActive ? 'bg-indigo-50' : 'hover:bg-ios-gray-50 active:bg-ios-gray-100'
-                      }`}
-                    >
-                      <div className="w-2 h-2 rounded-full flex-shrink-0 bg-ios-gray-400" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold truncate text-ios-gray-600">
-                          {project.inputs.clientName || 'Untitled Project'}
-                        </p>
-                        {project.inputs.community && (
-                          <p className="text-xs text-ios-gray-500 truncate">{project.inputs.community}</p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                {archivedOpen && (
+                  <div className="space-y-1 mt-1">
+                    {archivedProjects.map((project) => {
+                      const isSelected = project.id === state.activeProjectId;
+                      return (
+                        <button
+                          key={project.id}
+                          onClick={() => selectProject(project.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors opacity-50 ${
+                            isSelected ? 'bg-indigo-50' : 'active:bg-ios-gray-100'
+                          }`}
+                        >
+                          <div className="w-2 h-2 rounded-full flex-shrink-0 bg-ios-gray-400" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold truncate text-ios-gray-600">
+                              {project.inputs.clientName || 'Untitled Project'}
+                            </p>
+                            {project.inputs.community && (
+                              <p className="text-xs text-ios-gray-500 truncate">{project.inputs.community}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
 
             {/* New project button */}
             <button
               onClick={createProject}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-indigo-600 active:bg-indigo-50"
+              className="w-full flex items-center gap-3 px-3 py-3 mt-1 rounded-xl text-left text-indigo-600 active:bg-indigo-50"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 flex-shrink-0">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
