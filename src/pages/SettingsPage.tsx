@@ -138,7 +138,6 @@ interface MemberCardProps {
 
 function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [activePhaseId, setActivePhaseId] = useState<PhaseId | null>(null);
 
   function cycleDay(day: keyof TeamMemberAvailability) {
     onChange({
@@ -147,36 +146,10 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
     });
   }
 
-  function toggleRole(phaseId: PhaseId, role: RoleType) {
-    const current = member.phaseRoles[phaseId];
-    let next: MemberPhaseRole;
-    if (current === 'N/A') {
-      next = [role];
-    } else {
-      const arr = current;
-      const without = arr.filter((r) => r !== role);
-      next = arr.includes(role) ? (without.length === 0 ? 'N/A' : without) : [...arr, role];
-    }
-    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: next } });
-  }
-
-  function setPhaseNA(phaseId: PhaseId) {
-    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: 'N/A' } });
-  }
-
-  // Compact summary of distinct roles across all phases
-  const uniqueRoles = [...new Set(
-    PHASE_CONFIG.flatMap((p) => {
-      const r = member.phaseRoles[p.id];
-      return r === 'N/A' ? [] : r;
-    })
-  )];
-  const phaseRoleSummary = uniqueRoles.length > 0 ? uniqueRoles.join(', ') : 'No phases';
-
   return (
     <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
       <button
-        onClick={() => { setExpanded((e) => !e); setActivePhaseId(null); }}
+        onClick={() => setExpanded((e) => !e)}
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -186,9 +159,6 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             }`}
           />
           <span className="font-semibold text-gray-900 truncate">{member.name}</span>
-          <span className="text-xs text-ios-gray-500 truncate hidden xs:block">
-            {phaseRoleSummary}
-          </span>
         </div>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -220,78 +190,6 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             >
               {member.isPriority ? '● Priority' : '○ Standard'}
             </button>
-          </div>
-
-          {/* Phase Roles multi-select grid */}
-          <div>
-            <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">
-              Phase Roles — tap a phase to pick roles
-            </p>
-            {[PHASE_CONFIG.slice(0, 5), PHASE_CONFIG.slice(5)].map((row, rowIdx) => (
-              <div key={rowIdx} className={`flex gap-1 ${rowIdx === 1 ? 'mt-1' : ''}`}>
-                {row.map((phase) => {
-                  const role = member.phaseRoles[phase.id];
-                  const isActive = activePhaseId === phase.id;
-                  return (
-                    <button
-                      key={phase.id}
-                      onClick={() => setActivePhaseId(isActive ? null : phase.id)}
-                      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-all
-                        ${phaseRoleCellColor(role)}
-                        ${isActive ? 'ring-2 ring-offset-1 ring-indigo-500 scale-95' : ''}`}
-                    >
-                      <span className="text-[8px] font-semibold opacity-70 leading-none text-center">
-                        {phase.label}
-                      </span>
-                      <span className="text-[10px] font-bold leading-none">{phaseRoleCellDisplay(role)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-
-            {/* Inline role picker */}
-            {activePhaseId && (() => {
-              const current = member.phaseRoles[activePhaseId];
-              const activeLabel = PHASE_CONFIG.find(p => p.id === activePhaseId)?.label ?? '';
-              return (
-                <div className="mt-2 p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
-                  <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
-                    {activeLabel} — tap to toggle
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      onClick={() => setPhaseNA(activePhaseId)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${
-                        current === 'N/A'
-                          ? 'bg-ios-gray-500 text-white border-ios-gray-500'
-                          : 'bg-white text-ios-gray-500 border-ios-gray-300'
-                      }`}
-                    >
-                      N/A
-                    </button>
-                    {ALL_SELECTABLE_ROLES.map((role) => {
-                      const selected = current !== 'N/A' && current.includes(role);
-                      return (
-                        <button
-                          key={role}
-                          onClick={() => toggleRole(activePhaseId, role)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${roleButtonColors(role, selected)}`}
-                        >
-                          {role}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={() => setActivePhaseId(null)}
-                    className="text-[10px] text-ios-gray-400 w-full text-center pt-0.5"
-                  >
-                    Done
-                  </button>
-                </div>
-              );
-            })()}
           </div>
 
           {/* Hour range */}
@@ -375,6 +273,146 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
   );
 }
 
+// ─── Member Phase Roles Card ──────────────────────────────────────────────────
+
+function MemberPhaseRolesCard({
+  member,
+  onChange,
+}: {
+  member: TeamMember;
+  onChange: (updated: TeamMember) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [activePhaseId, setActivePhaseId] = useState<PhaseId | null>(null);
+
+  function toggleRole(phaseId: PhaseId, role: RoleType) {
+    const current = member.phaseRoles[phaseId];
+    let next: MemberPhaseRole;
+    if (current === 'N/A') {
+      next = [role];
+    } else {
+      const arr = current;
+      const without = arr.filter((r) => r !== role);
+      next = arr.includes(role) ? (without.length === 0 ? 'N/A' : without) : [...arr, role];
+    }
+    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: next } });
+  }
+
+  function setPhaseNA(phaseId: PhaseId) {
+    onChange({ ...member, phaseRoles: { ...member.phaseRoles, [phaseId]: 'N/A' } });
+  }
+
+  // Summary: list distinct active roles
+  const uniqueRoles = [...new Set(
+    PHASE_CONFIG.flatMap((p) => {
+      const r = member.phaseRoles[p.id];
+      return r === 'N/A' ? [] : r;
+    })
+  )];
+  const summary = uniqueRoles.length > 0 ? uniqueRoles.join(', ') : 'N/A all phases';
+
+  return (
+    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={() => { setExpanded((e) => !e); setActivePhaseId(null); }}
+        className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${member.isPriority ? 'bg-indigo-500' : 'bg-ios-gray-300'}`} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{member.name}</p>
+            <p className="text-[11px] text-ios-gray-500 truncate">{summary}</p>
+          </div>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 pt-2 border-t border-ios-gray-100">
+          {/* Phase grid */}
+          {[PHASE_CONFIG.slice(0, 5), PHASE_CONFIG.slice(5)].map((row, rowIdx) => (
+            <div key={rowIdx} className={`flex gap-1 ${rowIdx === 1 ? 'mt-1' : ''}`}>
+              {row.map((phase) => {
+                const role = member.phaseRoles[phase.id];
+                const isActive = activePhaseId === phase.id;
+                return (
+                  <button
+                    key={phase.id}
+                    onClick={() => setActivePhaseId(isActive ? null : phase.id)}
+                    className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-all
+                      ${phaseRoleCellColor(role)}
+                      ${isActive ? 'ring-2 ring-offset-1 ring-indigo-500 scale-95' : ''}`}
+                  >
+                    <span className="text-[8px] font-semibold opacity-70 leading-none text-center">{phase.label}</span>
+                    <span className="text-[10px] font-bold leading-none">{phaseRoleCellDisplay(role)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Inline role picker */}
+          {activePhaseId && (() => {
+            const current = member.phaseRoles[activePhaseId];
+            const activeLabel = PHASE_CONFIG.find(p => p.id === activePhaseId)?.label ?? '';
+            return (
+              <div className="mt-2 p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
+                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+                  {activeLabel} — tap to toggle
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setPhaseNA(activePhaseId)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${
+                      current === 'N/A' ? 'bg-ios-gray-500 text-white border-ios-gray-500' : 'bg-white text-ios-gray-500 border-ios-gray-300'
+                    }`}
+                  >
+                    N/A
+                  </button>
+                  {ALL_SELECTABLE_ROLES.map((role) => {
+                    const selected = current !== 'N/A' && current.includes(role);
+                    return (
+                      <button key={role} onClick={() => toggleRole(activePhaseId, role)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[34px] ${roleButtonColors(role, selected)}`}>
+                        {role}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button onClick={() => setActivePhaseId(null)} className="text-[10px] text-ios-gray-400 w-full text-center pt-0.5">
+                  Done
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Hours options: 0, 0.5, 1.0 … 10.0
+const HOURS_OPTIONS = Array.from({ length: 21 }, (_, i) => i * 0.5);
+
+function HoursSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white appearance-none"
+    >
+      {HOURS_OPTIONS.map((h) => (
+        <option key={h} value={h}>
+          {h % 1 === 0 ? h.toFixed(0) : h.toFixed(1)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // ─── Phase Template Card ──────────────────────────────────────────────────────
 
 function PhaseTemplateCard({
@@ -400,25 +438,9 @@ function PhaseTemplateCard({
           Hours / Person
         </label>
         <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0.5}
-            step={0.5}
-            value={template.minHours}
-            onChange={(e) => onChange({ ...template, minHours: parseFloat(e.target.value) || template.minHours })}
-            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
-          />
+          <HoursSelect value={template.minHours} onChange={(v) => onChange({ ...template, minHours: v })} />
           <span className="text-xs text-ios-gray-400 flex-shrink-0">to</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0.5}
-            step={0.5}
-            value={template.maxHours}
-            onChange={(e) => onChange({ ...template, maxHours: parseFloat(e.target.value) || template.maxHours })}
-            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
-          />
+          <HoursSelect value={template.maxHours} onChange={(v) => onChange({ ...template, maxHours: v })} />
         </div>
       </div>
       {/* Team size range */}
@@ -779,7 +801,7 @@ function ListCategoryCard({
 
 // ─── Settings Page ─────────────────────────────────────────────────────────────
 
-type SectionKey = 'team' | 'lists' | 'templates' | 'communities';
+type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'communities';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -924,6 +946,29 @@ export function SettingsPage() {
               </svg>
               Add Team Member
             </button>
+          </div>
+        </AccordionSection>
+
+        {/* ── Phase Roles ──────────────────────────────────────────────── */}
+        <AccordionSection
+          title="Phase Roles"
+          subtitle={`${members.length} members`}
+          open={openSections.has('phaseRoles')}
+          onToggle={() => toggleSection('phaseRoles')}
+        >
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Tap a member to expand. Tap a phase cell to pick which roles that person can fill in that phase.
+            </p>
+            <div className="space-y-2">
+              {members.map((member, i) => (
+                <MemberPhaseRolesCard
+                  key={member.id}
+                  member={member}
+                  onChange={(updated) => updateMember(i, updated)}
+                />
+              ))}
+            </div>
           </div>
         </AccordionSection>
 

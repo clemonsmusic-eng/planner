@@ -21,6 +21,7 @@ export function HamburgerMenu() {
   const { isOpen, close } = useMenu();
   const { state, dispatch } = useApp();
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
 
   function selectProject(id: string) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id });
@@ -181,19 +182,34 @@ export function HamburgerMenu() {
             </>
           )}
 
-          {/* ── Draft Projects ───────────────────────────────────── */}
+          {/* ── Draft Projects (collapsible) ─────────────────────── */}
           {draftProjects.length > 0 && (
-            <>
-              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
-                  Drafts · {draftProjects.length}
-                </p>
-              </div>
-              <div className="px-3 space-y-1">
-                {draftProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
-              </div>
-            </>
+            <div className="px-3 mt-1">
+              <button
+                onClick={() => setDraftOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl active:bg-ios-gray-100"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                    Drafts · {draftProjects.length}
+                  </span>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className={`w-4 h-4 text-ios-gray-400 transition-transform ${draftOpen ? 'rotate-180' : ''}`}
+                >
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {draftOpen && (
+                <div className="space-y-1 mt-1">
+                  {draftProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
+                </div>
+              )}
+            </div>
           )}
 
           {/* No projects at all */}
