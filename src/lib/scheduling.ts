@@ -108,14 +108,42 @@ export function generateSchedule(
 
   // ── 2. Compute suggested dates ───────────────────────────────────────────────
 
-  const moveDayDate = parseISO(targetMoveDate);
+  // Determine effective move day based on flexibility level
+  const baseMoveDayDate = parseISO(targetMoveDate);
+  let moveDayDate: Date;
+  const flexibilityLevel = inputs.flexibilityLevel ?? 'Low';
+  if (flexibilityLevel === 'None' || teamMembers.length === 0) {
+    moveDayDate = baseMoveDayDate;
+  } else {
+    const flexDays = flexibilityLevel === 'Low' ? 1 : flexibilityLevel === 'Medium' ? 3 : 7;
+    // Generate candidate workdays: target ± flexDays workdays
+    const candidates: Date[] = [];
+    for (let offset = -flexDays; offset <= flexDays; offset++) {
+      candidates.push(offset === 0 ? new Date(baseMoveDayDate) : addWorkdays(baseMoveDayDate, offset));
+    }
+    // Score each candidate by number of available team members; prefer target date on tie
+    const targetIso = toISODate(baseMoveDayDate);
+    let bestDate = baseMoveDayDate;
+    let bestScore = -1;
+    for (const candidate of candidates) {
+      const score = teamMembers.filter(
+        (m) => m.availability[getDayOfWeekKey(candidate)] !== 'Unavailable'
+      ).length;
+      const isTarget = toISODate(candidate) === targetIso;
+      if (score > bestScore || (score === bestScore && isTarget)) {
+        bestScore = score;
+        bestDate = candidate;
+      }
+    }
+    moveDayDate = bestDate;
+  }
+
   const startDate = parseISO(earliestStartDate);
 
   const firstVisitDate = startDate;
   // Keep ~2 workdays between the first and second visit (weekends skipped).
   const secondVisitDate = addWorkdays(firstVisitDate, 3);
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
-  const finalSettleDate = addWorkdays(moveDayDate, 2);
 
   // Fixed-phase hours derived from editable templates
   const th = (id: string, fallback: number) =>
@@ -207,7 +235,6 @@ export function generateSchedule(
     sortDays: sortDates.map(toISODate),
     finalPackDay: toISODate(finalPackDayDate),
     moveDay: toISODate(moveDayDate),
-    finalSettle: toISODate(finalSettleDate),
     cleanoutDays: cleanoutDates,
     auctionLotOrg,
     auctionStart,
@@ -403,9 +430,10 @@ export function generateSchedule(
       const qualifyingRoles = getRoleQualifiers(task.role);
 
       const candidates = teamMembers.filter((m) => {
-        // Must have a qualifying role
-        if (!m.roles.some((r) => qualifyingRoles.includes(r as RoleType))) return false;
-        // Must not be already used as a locked role if we're not assigning to locked
+        // Must have a qualifying shift role for this task's shift type
+        const shiftRole = m.shiftRoles[task.shift];
+        if (shiftRole === 'N/A') return false;
+        if (!qualifyingRoles.includes(shiftRole as RoleType)) return false;
         return true;
       });
 

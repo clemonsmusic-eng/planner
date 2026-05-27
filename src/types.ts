@@ -19,10 +19,18 @@ export type RoleType =
   | 'Assist PM'
   | 'Mover';
 
+export type ShiftRole = RoleType | 'N/A';
+
+export interface ShiftRoles {
+  AM: ShiftRole;
+  PM: ShiftRole;
+  'Full Day': ShiftRole;
+}
+
 export interface TeamMember {
   id: string;
   name: string;
-  roles: RoleType[];
+  shiftRoles: ShiftRoles;
   availability: TeamMemberAvailability;
   minHoursPerWeek: number;
   maxHoursPerWeek: number;
@@ -58,7 +66,7 @@ export interface ListCategory {
 
 // ─── Project Inputs ───────────────────────────────────────────────────────────
 export type MoveType = 'Full Move' | 'Emergency Move' | 'Downsize Only' | 'Cleanout' | 'Pack Only';
-export type FlexibilityLevel = 'Low' | 'Medium' | 'High';
+export type FlexibilityLevel = 'None' | 'Low' | 'Medium' | 'High';
 export type DensityLevel = 'Light' | 'Moderate' | 'Heavy';
 export type TimePreference = 'AM' | 'PM';
 
@@ -155,7 +163,6 @@ export interface SuggestedDates {
   sortDays: string[];
   finalPackDay: string;
   moveDay: string;
-  finalSettle: string;
   cleanoutDays: string[];
   auctionLotOrg: string | null;
   auctionStart: string | null;

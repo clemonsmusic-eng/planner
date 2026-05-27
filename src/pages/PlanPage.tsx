@@ -265,7 +265,6 @@ function SuggestedDatesCard({
     })),
     { label: 'Final Pack Day', date: suggestedDates.finalPackDay },
     { label: 'Move Day', date: suggestedDates.moveDay, accent: true },
-    { label: 'Final Settle', date: suggestedDates.finalSettle },
     ...suggestedDates.cleanoutDays.map((d, i) => ({
       label: `Cleanout Day ${i + 1}`,
       date: d,

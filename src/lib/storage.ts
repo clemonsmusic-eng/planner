@@ -41,9 +41,17 @@ export function loadTeamMembers(): TeamMember[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAM);
     if (!raw) return DEFAULT_TEAM_MEMBERS;
-    const parsed = JSON.parse(raw) as TeamMember[];
-    // Backfill minHoursPerWeek for records saved before this field existed
-    return parsed.map((m) => ({ ...m, minHoursPerWeek: m.minHoursPerWeek ?? 0 }));
+    const parsed = JSON.parse(raw) as (TeamMember & { roles?: string[] })[];
+    return parsed.map((m) => {
+      // Backfill minHoursPerWeek for records saved before this field existed
+      let member: TeamMember = { ...m as TeamMember, minHoursPerWeek: m.minHoursPerWeek ?? 0 };
+      // Migrate roles → shiftRoles for records saved before shiftRoles was introduced
+      if (!member.shiftRoles) {
+        const primaryRole = (m.roles && m.roles.length > 0) ? m.roles[0] : 'Specialist';
+        member = { ...member, shiftRoles: { AM: primaryRole as TeamMember['shiftRoles']['AM'], PM: primaryRole as TeamMember['shiftRoles']['PM'], 'Full Day': primaryRole as TeamMember['shiftRoles']['Full Day'] } };
+      }
+      return member;
+    });
   } catch {
     return DEFAULT_TEAM_MEMBERS;
   }
@@ -87,7 +95,13 @@ export function loadLists(): ListCategory[] {
       if (!hasParamLists) {
         return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
       }
-      return data;
+      // Migrate: add 'None' to flexibility list if missing
+      return data.map(l => {
+        if (l.id === 'flexibility' && !l.items.includes('None')) {
+          return { ...l, items: ['None', ...l.items] };
+        }
+        return l;
+      });
     }
   } catch {}
   return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));

@@ -5,7 +5,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'gabe',
     name: 'Gabe',
-    roles: ['PM', 'Lead'],
+    shiftRoles: { AM: 'PM', PM: 'PM', 'Full Day': 'PM' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 40,
@@ -14,7 +14,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'reicse',
     name: 'Reicse',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'Specialist' },
     availability: { Mon: 'PM', Tue: 'Full Day', Wed: 'PM', Thu: 'Full Day', Fri: 'Unavailable', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 30,
@@ -23,7 +23,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'cheryl',
     name: 'Cheryl',
-    roles: ['Specialist', 'Lead'],
+    shiftRoles: { AM: 'Lead', PM: 'Lead', 'Full Day': 'Lead' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Unavailable', Fri: 'Unavailable', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 20,
@@ -32,7 +32,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'peyton',
     name: 'Peyton',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 25,
@@ -41,7 +41,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'autumn',
     name: 'Autumn',
-    roles: ['Specialist', 'Lead', 'Mover'],
+    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'N/A' },
     availability: { Mon: 'PM', Tue: 'Unavailable', Wed: 'PM', Thu: 'Unavailable', Fri: 'PM', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 20,
@@ -50,7 +50,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'sofia',
     name: 'Sofia',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
     availability: { Mon: 'Full Day', Tue: 'Unavailable', Wed: 'Full Day', Thu: 'Unavailable', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 25,
@@ -59,7 +59,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'glen',
     name: 'Glen',
-    roles: ['Specialist', 'Assist PM'],
+    shiftRoles: { AM: 'Assist PM', PM: 'Assist PM', 'Full Day': 'Assist PM' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -68,7 +68,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'tilson',
     name: 'Tilson',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'N/A' },
     availability: { Mon: 'PM', Tue: 'PM', Wed: 'PM', Thu: 'PM', Fri: 'PM', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -77,7 +77,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'jessica',
     name: 'Jessica',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -86,7 +86,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'josh',
     name: 'Josh',
-    roles: ['Specialist'],
+    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -256,7 +256,7 @@ export function getDensityMultiplier(density: DensityLevel): number {
 // Lists 10–12 use "maxSqFt:teamSize" format; list 9 uses "ShiftName=hours".
 export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
-  { id: 'flexibility',         name: 'Flexibility',         items: ['Low', 'Medium', 'High'] },
+  { id: 'flexibility',         name: 'Flexibility',         items: ['None', 'Low', 'Medium', 'High'] },
   { id: 'density',             name: 'Density',             items: ['Light', 'Moderate', 'Heavy'] },
   { id: 'shift-type',          name: 'Shift Type',          items: ['AM', 'PM', 'Full Day'] },
   { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },
