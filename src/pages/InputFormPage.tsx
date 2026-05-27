@@ -6,7 +6,7 @@ import { SelectField } from '../components/SelectField';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
 
-const CLEANOUT_TYPES = ['Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
+const CLEANOUT_TYPES = ['Basic', 'Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
 
 // Chevron icon used in project picker
 function ChevronDownIcon() {
@@ -444,27 +444,6 @@ export function InputFormPage() {
             )}
           </div>
 
-          {/* Auction Toggle */}
-          <div className="flex items-center justify-between min-h-[44px]">
-            <div>
-              <p className="font-medium text-gray-900">Auction</p>
-              <p className="text-xs text-ios-gray-600">Include lot organization & auction pickup</p>
-            </div>
-            <button
-              onClick={() =>
-                update('auction', { enabled: !inputs.auction.enabled })
-              }
-              className={`relative w-12 h-7 rounded-full transition-colors ${
-                inputs.auction.enabled ? 'bg-indigo-600' : 'bg-ios-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                  inputs.auction.enabled ? 'translate-x-5' : ''
-                }`}
-              />
-            </button>
-          </div>
         </Card>
 
         {/* Section: Schedule Overrides */}

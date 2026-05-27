@@ -328,32 +328,55 @@ function PhaseTemplateCard({
           {shiftLabel}
         </span>
       </div>
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
-            Hours / Person
-          </label>
+      {/* Hours range */}
+      <div className="mb-2">
+        <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
+          Hours / Person
+        </label>
+        <div className="flex items-center gap-2">
           <input
             type="number"
             inputMode="decimal"
             min={0.5}
             step={0.5}
-            value={template.hours}
-            onChange={(e) => onChange({ ...template, hours: parseFloat(e.target.value) || template.hours })}
-            className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
+            value={template.minHours}
+            onChange={(e) => onChange({ ...template, minHours: parseFloat(e.target.value) || template.minHours })}
+            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
+          />
+          <span className="text-xs text-ios-gray-400 flex-shrink-0">to</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0.5}
+            step={0.5}
+            value={template.maxHours}
+            onChange={(e) => onChange({ ...template, maxHours: parseFloat(e.target.value) || template.maxHours })}
+            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
           />
         </div>
-        <div className="flex-1">
-          <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
-            Base Team Size
-          </label>
+      </div>
+      {/* Team size range */}
+      <div className="mb-2">
+        <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">
+          Team Size
+        </label>
+        <div className="flex items-center gap-2">
           <input
             type="number"
             inputMode="numeric"
             min={1}
-            value={template.teamSize}
-            onChange={(e) => onChange({ ...template, teamSize: parseInt(e.target.value) || template.teamSize })}
-            className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base text-center bg-white"
+            value={template.minTeamSize}
+            onChange={(e) => onChange({ ...template, minTeamSize: parseInt(e.target.value) || template.minTeamSize })}
+            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
+          />
+          <span className="text-xs text-ios-gray-400 flex-shrink-0">to</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={template.maxTeamSize}
+            onChange={(e) => onChange({ ...template, maxTeamSize: parseInt(e.target.value) || template.maxTeamSize })}
+            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
           />
         </div>
       </div>

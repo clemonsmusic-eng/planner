@@ -147,9 +147,9 @@ export function generateSchedule(
   const secondVisitDate = addWorkdays(firstVisitDate, 3);
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
 
-  // Phase hours derived from editable templates
+  // Phase hours derived from editable templates (use minHours as the scheduling baseline)
   const th = (id: string, fallback: number) =>
-    phaseTemplates.find((t) => t.id === id)?.hours ?? fallback;
+    phaseTemplates.find((t) => t.id === id)?.minHours ?? fallback;
 
   const h1  = th('phase-1',   2.5);
   const h2  = th('phase-2',   4);
@@ -300,7 +300,9 @@ export function generateSchedule(
       overrideShift
     );
 
-    const size = teamSizeOverride ?? template.teamSize;
+    // Cap team size: override (from budget/sqft calc) bounded by template min/max
+    const rawSize = teamSizeOverride ?? template.minTeamSize;
+    const size = Math.min(Math.max(rawSize, template.minTeamSize), template.maxTeamSize);
     // Build role list, padding with Specialist if size > template.roles.length
     const roles: Array<{ role: RoleType; isLocked?: boolean }> = [
       ...template.roles,
@@ -316,7 +318,7 @@ export function generateSchedule(
         date: dateStr,
         role: roleSpec.role,
         shift,
-        hours: template.hours,
+        hours: template.minHours,
         isLocked: roleSpec.isLocked,
         teamSizeOverride: size,
       });

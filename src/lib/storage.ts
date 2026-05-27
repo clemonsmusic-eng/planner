@@ -128,7 +128,18 @@ export function saveLists(lists: ListCategory[]): void {
 export function loadPhaseTemplates(): PhaseTemplate[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PHASE_TEMPLATES);
-    if (raw) return JSON.parse(raw) as PhaseTemplate[];
+    if (raw) {
+      // Migrate legacy templates that used `hours`/`teamSize` single fields
+      type LegacyTemplate = PhaseTemplate & { hours?: number; teamSize?: number };
+      const parsed = JSON.parse(raw) as LegacyTemplate[];
+      return parsed.map((t): PhaseTemplate => ({
+        ...t,
+        minHours: t.minHours ?? t.hours ?? 4,
+        maxHours: t.maxHours ?? t.hours ?? 8,
+        minTeamSize: t.minTeamSize ?? t.teamSize ?? 2,
+        maxTeamSize: t.maxTeamSize ?? t.teamSize ?? 4,
+      }));
+    }
   } catch {}
   return DEFAULT_PHASE_TEMPLATES.map((t) => ({ ...t }));
 }

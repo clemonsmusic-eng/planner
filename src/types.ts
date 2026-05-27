@@ -55,8 +55,10 @@ export interface PhaseTemplate {
   id: string;
   order: number | string;
   name: string;
-  hours: number;
-  teamSize: number;
+  minHours: number;
+  maxHours: number;
+  minTeamSize: number;
+  maxTeamSize: number;
   roles: PhaseRole[];
   shift: PhaseShift;
   isAM?: boolean; // true = AM block
