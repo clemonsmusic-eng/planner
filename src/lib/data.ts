@@ -308,7 +308,6 @@ export function getDensityMultiplier(density: DensityLevel): number {
 export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
   { id: 'flexibility',         name: 'Flexibility',         items: ['None', 'Low', 'Medium', 'High'] },
-  { id: 'density',             name: 'Density',             items: ['Light', 'Moderate', 'Heavy'] },
   { id: 'shift-type',          name: 'Shift Type',          items: ['AM', 'PM', 'Full Day'] },
   { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },
   { id: 'phase',               name: 'Phase',               items: ['First Visit: Planning', 'Second Visit: Initial Sort & Pack', 'Sort and Pack', 'AM Final Pack & Pre-Move', 'PM Final Pack & Pre-Move', 'AM Move Day', 'PM Move Day', 'Cleanout', 'Pickup Day'] },

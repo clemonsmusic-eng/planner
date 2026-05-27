@@ -972,10 +972,10 @@ export function SettingsPage() {
           </div>
         </AccordionSection>
 
-        {/* ── Lists ────────────────────────────────────────────────────── */}
+        {/* ── Variables ────────────────────────────────────────────────── */}
         <AccordionSection
-          title="Lists"
-          subtitle="12 scheduling parameter lists"
+          title="Variables"
+          subtitle="Scheduling parameter lists"
           open={openSections.has('lists')}
           onToggle={() => toggleSection('lists')}
         >

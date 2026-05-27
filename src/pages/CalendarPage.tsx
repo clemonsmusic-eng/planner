@@ -20,82 +20,127 @@ import type { Project } from '../types';
 
 type CalendarView = 'day' | 'week' | 'month';
 
-interface CalendarEvent {
+/** One block = one phase/shift on one day for one project, listing all assigned members. */
+interface CalendarJob {
   date: string;
   projectId: string;
   projectName: string;
+  phaseId: string;
   phaseName: string;
   shift: 'AM' | 'PM' | 'Full Day';
-  assignedMemberName: string | null;
-  assignedMemberId: string | null;
-  role: string;
+  memberIds: string[];
+  memberNames: string[];
   hours: number;
 }
 
+// ─── Project Color Palette ────────────────────────────────────────────────────
+
+const PROJECT_COLORS = [
+  { bg: 'bg-indigo-100',  text: 'text-indigo-800',  border: 'border-indigo-200',  dot: 'bg-indigo-500'  },
+  { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  { bg: 'bg-rose-100',    text: 'text-rose-800',    border: 'border-rose-200',    dot: 'bg-rose-500'    },
+  { bg: 'bg-amber-100',   text: 'text-amber-800',   border: 'border-amber-200',   dot: 'bg-amber-500'   },
+  { bg: 'bg-violet-100',  text: 'text-violet-800',  border: 'border-violet-200',  dot: 'bg-violet-500'  },
+  { bg: 'bg-cyan-100',    text: 'text-cyan-800',    border: 'border-cyan-200',    dot: 'bg-cyan-500'    },
+  { bg: 'bg-orange-100',  text: 'text-orange-800',  border: 'border-orange-200',  dot: 'bg-orange-500'  },
+  { bg: 'bg-teal-100',    text: 'text-teal-800',    border: 'border-teal-200',    dot: 'bg-teal-500'    },
+] as const;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const SHIFT_COLORS = {
-  AM: { bg: 'bg-sky-100', text: 'text-sky-800', dot: 'bg-sky-400' },
-  PM: { bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-400' },
-  'Full Day': { bg: 'bg-indigo-100', text: 'text-indigo-800', dot: 'bg-indigo-400' },
-};
-
-function buildEvents(projects: Project[]): CalendarEvent[] {
-  return projects
-    .filter((p) => p.schedule !== null)
-    .flatMap((p) =>
-      p.schedule!.days.flatMap((day) =>
-        day.entries.map((entry) => ({
-          date: day.date,
-          projectId: p.id,
-          projectName: p.inputs.clientName || p.inputs.projectName || 'Untitled',
-          phaseName: entry.phaseName,
-          shift: entry.shift,
-          assignedMemberName: entry.assignedMemberName,
-          assignedMemberId: entry.assignedMember,
-          role: entry.role,
-          hours: entry.hours,
-        }))
-      )
-    );
+/** Stable color index for a project — based on creation order. */
+function buildColorMap(projects: Project[]): Map<string, number> {
+  const sorted = [...projects].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const map = new Map<string, number>();
+  sorted.forEach((p, i) => map.set(p.id, i % PROJECT_COLORS.length));
+  return map;
 }
 
-function eventsForDate(events: CalendarEvent[], date: Date): CalendarEvent[] {
+/** Aggregate schedule entries into one job per (project, phase, shift, date). */
+function buildJobs(projects: Project[]): CalendarJob[] {
+  const jobs: CalendarJob[] = [];
+
+  for (const project of projects) {
+    if (!project.schedule) continue;
+
+    for (const day of project.schedule.days) {
+      const groups = new Map<string, CalendarJob>();
+
+      for (const entry of day.entries) {
+        const key = `${entry.phaseId}:${entry.shift}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            date: day.date,
+            projectId: project.id,
+            projectName: project.inputs.clientName || project.inputs.projectName || 'Untitled',
+            phaseId: entry.phaseId,
+            phaseName: entry.phaseName,
+            shift: entry.shift,
+            memberIds: [],
+            memberNames: [],
+            hours: entry.hours,
+          });
+        }
+        const job = groups.get(key)!;
+        if (entry.assignedMember && !job.memberIds.includes(entry.assignedMember)) {
+          job.memberIds.push(entry.assignedMember);
+          if (entry.assignedMemberName) job.memberNames.push(entry.assignedMemberName);
+        }
+      }
+
+      jobs.push(...groups.values());
+    }
+  }
+
+  return jobs;
+}
+
+function jobsForDate(jobs: CalendarJob[], date: Date): CalendarJob[] {
   const iso = format(date, 'yyyy-MM-dd');
-  return events.filter((e) => e.date === iso);
+  return jobs.filter((j) => j.date === iso);
 }
 
 function applyFilters(
-  events: CalendarEvent[],
+  jobs: CalendarJob[],
   memberFilter: string | null,
   projectFilter: string | null,
   shiftFilter: string | null
-): CalendarEvent[] {
-  return events.filter((e) => {
-    if (memberFilter && e.assignedMemberId !== memberFilter) return false;
-    if (projectFilter && e.projectId !== projectFilter) return false;
-    if (shiftFilter && e.shift !== shiftFilter) return false;
+): CalendarJob[] {
+  return jobs.filter((j) => {
+    if (memberFilter && !j.memberIds.includes(memberFilter)) return false;
+    if (projectFilter && j.projectId !== projectFilter) return false;
+    if (shiftFilter && j.shift !== shiftFilter) return false;
     return true;
   });
 }
 
-// ─── Event Card ───────────────────────────────────────────────────────────────
+// ─── Job Card ─────────────────────────────────────────────────────────────────
 
-function EventCard({ event }: { event: CalendarEvent }) {
-  const colors = SHIFT_COLORS[event.shift];
+function JobCard({
+  job,
+  colorIdx,
+}: {
+  job: CalendarJob;
+  colorIdx: number;
+}) {
+  const c = PROJECT_COLORS[colorIdx % PROJECT_COLORS.length];
+  const shiftLabel = job.shift === 'Full Day' ? 'Full' : job.shift;
+
   return (
-    <div className={`rounded-xl px-3 py-2.5 ${colors.bg}`}>
+    <div className={`rounded-xl px-3 py-2.5 border ${c.bg} ${c.border}`}>
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className={`text-xs font-bold truncate ${colors.text}`}>{event.phaseName}</p>
-          <p className="text-xs text-gray-700 truncate mt-0.5">{event.projectName}</p>
-          {event.assignedMemberName && (
-            <p className="text-xs text-ios-gray-600 truncate">{event.assignedMemberName} · {event.role}</p>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
+          <p className="text-xs text-gray-700 truncate mt-0.5">{job.projectName}</p>
+          {job.memberNames.length > 0 && (
+            <p className="text-[11px] text-ios-gray-600 truncate mt-0.5">
+              {job.memberNames.join(', ')}
+            </p>
           )}
         </div>
         <div className="flex-shrink-0 text-right">
-          <span className={`text-[10px] font-semibold ${colors.text}`}>{event.shift}</span>
-          <p className="text-[10px] text-ios-gray-500">{event.hours}h</p>
+          <span className={`text-[10px] font-semibold ${c.text}`}>{shiftLabel}</span>
+          <p className="text-[10px] text-ios-gray-500">{job.hours}h/ea</p>
         </div>
       </div>
     </div>
@@ -104,10 +149,18 @@ function EventCard({ event }: { event: CalendarEvent }) {
 
 // ─── Day View ─────────────────────────────────────────────────────────────────
 
-function DayView({ date, events }: { date: Date; events: CalendarEvent[] }) {
-  const dayEvents = eventsForDate(events, date);
+function DayView({
+  date,
+  jobs,
+  colorMap,
+}: {
+  date: Date;
+  jobs: CalendarJob[];
+  colorMap: Map<string, number>;
+}) {
+  const dayJobs = jobsForDate(jobs, date);
 
-  if (dayEvents.length === 0) {
+  if (dayJobs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
         <div className="w-12 h-12 bg-ios-gray-100 rounded-full flex items-center justify-center mb-1">
@@ -121,36 +174,27 @@ function DayView({ date, events }: { date: Date; events: CalendarEvent[] }) {
     );
   }
 
-  const am = dayEvents.filter((e) => e.shift === 'AM');
-  const pm = dayEvents.filter((e) => e.shift === 'PM');
-  const full = dayEvents.filter((e) => e.shift === 'Full Day');
+  const am   = dayJobs.filter((j) => j.shift === 'AM');
+  const pm   = dayJobs.filter((j) => j.shift === 'PM');
+  const full = dayJobs.filter((j) => j.shift === 'Full Day');
+
+  const section = (label: string, list: CalendarJob[]) =>
+    list.length > 0 ? (
+      <div>
+        <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">{label}</p>
+        <div className="space-y-2">
+          {list.map((j, i) => (
+            <JobCard key={i} job={j} colorIdx={colorMap.get(j.projectId) ?? 0} />
+          ))}
+        </div>
+      </div>
+    ) : null;
 
   return (
     <div className="px-4 py-4 space-y-4">
-      {am.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">AM</p>
-          <div className="space-y-2">
-            {am.map((e, i) => <EventCard key={i} event={e} />)}
-          </div>
-        </div>
-      )}
-      {pm.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">PM</p>
-          <div className="space-y-2">
-            {pm.map((e, i) => <EventCard key={i} event={e} />)}
-          </div>
-        </div>
-      )}
-      {full.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Full Day</p>
-          <div className="space-y-2">
-            {full.map((e, i) => <EventCard key={i} event={e} />)}
-          </div>
-        </div>
-      )}
+      {section('AM', am)}
+      {section('PM', pm)}
+      {section('Full Day', full)}
     </div>
   );
 }
@@ -159,11 +203,13 @@ function DayView({ date, events }: { date: Date; events: CalendarEvent[] }) {
 
 function WeekView({
   date,
-  events,
+  jobs,
+  colorMap,
   onSelectDay,
 }: {
   date: Date;
-  events: CalendarEvent[];
+  jobs: CalendarJob[];
+  colorMap: Map<string, number>;
   onSelectDay: (d: Date) => void;
 }) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
@@ -172,10 +218,12 @@ function WeekView({
 
   return (
     <div className="flex flex-col">
-      {/* Day columns header */}
+      {/* Day column headers */}
       <div className="grid grid-cols-7 border-b border-ios-gray-200">
         {days.map((day) => {
           const isToday = isSameDay(day, today);
+          const dayJobs = jobsForDate(jobs, day);
+          const projectIds = [...new Set(dayJobs.map((j) => j.projectId))];
           return (
             <button
               key={day.toISOString()}
@@ -192,16 +240,11 @@ function WeekView({
               >
                 {format(day, 'd')}
               </span>
-              {/* Event dots */}
+              {/* Project-colored dots */}
               <div className="flex gap-0.5 h-3 items-center">
-                {(['AM', 'PM', 'Full Day'] as const).map((shift) => {
-                  const count = eventsForDate(events, day).filter((e) => e.shift === shift).length;
-                  return count > 0 ? (
-                    <span
-                      key={shift}
-                      className={`w-1.5 h-1.5 rounded-full ${SHIFT_COLORS[shift].dot}`}
-                    />
-                  ) : null;
+                {projectIds.slice(0, 4).map((pid) => {
+                  const c = PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length];
+                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />;
                 })}
               </div>
             </button>
@@ -212,27 +255,26 @@ function WeekView({
       {/* Events per day */}
       <div className="grid grid-cols-7 flex-1 divide-x divide-ios-gray-100">
         {days.map((day) => {
-          const dayEvents = eventsForDate(events, day);
+          const dayJobs = jobsForDate(jobs, day);
           return (
             <div key={day.toISOString()} className="min-h-[120px] p-1 space-y-1">
-              {dayEvents.slice(0, 4).map((e, i) => {
-                const colors = SHIFT_COLORS[e.shift];
+              {dayJobs.slice(0, 4).map((j, i) => {
+                const c = PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
                 return (
-                  <div
-                    key={i}
-                    className={`rounded px-1 py-0.5 ${colors.bg}`}
-                  >
-                    <p className={`text-[9px] font-semibold leading-tight truncate ${colors.text}`}>
-                      {e.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
+                  <div key={i} className={`rounded px-1 py-0.5 border ${c.bg} ${c.border}`}>
+                    <p className={`text-[9px] font-semibold leading-tight truncate ${c.text}`}>
+                      {j.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
                     </p>
-                    {e.assignedMemberName && (
-                      <p className="text-[8px] text-ios-gray-600 truncate leading-tight">{e.assignedMemberName}</p>
+                    {j.memberNames.length > 0 && (
+                      <p className="text-[8px] text-ios-gray-600 truncate leading-tight">
+                        {j.memberNames.slice(0, 2).join(', ')}{j.memberNames.length > 2 ? ` +${j.memberNames.length - 2}` : ''}
+                      </p>
                     )}
                   </div>
                 );
               })}
-              {dayEvents.length > 4 && (
-                <p className="text-[9px] text-ios-gray-400 px-1">+{dayEvents.length - 4}</p>
+              {dayJobs.length > 4 && (
+                <p className="text-[9px] text-ios-gray-400 px-1">+{dayJobs.length - 4}</p>
               )}
             </div>
           );
@@ -246,11 +288,13 @@ function WeekView({
 
 function MonthView({
   date,
-  events,
+  jobs,
+  colorMap,
   onSelectDay,
 }: {
   date: Date;
-  events: CalendarEvent[];
+  jobs: CalendarJob[];
+  colorMap: Map<string, number>;
   onSelectDay: (d: Date) => void;
 }) {
   const monthStart = startOfMonth(date);
@@ -264,7 +308,6 @@ function MonthView({
 
   return (
     <div className="px-3 py-3">
-      {/* Day-of-week headers */}
       <div className="grid grid-cols-7 mb-1">
         {dayLabels.map((d) => (
           <div key={d} className="text-center text-[11px] font-semibold text-ios-gray-500 py-1">
@@ -273,41 +316,32 @@ function MonthView({
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="grid grid-cols-7 gap-y-1">
         {calDays.map((day) => {
           const inMonth = isSameMonth(day, date);
           const isToday = isSameDay(day, today);
-          const dayEvents = eventsForDate(events, day);
-          const shifts = [...new Set(dayEvents.map((e) => e.shift))] as ('AM' | 'PM' | 'Full Day')[];
+          const dayJobs = jobsForDate(jobs, day);
+          const projectIds = [...new Set(dayJobs.map((j) => j.projectId))];
 
           return (
             <button
               key={day.toISOString()}
               onClick={() => onSelectDay(day)}
-              className={`flex flex-col items-center py-1 rounded-xl ${
-                inMonth ? 'active:bg-ios-gray-100' : ''
-              }`}
+              className={`flex flex-col items-center py-1 rounded-xl ${inMonth ? 'active:bg-ios-gray-100' : ''}`}
               disabled={!inMonth}
             >
               <span
                 className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full ${
-                  isToday
-                    ? 'bg-indigo-600 text-white'
-                    : inMonth
-                    ? 'text-gray-900'
-                    : 'text-ios-gray-300'
+                  isToday ? 'bg-indigo-600 text-white' : inMonth ? 'text-gray-900' : 'text-ios-gray-300'
                 }`}
               >
                 {format(day, 'd')}
               </span>
               <div className="flex gap-0.5 h-2 items-center">
-                {shifts.slice(0, 3).map((shift) => (
-                  <span
-                    key={shift}
-                    className={`w-1.5 h-1.5 rounded-full ${SHIFT_COLORS[shift].dot}`}
-                  />
-                ))}
+                {projectIds.slice(0, 3).map((pid) => {
+                  const c = PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length];
+                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />;
+                })}
               </div>
             </button>
           );
@@ -322,7 +356,7 @@ function MonthView({
 interface FilterSheetProps {
   show: boolean;
   onClose: () => void;
-  projects: { id: string; name: string }[];
+  projects: { id: string; name: string; colorIdx: number }[];
   members: { id: string; name: string }[];
   memberFilter: string | null;
   projectFilter: string | null;
@@ -333,16 +367,9 @@ interface FilterSheetProps {
 }
 
 function FilterSheet({
-  show,
-  onClose,
-  projects,
-  members,
-  memberFilter,
-  projectFilter,
-  shiftFilter,
-  setMemberFilter,
-  setProjectFilter,
-  setShiftFilter,
+  show, onClose, projects, members,
+  memberFilter, projectFilter, shiftFilter,
+  setMemberFilter, setProjectFilter, setShiftFilter,
 }: FilterSheetProps) {
   if (!show) return null;
 
@@ -365,36 +392,28 @@ function FilterSheet({
           <h3 className="font-bold text-gray-900">Filters</h3>
           <div className="flex items-center gap-3">
             {hasFilter && (
-              <button onClick={clearAll} className="text-sm text-red-600 font-semibold">
-                Clear All
-              </button>
+              <button onClick={clearAll} className="text-sm text-red-600 font-semibold">Clear All</button>
             )}
-            <button onClick={onClose} className="text-sm text-indigo-600 font-semibold">
-              Done
-            </button>
+            <button onClick={onClose} className="text-sm text-indigo-600 font-semibold">Done</button>
           </div>
         </div>
 
         <div className="px-4 py-4 space-y-5 max-h-[60vh] overflow-y-auto">
-          {/* Shift type filter */}
+          {/* Shift filter */}
           <div>
-            <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Shift Type</p>
+            <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Shift</p>
             <div className="flex gap-2">
-              {(['AM', 'PM', 'Full Day'] as const).map((shift) => {
-                const colors = SHIFT_COLORS[shift];
-                const active = shiftFilter === shift;
-                return (
-                  <button
-                    key={shift}
-                    onClick={() => setShiftFilter(active ? null : shift)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
-                      active ? `${colors.bg} ${colors.text}` : 'bg-ios-gray-100 text-ios-gray-600'
-                    }`}
-                  >
-                    {shift}
-                  </button>
-                );
-              })}
+              {(['AM', 'PM', 'Full Day'] as const).map((shift) => (
+                <button
+                  key={shift}
+                  onClick={() => setShiftFilter(shiftFilter === shift ? null : shift)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
+                    shiftFilter === shift ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+                  }`}
+                >
+                  {shift}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -404,16 +423,17 @@ function FilterSheet({
               <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Project</p>
               <div className="space-y-1">
                 {projects.map((p) => {
+                  const c = PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
                   const active = projectFilter === p.id;
                   return (
                     <button
                       key={p.id}
                       onClick={() => setProjectFilter(active ? null : p.id)}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-colors ${
-                        active ? 'bg-indigo-50 text-indigo-700' : 'bg-ios-gray-50 text-gray-900'
+                        active ? `${c.bg} ${c.text}` : 'bg-ios-gray-50 text-gray-900'
                       }`}
                     >
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${active ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${c.dot}`} />
                       {p.name}
                     </button>
                   );
@@ -427,20 +447,17 @@ function FilterSheet({
             <div>
               <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Team Member</p>
               <div className="flex flex-wrap gap-2">
-                {members.map((m) => {
-                  const active = memberFilter === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => setMemberFilter(active ? null : m.id)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
-                        active ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
-                      }`}
-                    >
-                      {m.name}
-                    </button>
-                  );
-                })}
+                {members.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMemberFilter(memberFilter === m.id ? null : m.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
+                      memberFilter === m.id ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -461,43 +478,46 @@ export function CalendarPage() {
   const [shiftFilter, setShiftFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const allEvents = useMemo(() => buildEvents(state.projects), [state.projects]);
-  const filteredEvents = useMemo(
-    () => applyFilters(allEvents, memberFilter, projectFilter, shiftFilter),
-    [allEvents, memberFilter, projectFilter, shiftFilter]
+  const colorMap = useMemo(() => buildColorMap(state.projects), [state.projects]);
+  const allJobs   = useMemo(() => buildJobs(state.projects), [state.projects]);
+  const filteredJobs = useMemo(
+    () => applyFilters(allJobs, memberFilter, projectFilter, shiftFilter),
+    [allJobs, memberFilter, projectFilter, shiftFilter]
   );
 
   const projectOptions = useMemo(
     () =>
       state.projects
         .filter((p) => p.schedule)
-        .map((p) => ({ id: p.id, name: p.inputs.clientName || p.inputs.projectName || 'Untitled' })),
-    [state.projects]
+        .map((p) => ({
+          id: p.id,
+          name: p.inputs.clientName || p.inputs.projectName || 'Untitled',
+          colorIdx: colorMap.get(p.id) ?? 0,
+        })),
+    [state.projects, colorMap]
   );
 
   const memberOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    allEvents.forEach((e) => {
-      if (e.assignedMemberId && e.assignedMemberName) {
-        seen.set(e.assignedMemberId, e.assignedMemberName);
-      }
-    });
-    return Array.from(seen.entries())
+    allJobs.forEach((j) =>
+      j.memberIds.forEach((id, idx) => {
+        if (!seen.has(id)) seen.set(id, j.memberNames[idx] ?? id);
+      })
+    );
+    return [...seen.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allEvents]);
+  }, [allJobs]);
 
   const activeFilterCount = [memberFilter, projectFilter, shiftFilter].filter(Boolean).length;
 
   function navigate(dir: 1 | -1) {
-    if (view === 'day') setCurrentDate((d) => addDays(d, dir));
+    if (view === 'day')   setCurrentDate((d) => addDays(d, dir));
     else if (view === 'week') setCurrentDate((d) => addWeeks(d, dir));
-    else setCurrentDate((d) => addMonths(d, dir));
+    else                  setCurrentDate((d) => addMonths(d, dir));
   }
 
-  function goToday() {
-    setCurrentDate(new Date());
-  }
+  function goToday() { setCurrentDate(new Date()); }
 
   function handleSelectDay(day: Date) {
     setCurrentDate(day);
@@ -507,12 +527,11 @@ export function CalendarPage() {
   function dateLabel() {
     if (view === 'day') return format(currentDate, 'EEE, MMM d');
     if (view === 'week') {
-      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-      const weekEnd = addDays(weekStart, 6);
-      if (format(weekStart, 'MMM') === format(weekEnd, 'MMM')) {
-        return `${format(weekStart, 'MMM d')}–${format(weekEnd, 'd, yyyy')}`;
-      }
-      return `${format(weekStart, 'MMM d')}–${format(weekEnd, 'MMM d, yyyy')}`;
+      const s = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const e = addDays(s, 6);
+      return format(s, 'MMM') === format(e, 'MMM')
+        ? `${format(s, 'MMM d')}–${format(e, 'd, yyyy')}`
+        : `${format(s, 'MMM d')}–${format(e, 'MMM d, yyyy')}`;
     }
     return format(currentDate, 'MMMM yyyy');
   }
@@ -557,7 +576,7 @@ export function CalendarPage() {
           ))}
         </div>
 
-        {/* Navigation row */}
+        {/* Navigation */}
         <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => navigate(-1)}
@@ -579,20 +598,34 @@ export function CalendarPage() {
             </svg>
           </button>
         </div>
+
+        {/* Project color legend */}
+        {projectOptions.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            {projectOptions.map((p) => {
+              const c = PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
+              return (
+                <span key={p.id} className="flex items-center gap-1 text-[10px] text-ios-gray-600">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.dot}`} />
+                  {p.name}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
-        {view === 'day' && <DayView date={currentDate} events={filteredEvents} />}
+        {view === 'day' && <DayView date={currentDate} jobs={filteredJobs} colorMap={colorMap} />}
         {view === 'week' && (
-          <WeekView date={currentDate} events={filteredEvents} onSelectDay={handleSelectDay} />
+          <WeekView date={currentDate} jobs={filteredJobs} colorMap={colorMap} onSelectDay={handleSelectDay} />
         )}
         {view === 'month' && (
-          <MonthView date={currentDate} events={filteredEvents} onSelectDay={handleSelectDay} />
+          <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} onSelectDay={handleSelectDay} />
         )}
       </div>
 
-      {/* Filter sheet */}
       <FilterSheet
         show={showFilters}
         onClose={() => setShowFilters(false)}

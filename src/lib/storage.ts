@@ -118,8 +118,10 @@ export function loadLists(): ListCategory[] {
       if (!hasParamLists) {
         return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
       }
+      // Migrate: remove density list if present
+      const filtered = data.filter(l => l.id !== 'density');
       // Migrate: add 'None' to flexibility list if missing
-      return data.map(l => {
+      return filtered.map(l => {
         if (l.id === 'flexibility' && !l.items.includes('None')) {
           return { ...l, items: ['None', ...l.items] };
         }
