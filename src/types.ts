@@ -19,18 +19,24 @@ export type RoleType =
   | 'Assist PM'
   | 'Mover';
 
-export type ShiftRole = RoleType | 'N/A';
+export type PhaseId =
+  | 'phase-1'
+  | 'phase-2'
+  | 'phase-3'
+  | 'phase-4-1'
+  | 'phase-4-2'
+  | 'phase-5-1'
+  | 'phase-5-2'
+  | 'phase-6'
+  | 'phase-7';
 
-export interface ShiftRoles {
-  AM: ShiftRole;
-  PM: ShiftRole;
-  'Full Day': ShiftRole;
-}
+export type MemberPhaseRole = RoleType | 'N/A';
+export type MemberPhaseRoles = Record<PhaseId, MemberPhaseRole>;
 
 export interface TeamMember {
   id: string;
   name: string;
-  shiftRoles: ShiftRoles;
+  phaseRoles: MemberPhaseRoles;
   availability: TeamMemberAvailability;
   minHoursPerWeek: number;
   maxHoursPerWeek: number;

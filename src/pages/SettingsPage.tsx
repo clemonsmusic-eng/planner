@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { AvailabilitySlot, ShiftRole, ShiftRoles, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
+import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -13,10 +13,22 @@ const DAY_SHORT: Record<keyof TeamMemberAvailability, string> = {
 
 const SLOT_CYCLE: AvailabilitySlot[] = ['Full Day', 'AM', 'PM', 'Unavailable'];
 
-const SHIFT_KEYS: (keyof ShiftRoles)[] = ['AM', 'PM', 'Full Day'];
-const SHIFT_ROLE_CYCLE: ShiftRole[] = ['N/A', 'PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
+// Phase role grid
+const PHASE_ROLE_CYCLE: MemberPhaseRole[] = ['N/A', 'PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
 
-function shiftRoleLabel(r: ShiftRole): string {
+const PHASE_CONFIG: { id: PhaseId; label: string }[] = [
+  { id: 'phase-1',   label: 'Vis 1' },
+  { id: 'phase-2',   label: 'Vis 2' },
+  { id: 'phase-3',   label: 'Sort' },
+  { id: 'phase-4-1', label: 'Pk AM' },
+  { id: 'phase-4-2', label: 'Pk PM' },
+  { id: 'phase-5-1', label: 'Mv AM' },
+  { id: 'phase-5-2', label: 'Mv PM' },
+  { id: 'phase-6',   label: 'Clnout' },
+  { id: 'phase-7',   label: 'Pickup' },
+];
+
+function phaseRoleLabel(r: MemberPhaseRole): string {
   if (r === 'N/A') return 'N/A';
   if (r === 'Assist PM') return 'APM';
   if (r === 'PM/Lead') return 'P/L';
@@ -25,7 +37,7 @@ function shiftRoleLabel(r: ShiftRole): string {
   return r; // PM, Lead
 }
 
-function shiftRoleColors(r: ShiftRole): string {
+function phaseRoleColors(r: MemberPhaseRole): string {
   if (r === 'N/A') return 'bg-ios-gray-200 text-ios-gray-400';
   if (r === 'PM') return 'bg-indigo-600 text-white';
   if (r === 'Assist PM') return 'bg-purple-500 text-white';
@@ -36,8 +48,8 @@ function shiftRoleColors(r: ShiftRole): string {
   return 'bg-ios-gray-200 text-ios-gray-400';
 }
 
-function nextShiftRole(current: ShiftRole): ShiftRole {
-  return SHIFT_ROLE_CYCLE[(SHIFT_ROLE_CYCLE.indexOf(current) + 1) % SHIFT_ROLE_CYCLE.length];
+function nextPhaseRole(current: MemberPhaseRole): MemberPhaseRole {
+  return PHASE_ROLE_CYCLE[(PHASE_ROLE_CYCLE.indexOf(current) + 1) % PHASE_ROLE_CYCLE.length];
 }
 
 function slotLabel(s: AvailabilitySlot): string {
@@ -119,18 +131,18 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
     });
   }
 
-  function cycleShiftRole(shift: keyof ShiftRoles) {
+  function cyclePhaseRole(phaseId: PhaseId) {
     onChange({
       ...member,
-      shiftRoles: { ...member.shiftRoles, [shift]: nextShiftRole(member.shiftRoles[shift]) },
+      phaseRoles: { ...member.phaseRoles, [phaseId]: nextPhaseRole(member.phaseRoles[phaseId]) },
     });
   }
 
-  // Build a compact summary of non-N/A shift roles for the collapsed header
-  const shiftRoleSummary = SHIFT_KEYS
-    .filter((s) => member.shiftRoles[s] !== 'N/A')
-    .map((s) => `${s === 'Full Day' ? 'FD' : s}: ${shiftRoleLabel(member.shiftRoles[s])}`)
-    .join(' · ');
+  // Compact summary of non-N/A phase roles
+  const uniqueRoles = [...new Set(
+    PHASE_CONFIG.map(p => member.phaseRoles[p.id]).filter(r => r !== 'N/A')
+  )];
+  const phaseRoleSummary = uniqueRoles.length > 0 ? uniqueRoles.join(', ') : 'No phases';
 
   return (
     <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
@@ -146,7 +158,7 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
           />
           <span className="font-semibold text-gray-900 truncate">{member.name}</span>
           <span className="text-xs text-ios-gray-500 truncate hidden xs:block">
-            {shiftRoleSummary || 'No shifts'}
+            {phaseRoleSummary}
           </span>
         </div>
         <svg
@@ -181,33 +193,36 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             </button>
           </div>
 
-          {/* Shift Roles grid */}
+          {/* Phase Roles grid */}
           <div>
             <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">
-              Shift Roles — tap to cycle
+              Phase Roles — tap to cycle
             </p>
-            <div className="flex gap-1">
-              {SHIFT_KEYS.map((shift) => {
-                const role = member.shiftRoles[shift];
-                return (
-                  <button
-                    key={shift}
-                    onClick={() => cycleShiftRole(shift)}
-                    className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl min-h-[60px] transition-colors ${shiftRoleColors(role)}`}
-                  >
-                    <span className="text-[9px] font-semibold opacity-70 leading-none">
-                      {shift === 'Full Day' ? 'FD' : shift}
-                    </span>
-                    <span className="text-[11px] font-bold leading-none">{shiftRoleLabel(role)}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Two rows: phases 1–5, then 5-2 through 7 */}
+            {[PHASE_CONFIG.slice(0, 5), PHASE_CONFIG.slice(5)].map((row, rowIdx) => (
+              <div key={rowIdx} className={`flex gap-1 ${rowIdx === 1 ? 'mt-1' : ''}`}>
+                {row.map((phase) => {
+                  const role = member.phaseRoles[phase.id];
+                  return (
+                    <button
+                      key={phase.id}
+                      onClick={() => cyclePhaseRole(phase.id)}
+                      className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-colors ${phaseRoleColors(role)}`}
+                    >
+                      <span className="text-[8px] font-semibold opacity-70 leading-none text-center">
+                        {phase.label}
+                      </span>
+                      <span className="text-[10px] font-bold leading-none">{phaseRoleLabel(role)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
             <div className="flex gap-3 mt-2 flex-wrap">
-              {SHIFT_ROLE_CYCLE.map((r) => (
+              {PHASE_ROLE_CYCLE.map((r) => (
                 <span key={r} className="flex items-center gap-1 text-[10px] text-ios-gray-500">
-                  <span className={`inline-block w-2 h-2 rounded-full ${shiftRoleColors(r).split(' ')[0]}`} />
-                  {r === 'N/A' ? 'N/A = Off' : shiftRoleLabel(r) + ' = ' + r}
+                  <span className={`inline-block w-2 h-2 rounded-full ${phaseRoleColors(r).split(' ')[0]}`} />
+                  {r === 'N/A' ? 'N/A = Skip' : phaseRoleLabel(r) + ' = ' + r}
                 </span>
               ))}
             </div>
@@ -715,7 +730,12 @@ export function SettingsPage() {
     const newMember: TeamMember = {
       id: `member-${Date.now()}`,
       name: 'New Member',
-      shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
+      phaseRoles: {
+        'phase-1': 'Specialist', 'phase-2': 'Specialist', 'phase-3': 'Specialist',
+        'phase-4-1': 'Specialist', 'phase-4-2': 'Specialist',
+        'phase-5-1': 'Specialist', 'phase-5-2': 'Specialist',
+        'phase-6': 'Specialist', 'phase-7': 'Specialist',
+      } as MemberPhaseRoles,
       availability: {
         Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day',
         Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable',

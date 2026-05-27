@@ -1,11 +1,24 @@
-import type { TeamMember, PhaseTemplate, RoleType, ListCategory } from '../types';
+import type { TeamMember, PhaseTemplate, RoleType, MemberPhaseRoles, ListCategory } from '../types';
+
+// Default phase roles for a standard specialist
+const SPECIALIST_PHASES: MemberPhaseRoles = {
+  'phase-1': 'Specialist', 'phase-2': 'Specialist', 'phase-3': 'Specialist',
+  'phase-4-1': 'Specialist', 'phase-4-2': 'Specialist',
+  'phase-5-1': 'Specialist', 'phase-5-2': 'Specialist',
+  'phase-6': 'Specialist', 'phase-7': 'Specialist',
+};
 
 // ─── Team Members ─────────────────────────────────────────────────────────────
 export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'gabe',
     name: 'Gabe',
-    shiftRoles: { AM: 'PM', PM: 'PM', 'Full Day': 'PM' },
+    phaseRoles: {
+      'phase-1': 'PM', 'phase-2': 'PM', 'phase-3': 'PM/Lead',
+      'phase-4-1': 'PM', 'phase-4-2': 'N/A',
+      'phase-5-1': 'PM', 'phase-5-2': 'N/A',
+      'phase-6': 'PM', 'phase-7': 'PM',
+    },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 40,
@@ -14,7 +27,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'reicse',
     name: 'Reicse',
-    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'Specialist' },
+    phaseRoles: { ...SPECIALIST_PHASES },
     availability: { Mon: 'PM', Tue: 'Full Day', Wed: 'PM', Thu: 'Full Day', Fri: 'Unavailable', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 30,
@@ -23,7 +36,12 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'cheryl',
     name: 'Cheryl',
-    shiftRoles: { AM: 'Lead', PM: 'Lead', 'Full Day': 'Lead' },
+    phaseRoles: {
+      'phase-1': 'Lead', 'phase-2': 'Lead', 'phase-3': 'Lead',
+      'phase-4-1': 'N/A', 'phase-4-2': 'Specialist',
+      'phase-5-1': 'N/A', 'phase-5-2': 'Specialist',
+      'phase-6': 'Lead', 'phase-7': 'Lead',
+    },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Unavailable', Fri: 'Unavailable', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 20,
@@ -32,7 +50,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'peyton',
     name: 'Peyton',
-    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
+    phaseRoles: { ...SPECIALIST_PHASES },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 25,
@@ -41,7 +59,12 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'autumn',
     name: 'Autumn',
-    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'N/A' },
+    phaseRoles: {
+      'phase-1': 'N/A', 'phase-2': 'N/A', 'phase-3': 'Specialist',
+      'phase-4-1': 'N/A', 'phase-4-2': 'Specialist',
+      'phase-5-1': 'N/A', 'phase-5-2': 'Specialist',
+      'phase-6': 'Specialist', 'phase-7': 'Specialist',
+    },
     availability: { Mon: 'PM', Tue: 'Unavailable', Wed: 'PM', Thu: 'Unavailable', Fri: 'PM', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 20,
@@ -50,7 +73,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'sofia',
     name: 'Sofia',
-    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
+    phaseRoles: { ...SPECIALIST_PHASES },
     availability: { Mon: 'Full Day', Tue: 'Unavailable', Wed: 'Full Day', Thu: 'Unavailable', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 25,
@@ -59,7 +82,12 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'glen',
     name: 'Glen',
-    shiftRoles: { AM: 'Assist PM', PM: 'Assist PM', 'Full Day': 'Assist PM' },
+    phaseRoles: {
+      'phase-1': 'Specialist', 'phase-2': 'Specialist', 'phase-3': 'Specialist',
+      'phase-4-1': 'Assist PM', 'phase-4-2': 'N/A',
+      'phase-5-1': 'Assist PM', 'phase-5-2': 'N/A',
+      'phase-6': 'Specialist', 'phase-7': 'Specialist',
+    },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -68,7 +96,12 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'tilson',
     name: 'Tilson',
-    shiftRoles: { AM: 'N/A', PM: 'Specialist', 'Full Day': 'N/A' },
+    phaseRoles: {
+      'phase-1': 'N/A', 'phase-2': 'N/A', 'phase-3': 'Specialist',
+      'phase-4-1': 'N/A', 'phase-4-2': 'Specialist',
+      'phase-5-1': 'N/A', 'phase-5-2': 'Specialist',
+      'phase-6': 'Specialist', 'phase-7': 'Specialist',
+    },
     availability: { Mon: 'PM', Tue: 'PM', Wed: 'PM', Thu: 'PM', Fri: 'PM', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -77,7 +110,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'jessica',
     name: 'Jessica',
-    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
+    phaseRoles: { ...SPECIALIST_PHASES },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,
@@ -86,7 +119,7 @@ export const DEFAULT_TEAM_MEMBERS: TeamMember[] = [
   {
     id: 'josh',
     name: 'Josh',
-    shiftRoles: { AM: 'Specialist', PM: 'Specialist', 'Full Day': 'Specialist' },
+    phaseRoles: { ...SPECIALIST_PHASES },
     availability: { Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day', Thu: 'Full Day', Fri: 'Full Day', Sat: 'Unavailable', Sun: 'Unavailable' },
     minHoursPerWeek: 0,
     maxHoursPerWeek: 0,

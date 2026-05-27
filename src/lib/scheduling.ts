@@ -7,6 +7,8 @@ import type {
   TeamHoursSummary,
   SuggestedDates,
   RoleType,
+  PhaseId,
+  MemberPhaseRole,
   TeamMember,
   AvailabilitySlot,
   PhaseTemplate,
@@ -145,39 +147,56 @@ export function generateSchedule(
   const secondVisitDate = addWorkdays(firstVisitDate, 3);
   const finalPackDayDate = addWorkdays(moveDayDate, -1);
 
-  // Fixed-phase hours derived from editable templates
+  // Phase hours derived from editable templates
   const th = (id: string, fallback: number) =>
     phaseTemplates.find((t) => t.id === id)?.hours ?? fallback;
 
   const h1  = th('phase-1',   2.5);
   const h2  = th('phase-2',   4);
+  const h3  = th('phase-3',   4);
   const h41 = th('phase-4-1', 6);
   const h42 = th('phase-4-2', 3);
   const h51 = th('phase-5-1', 8);
   const h52 = th('phase-5-2', 4);
 
-  // Baseline using default team sizes (2 per phase) — matches the spreadsheet formula
-  const FIXED_HOURS = h1 * 2 + h2 * 2 + h41 * 2 + h42 * 1 + h51 * 2 + h52 * 2;
+  // ── Budget-aware phase inclusion ────────────────────────────────────────────
+  // Priority order: Phase 1 (required) → Phase 5-1 (required) → Phase 5-2
+  // → Phase 2 → Phase 4-1 → Sort days (budget-scaled) → Phase 4-2 (last resort)
 
-  // Actual hours using scaled team sizes — used for the 20% cap check
-  const fixedActualHours =
-    h1  * 2 +
-    h2  * 2 +
-    h41 * 2 +
-    h42 * Math.max(1, preMoveSize - 2) +
-    h51 * 2 +
-    h52 * Math.max(1, moveDaySize - 2);
+  // Required: Phase 1 + AM Move Day (always included, 2 people each)
+  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2);
 
-  // Sort hours per day = packSortSize × 4 hrs/person
-  const sortHoursPerDay = packSortSize * 4;
-  let sortDayCount = Math.max(1, Math.ceil((budgetedManHours - FIXED_HOURS) / sortHoursPerDay));
+  // PM Move Day (5-2) — scale team size down if budget is tight
+  const moveDayPMMax = Math.max(1, moveDaySize - 2);
+  const moveDayPMActual = Math.min(moveDayPMMax, Math.max(0, Math.floor(budgetPool / h52)));
+  budgetPool -= moveDayPMActual * h52;
 
-  // Rule: total scheduled hours must not exceed 120% of budget.
-  // Reduce sort days until within cap (minimum 1 sort day).
-  const maxAllowedHours = budgetedManHours * 1.20;
-  while (sortDayCount > 1 && (fixedActualHours + sortDayCount * sortHoursPerDay) > maxAllowedHours) {
-    sortDayCount--;
+  // Second Visit (Phase 2) — include if budget allows
+  const includePhase2 = budgetPool >= h2 * 2;
+  if (includePhase2) budgetPool -= h2 * 2;
+
+  // AM Final Pack (Phase 4-1) — include if budget allows
+  const includePhase41 = budgetPool >= h41 * 2;
+  if (includePhase41) budgetPool -= h41 * 2;
+
+  // Sort days — fill remaining budget, scale team size to fit
+  let sortDayCount = 0;
+  let actualSortTeamSize = 0;
+  if (budgetPool >= h3) {
+    const sortHoursFullDay = packSortSize * h3;
+    sortDayCount = Math.max(1, Math.ceil(budgetPool / sortHoursFullDay));
+    // Scale down team size so total sort hours stay within budget
+    actualSortTeamSize = Math.min(
+      packSortSize,
+      Math.max(1, Math.floor(budgetPool / (sortDayCount * h3)))
+    );
+    budgetPool -= sortDayCount * actualSortTeamSize * h3;
   }
+
+  // PM Final Pack (Phase 4-2) — only if budget remains (lowest priority)
+  const preMoveAMMax = Math.max(1, preMoveSize - 2);
+  const preMoveActual = budgetPool >= h42 ? Math.min(preMoveAMMax, Math.floor(budgetPool / h42)) : 0;
+  const includePhase42 = preMoveActual > 0;
 
   // Sort/pack days: prioritize staff availability over spreading the days out.
   // addWorkdays skips weekends (so weekends stay free) and we advance one workday
@@ -304,26 +323,28 @@ export function generateSchedule(
     }
   }
 
-  // Phase 1 – First Visit
+  // Phase 1 – First Visit (always required)
   addPhaseOnDate('phase-1', firstVisitDate);
 
-  // Phase 2 – Second Visit
-  addPhaseOnDate('phase-2', secondVisitDate);
+  // Phase 2 – Second Visit (if budget allows)
+  if (includePhase2) addPhaseOnDate('phase-2', secondVisitDate);
 
-  // Phase 3 – Sort and Pack (multiple days)
+  // Phase 3 – Sort and Pack (budget-scaled team size)
   for (const sd of sortDates) {
-    addPhaseOnDate('phase-3', sd, packSortSize);
+    addPhaseOnDate('phase-3', sd, actualSortTeamSize > 0 ? actualSortTeamSize : 1);
   }
 
-  // Phase 4.1 & 4.2 – Final Pack Pre-Move (day before move)
-  // AM is FIXED at 2 (PM + Assist PM); PM scales to preMoveSize - 2 specialists
-  addPhaseOnDate('phase-4-1', finalPackDayDate);
-  addPhaseOnDate('phase-4-2', finalPackDayDate, Math.max(1, preMoveSize - 2));
+  // Phase 4-1 – AM Final Pack (if budget allows)
+  if (includePhase41) addPhaseOnDate('phase-4-1', finalPackDayDate);
 
-  // Phase 5.1 & 5.2 – Move Day
-  // AM is FIXED at 2 (PM + Assist PM); PM scales to moveDaySize - 2 specialists
+  // Phase 4-2 – PM Final Pack (last resort — only if budget remains)
+  if (includePhase42) addPhaseOnDate('phase-4-2', finalPackDayDate, preMoveActual);
+
+  // Phase 5-1 – AM Move Day (always required)
   addPhaseOnDate('phase-5-1', moveDayDate);
-  addPhaseOnDate('phase-5-2', moveDayDate, Math.max(1, moveDaySize - 2));
+
+  // Phase 5-2 – PM Move Day (budget-scaled team size)
+  if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
 
   // Phase 6 – Cleanout (if enabled)
   for (const cd of cleanoutDates) {
@@ -430,10 +451,10 @@ export function generateSchedule(
       const qualifyingRoles = getRoleQualifiers(task.role);
 
       const candidates = teamMembers.filter((m) => {
-        // Must have a qualifying shift role for this task's shift type
-        const shiftRole = m.shiftRoles[task.shift];
-        if (shiftRole === 'N/A') return false;
-        if (!qualifyingRoles.includes(shiftRole as RoleType)) return false;
+        // Must have a qualifying phase role for this task's phase
+        const phaseRole: MemberPhaseRole | undefined = m.phaseRoles[task.phaseId as PhaseId];
+        if (!phaseRole || phaseRole === 'N/A') return false;
+        if (!qualifyingRoles.includes(phaseRole as RoleType)) return false;
         return true;
       });
 

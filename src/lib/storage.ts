@@ -41,16 +41,24 @@ export function loadTeamMembers(): TeamMember[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAM);
     if (!raw) return DEFAULT_TEAM_MEMBERS;
-    const parsed = JSON.parse(raw) as (TeamMember & { roles?: string[] })[];
+    const ALL_PHASE_IDS = ['phase-1','phase-2','phase-3','phase-4-1','phase-4-2','phase-5-1','phase-5-2','phase-6','phase-7'] as const;
+    type AnyMember = TeamMember & { roles?: string[]; shiftRoles?: Record<string, string> };
+    const parsed = JSON.parse(raw) as AnyMember[];
     return parsed.map((m) => {
       // Backfill minHoursPerWeek for records saved before this field existed
-      let member: TeamMember = { ...m as TeamMember, minHoursPerWeek: m.minHoursPerWeek ?? 0 };
-      // Migrate roles → shiftRoles for records saved before shiftRoles was introduced
-      if (!member.shiftRoles) {
-        const primaryRole = (m.roles && m.roles.length > 0) ? m.roles[0] : 'Specialist';
-        member = { ...member, shiftRoles: { AM: primaryRole as TeamMember['shiftRoles']['AM'], PM: primaryRole as TeamMember['shiftRoles']['PM'], 'Full Day': primaryRole as TeamMember['shiftRoles']['Full Day'] } };
+      let member: AnyMember = { ...m, minHoursPerWeek: m.minHoursPerWeek ?? 0 };
+      // Migrate to phaseRoles if missing (from shiftRoles or old roles[])
+      if (!member.phaseRoles) {
+        let primary = 'Specialist';
+        if (m.shiftRoles) {
+          primary = m.shiftRoles['Full Day'] ?? m.shiftRoles['AM'] ?? 'Specialist';
+        } else if (m.roles && m.roles.length > 0) {
+          primary = m.roles[0];
+        }
+        const phaseRoles = Object.fromEntries(ALL_PHASE_IDS.map(id => [id, primary])) as TeamMember['phaseRoles'];
+        member = { ...member, phaseRoles };
       }
-      return member;
+      return member as TeamMember;
     });
   } catch {
     return DEFAULT_TEAM_MEMBERS;

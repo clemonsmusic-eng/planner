@@ -4,7 +4,9 @@ import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { ProjectInputs, DateOverride, FlexibilityLevel, DensityLevel, TimePreference, MoveType } from '../types';
+import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
+
+const CLEANOUT_TYPES = ['Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
 
 // Chevron icon used in project picker
 function ChevronDownIcon() {
@@ -321,13 +323,6 @@ export function InputFormPage() {
               className={inputClass()}
             />
           </FormField>
-          <FormField label="Density Level" hint="Describes how packed / full the home is">
-            <SelectField
-              value={inputs.densityLevel}
-              onChange={(v) => update('densityLevel', v as DensityLevel)}
-              options={state.lists.find(l => l.id === 'density')?.items ?? ['Light', 'Moderate', 'Heavy']}
-            />
-          </FormField>
         </Card>
 
         {/* Section: Budget & Preferences */}
@@ -415,16 +410,26 @@ export function InputFormPage() {
             {inputs.cleanout.enabled && (
               <div className="space-y-3 pl-2 border-l-2 border-indigo-200">
                 <FormField label="Cleanout Type">
-                  <input
-                    type="text"
-                    value={inputs.cleanout.type}
-                    onChange={(e) =>
-                      update('cleanout', { ...inputs.cleanout, type: e.target.value })
-                    }
-                    placeholder="e.g. Full cleanout, Partial..."
-                    className={inputClass()}
+                  <SelectField
+                    value={inputs.cleanout.type || ''}
+                    onChange={(v) => {
+                      const isAuction = v === 'Full - Auction';
+                      setInputs((prev) => prev ? {
+                        ...prev,
+                        cleanout: { ...prev.cleanout, type: v },
+                        auction: isAuction ? { enabled: true } : prev.auction,
+                      } : prev);
+                      setSaved(false);
+                    }}
+                    options={[...CLEANOUT_TYPES]}
+                    placeholder="Select type…"
                   />
                 </FormField>
+                {inputs.cleanout.type === 'Full - Auction' && (
+                  <p className="text-xs text-indigo-600 font-medium">
+                    Auction scheduling will be automatically added.
+                  </p>
+                )}
                 <FormField label="Start Date" hint="Leave blank to auto-calculate (2 workdays after move)">
                   <input
                     type="date"
