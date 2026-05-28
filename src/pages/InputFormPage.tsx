@@ -86,6 +86,12 @@ export function InputFormPage() {
     }, 50);
   }
 
+  function handleStatusChange(newStatus: 'draft' | 'active' | 'archived') {
+    if (!activeProject || !inputs) return;
+    update('status', newStatus);
+    dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, inputs: { ...inputs, status: newStatus } });
+  }
+
   function addDateOverride() {
     if (!inputs) return;
     const override: DateOverride = {
@@ -170,6 +176,22 @@ export function InputFormPage() {
               </div>
             )}
           </div>
+          {/* Status dropdown */}
+          <select
+            value={inputs.status ?? 'active'}
+            onChange={(e) => handleStatusChange(e.target.value as 'draft' | 'active' | 'archived')}
+            className={`flex-shrink-0 text-xs font-semibold px-2 py-1.5 rounded-full border border-transparent appearance-none cursor-pointer min-h-[36px] ${
+              (inputs.status ?? 'active') === 'draft'
+                ? 'bg-amber-100 text-amber-700'
+                : (inputs.status ?? 'active') === 'archived'
+                ? 'bg-gray-200 text-gray-500'
+                : 'bg-green-100 text-green-700'
+            }`}
+          >
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
           {/* Save button */}
           <button
             onClick={handleSaveAndGenerate}
@@ -230,23 +252,6 @@ export function InputFormPage() {
               onChange={(v) => update('moveType', v as MoveType)}
               options={state.lists.find(l => l.id === 'move-types')?.items ?? []}
             />
-          </FormField>
-          <FormField label="Project Status">
-            <div className="flex rounded-xl overflow-hidden border border-ios-gray-300">
-              {(['draft', 'active', 'archived'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => update('status', s)}
-                  className={`flex-1 py-2.5 text-sm font-semibold capitalize min-h-[44px] transition-colors ${
-                    inputs.status === s
-                      ? s === 'archived' ? 'bg-ios-gray-500 text-white' : s === 'draft' ? 'bg-amber-500 text-white' : 'bg-green-600 text-white'
-                      : 'bg-white text-ios-gray-600'
-                  }`}
-                >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
           </FormField>
         </Card>
 
