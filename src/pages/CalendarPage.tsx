@@ -31,6 +31,7 @@ interface CalendarJob {
   memberIds: string[];
   memberNames: string[];
   hours: number;
+  isArchived: boolean;
 }
 
 // ─── Project Color Palette ────────────────────────────────────────────────────
@@ -62,6 +63,7 @@ function buildJobs(projects: Project[]): CalendarJob[] {
 
   for (const project of projects) {
     if (!project.schedule) continue;
+    const isArchived = project.inputs.status === 'archived';
 
     for (const day of project.schedule.days) {
       const groups = new Map<string, CalendarJob>();
@@ -79,6 +81,7 @@ function buildJobs(projects: Project[]): CalendarJob[] {
             memberIds: [],
             memberNames: [],
             hours: entry.hours,
+            isArchived,
           });
         }
         const job = groups.get(key)!;
@@ -123,7 +126,9 @@ function JobCard({
   job: CalendarJob;
   colorIdx: number;
 }) {
-  const c = PROJECT_COLORS[colorIdx % PROJECT_COLORS.length];
+  const c = job.isArchived
+    ? { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
+    : PROJECT_COLORS[colorIdx % PROJECT_COLORS.length];
   const shiftLabel = job.shift === 'Full Day' ? 'Full' : job.shift;
 
   return (
@@ -131,9 +136,9 @@ function JobCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
-          <p className="text-xs text-gray-700 truncate mt-0.5">{job.projectName}</p>
+          <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{job.projectName}</p>
           {job.memberNames.length > 0 && (
-            <p className="text-[11px] text-ios-gray-600 truncate mt-0.5">
+            <p className={`text-[11px] truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>
               {job.memberNames.join(', ')}
             </p>
           )}
@@ -243,8 +248,9 @@ function WeekView({
               {/* Project-colored dots */}
               <div className="flex gap-0.5 h-3 items-center">
                 {projectIds.slice(0, 4).map((pid) => {
-                  const c = PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length];
-                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />;
+                  const archived = dayJobs.some(j => j.projectId === pid && j.isArchived);
+                  const dotClass = archived ? 'bg-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
+                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
                 })}
               </div>
             </button>
@@ -259,7 +265,9 @@ function WeekView({
           return (
             <div key={day.toISOString()} className="min-h-[120px] p-1 space-y-1">
               {dayJobs.slice(0, 4).map((j, i) => {
-                const c = PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
+                const c = j.isArchived
+                  ? { bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-gray-400' }
+                  : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
                 return (
                   <div key={i} className={`rounded px-1 py-0.5 border ${c.bg} ${c.border}`}>
                     <p className={`text-[9px] font-semibold leading-tight truncate ${c.text}`}>
@@ -339,8 +347,9 @@ function MonthView({
               </span>
               <div className="flex gap-0.5 h-2 items-center">
                 {projectIds.slice(0, 3).map((pid) => {
-                  const c = PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length];
-                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />;
+                  const archived = dayJobs.some(j => j.projectId === pid && j.isArchived);
+                  const dotClass = archived ? 'bg-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
+                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
                 })}
               </div>
             </button>
@@ -356,7 +365,7 @@ function MonthView({
 interface FilterSheetProps {
   show: boolean;
   onClose: () => void;
-  projects: { id: string; name: string; colorIdx: number }[];
+  projects: { id: string; name: string; colorIdx: number; isArchived: boolean }[];
   members: { id: string; name: string }[];
   memberFilter: string | null;
   projectFilter: string | null;
@@ -423,7 +432,9 @@ function FilterSheet({
               <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">Project</p>
               <div className="space-y-1">
                 {projects.map((p) => {
-                  const c = PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
+                  const c = p.isArchived
+                    ? { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' }
+                    : PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
                   const active = projectFilter === p.id;
                   return (
                     <button
@@ -493,6 +504,7 @@ export function CalendarPage() {
           id: p.id,
           name: p.inputs.clientName || p.inputs.projectName || 'Untitled',
           colorIdx: colorMap.get(p.id) ?? 0,
+          isArchived: p.inputs.status === 'archived',
         })),
     [state.projects, colorMap]
   );
@@ -603,10 +615,10 @@ export function CalendarPage() {
         {projectOptions.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             {projectOptions.map((p) => {
-              const c = PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
+              const dotClass = p.isArchived ? 'bg-gray-400' : PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length].dot;
               return (
-                <span key={p.id} className="flex items-center gap-1 text-[10px] text-ios-gray-600">
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.dot}`} />
+                <span key={p.id} className={`flex items-center gap-1 text-[10px] ${p.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
                   {p.name}
                 </span>
               );

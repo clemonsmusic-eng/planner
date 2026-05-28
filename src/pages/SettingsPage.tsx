@@ -413,6 +413,23 @@ function HoursSelect({ value, onChange }: { value: number; onChange: (v: number)
   );
 }
 
+// Team size options: 0–10
+const TEAM_SIZE_OPTIONS = Array.from({ length: 11 }, (_, i) => i);
+
+function TeamSizeSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(parseInt(e.target.value))}
+      className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white appearance-none"
+    >
+      {TEAM_SIZE_OPTIONS.map((n) => (
+        <option key={n} value={n}>{n}</option>
+      ))}
+    </select>
+  );
+}
+
 // ─── Phase Template Card ──────────────────────────────────────────────────────
 
 function PhaseTemplateCard({
@@ -449,23 +466,9 @@ function PhaseTemplateCard({
           Team Size
         </label>
         <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={template.minTeamSize}
-            onChange={(e) => onChange({ ...template, minTeamSize: parseInt(e.target.value) || template.minTeamSize })}
-            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
-          />
+          <TeamSizeSelect value={template.minTeamSize} onChange={(v) => onChange({ ...template, minTeamSize: v })} />
           <span className="text-xs text-ios-gray-400 flex-shrink-0">to</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={template.maxTeamSize}
-            onChange={(e) => onChange({ ...template, maxTeamSize: parseInt(e.target.value) || template.maxTeamSize })}
-            className="flex-1 min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1 text-sm text-center bg-white"
-          />
+          <TeamSizeSelect value={template.maxTeamSize} onChange={(v) => onChange({ ...template, maxTeamSize: v })} />
         </div>
       </div>
       <div className="flex flex-wrap gap-1 mt-2">

@@ -74,6 +74,13 @@ function resolveShift(
   return clientPref;
 }
 
+/** Advance a date to the next Friday (5) or Saturday (6). */
+function nextFriOrSat(date: Date): Date {
+  const d = new Date(date);
+  while (d.getDay() !== 5 && d.getDay() !== 6) d.setDate(d.getDate() + 1);
+  return d;
+}
+
 // ─── Main Scheduling Function ─────────────────────────────────────────────────
 
 // memberId → dateStr → shift already committed in a prior project
@@ -248,7 +255,7 @@ export function generateSchedule(
       return d;
     })();
     auctionStart = toISODate(auctionStartDate);
-    auctionPickup = toISODate(addDays(auctionStartDate, 10));
+    auctionPickup = toISODate(nextFriOrSat(addDays(auctionStartDate, 10)));
   }
 
   const suggestedDates: SuggestedDates = {
@@ -364,17 +371,26 @@ export function generateSchedule(
     addPhaseOnDate('phase-7', parseISO(auctionPickup));
   }
 
+  // Ensure move-day tasks are assigned before cleanout/pickup regardless of date
+  const PHASE_PRIORITY: Record<string, number> = {
+    'phase-1': 0, 'phase-2': 1, 'phase-3': 2,
+    'phase-4-1': 3, 'phase-4-2': 4,
+    'phase-5-1': 5, 'phase-5-2': 6,
+    'phase-6': 7, 'phase-7': 8,
+  };
+  tasks.sort((a, b) => (PHASE_PRIORITY[a.phaseId] ?? 5) - (PHASE_PRIORITY[b.phaseId] ?? 5));
+
   // ── 5. Assign team members ────────────────────────────────────────────────────
 
-  // Track bookings: memberId → Set<dateStr>
-  const bookings: Record<string, Set<string>> = {};
+  // Track bookings: memberId → dateStr → Set<shift> (allows AM+PM on same day)
+  const bookings: Record<string, Record<string, Set<'AM' | 'PM' | 'Full Day'>>> = {};
   // Track weekly hours: memberId → weekKey → hours
   const weeklyHours: Record<string, Record<string, number>> = {};
   // Track locked assignments: 'PM' | 'Assist PM' → memberId
   const lockedRoles: Record<string, string> = {};
 
   function initMember(id: string) {
-    if (!bookings[id]) bookings[id] = new Set();
+    if (!bookings[id]) bookings[id] = {};
     if (!weeklyHours[id]) weeklyHours[id] = {};
   }
 
@@ -387,13 +403,18 @@ export function generateSchedule(
     weeklyHours[memberId][weekKey] = (weeklyHours[memberId][weekKey] ?? 0) + hours;
   }
 
-  function isBooked(memberId: string, dateStr: string): boolean {
-    return bookings[memberId]?.has(dateStr) ?? false;
+  function isShiftConflict(memberId: string, dateStr: string, shift: 'AM' | 'PM' | 'Full Day'): boolean {
+    const dayShifts = bookings[memberId]?.[dateStr];
+    if (!dayShifts || dayShifts.size === 0) return false;
+    if (dayShifts.has('Full Day')) return true;
+    if (shift === 'Full Day') return dayShifts.size > 0;
+    return dayShifts.has(shift);
   }
 
-  function book(memberId: string, dateStr: string, weekKey: string, hours: number) {
+  function book(memberId: string, dateStr: string, weekKey: string, hours: number, shift: 'AM' | 'PM' | 'Full Day') {
     initMember(memberId);
-    bookings[memberId].add(dateStr);
+    if (!bookings[memberId][dateStr]) bookings[memberId][dateStr] = new Set();
+    bookings[memberId][dateStr].add(shift);
     addWeekHours(memberId, weekKey, hours);
   }
 
@@ -425,7 +446,7 @@ export function generateSchedule(
 
     for (const member of sorted) {
       if (!isMemberAvailableForShift(member, date, shift, overrideShift)) continue;
-      if (isBooked(member.id, dateStr)) continue;
+      if (isShiftConflict(member.id, dateStr, shift)) continue;
       if (isExternallyBlocked(member.id, dateStr, shift)) continue;
 
       const wkHours = getWeekHours(member.id, weekKey);
@@ -468,8 +489,9 @@ export function generateSchedule(
         } else if (!isMemberAvailableForShift(member, date, task.shift, overrideShift)) {
           warnings.push(`${member.name} shift conflict`);
           status = 'conflict';
-        } else if (isBooked(lockedId, task.date)) {
-          warnings.push(`${member.name} already booked`);
+        } else if (isShiftConflict(lockedId, task.date, task.shift)) {
+          warnings.push(`${member.name} already booked for this shift`);
+          status = 'conflict';
         } else if (isExternallyBlocked(lockedId, task.date, task.shift)) {
           warnings.push(`${member.name} booked on another project`);
           status = 'conflict';
@@ -487,8 +509,8 @@ export function generateSchedule(
 
         assignedMemberId = lockedId;
         assignedMemberName = member.name;
-        if (!isBooked(lockedId, task.date)) {
-          book(lockedId, task.date, weekKey, task.hours);
+        if (!isShiftConflict(lockedId, task.date, task.shift)) {
+          book(lockedId, task.date, weekKey, task.hours, task.shift);
         } else {
           addWeekHours(lockedId, weekKey, task.hours);
         }
@@ -538,8 +560,8 @@ export function generateSchedule(
           status = 'assigned';
         }
 
-        if (!isBooked(assignedMemberId, task.date)) {
-          book(assignedMemberId, task.date, weekKey, task.hours);
+        if (!isShiftConflict(assignedMemberId, task.date, effectiveShift)) {
+          book(assignedMemberId, task.date, weekKey, task.hours, effectiveShift);
         } else {
           addWeekHours(assignedMemberId, weekKey, task.hours);
         }
