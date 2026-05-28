@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../store/AppContext';
 import type { TabName } from '../types';
 
-const tabs: { id: TabName; label: string; icon: React.ReactNode }[] = [
+const primaryTabs: { id: TabName; label: string; icon: React.ReactNode }[] = [
   {
     id: 'inputs',
     label: 'Inputs',
@@ -33,6 +33,27 @@ const tabs: { id: TabName; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
+const secondaryTabs: { id: TabName; label: string; icon: React.ReactNode }[] = [
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+        <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm-1.5 8.25v6.75a.75.75 0 00.75.75h10.5a.75.75 0 00.75-.75V10.5H5.25zM9 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H9zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75zM12 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H12zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H12a.75.75 0 01-.75-.75zM15 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H15zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H15a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+        <path fillRule="evenodd" d="M11.078 2.25c-.917 0-1.699.663-1.85 1.567L9.05 4.889c-.02.12-.115.26-.297.348a7.493 7.493 0 00-.986.57c-.166.115-.334.126-.45.083L6.3 5.508a1.875 1.875 0 00-2.282.819l-.922 1.597a1.875 1.875 0 00.432 2.385l.84.692c.095.078.17.229.154.43a7.598 7.598 0 000 1.139c.015.2-.059.352-.153.43l-.841.692a1.875 1.875 0 00-.432 2.385l.922 1.597a1.875 1.875 0 002.282.818l1.019-.382c.115-.043.283-.031.45.082.312.214.641.405.985.57.182.088.277.228.297.35l.178 1.071c.151.904.933 1.567 1.85 1.567h1.844c.916 0 1.699-.663 1.85-1.567l.178-1.072c.02-.12.114-.26.297-.349.344-.165.673-.356.985-.57.167-.114.335-.125.45-.082l1.02.382a1.875 1.875 0 002.28-.819l.923-1.597a1.875 1.875 0 00-.432-2.385l-.84-.692c-.095-.078-.17-.229-.154-.43a7.614 7.614 0 000-1.139c-.016-.2.059-.352.153-.43l.84-.692c.708-.582.891-1.59.433-2.385l-.922-1.597a1.875 1.875 0 00-2.282-.818l-1.02.382c-.114.043-.282.031-.449-.083a7.49 7.49 0 00-.985-.57c-.183-.087-.277-.227-.297-.348l-.179-1.072a1.875 1.875 0 00-1.85-1.567h-1.843zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+];
+
 export function Navigation() {
   const { state, dispatch } = useApp();
 
@@ -41,15 +62,36 @@ export function Navigation() {
       className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ios-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex">
-        {tabs.map((tab) => {
+      <div className="flex items-stretch">
+        {/* Primary tabs: Inputs / Plan / Schedule */}
+        {primaryTabs.map((tab) => {
           const isActive = state.activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: tab.id })}
               className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors ${
-                isActive ? 'text-indigo-600' : 'text-ios-gray-600'
+                isActive ? 'text-teal-600' : 'text-ios-gray-600'
+              }`}
+            >
+              {tab.icon}
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
+
+        {/* Separator */}
+        <div className="w-px bg-ios-gray-200 self-stretch my-2" />
+
+        {/* Secondary tabs: Calendar / Settings */}
+        {secondaryTabs.map((tab) => {
+          const isActive = state.activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: tab.id })}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors ${
+                isActive ? 'text-teal-600' : 'text-ios-gray-600'
               }`}
             >
               {tab.icon}

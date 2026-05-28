@@ -20,7 +20,12 @@ export function loadProjects(): Project[] {
     if (!raw) return [];
     return (JSON.parse(raw) as Project[]).map(p => ({
       ...p,
-      inputs: { ...p.inputs, status: p.inputs.status ?? 'active' },
+      inputs: {
+        ...p.inputs,
+        status: p.inputs.status ?? 'active',
+        isLocked: p.inputs.isLocked ?? false,
+        phaseDateMoves: p.inputs.phaseDateMoves ?? [],
+      },
     }));
   } catch {
     return [];

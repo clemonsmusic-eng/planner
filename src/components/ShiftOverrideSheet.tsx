@@ -32,7 +32,7 @@ export function ShiftOverrideSheet({
             <h2 className="text-lg font-bold">Override Shift</h2>
             <p className="text-xs text-ios-gray-500 truncate">{date ? formatDateLabel(date) : ''}</p>
           </div>
-          <button onClick={onClose} className="text-indigo-600 font-semibold flex-shrink-0">Done</button>
+          <button onClick={onClose} className="text-teal-600 font-semibold flex-shrink-0">Done</button>
         </div>
         <div className="overflow-y-auto divide-y divide-ios-gray-100">
           {OPTIONS.map((opt) => {
@@ -47,13 +47,13 @@ export function ShiftOverrideSheet({
                 className="w-full flex items-center justify-between px-4 py-3.5 min-h-[56px] active:bg-ios-gray-50"
               >
                 <div className="text-left">
-                  <span className={`text-base ${active ? 'text-indigo-600 font-semibold' : 'text-gray-900'}`}>
+                  <span className={`text-base ${active ? 'text-teal-600 font-semibold' : 'text-teal-900'}`}>
                     {opt.label}
                   </span>
                   <p className="text-xs text-ios-gray-500">{opt.desc}</p>
                 </div>
                 {active && (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-indigo-600 flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-teal-600 flex-shrink-0">
                     <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
                   </svg>
                 )}

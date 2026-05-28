@@ -18,7 +18,7 @@ function ChevronDownIcon() {
 }
 
 function inputClass(hasError?: boolean) {
-  return `w-full min-h-[44px] rounded-xl border ${hasError ? 'border-red-400' : 'border-ios-gray-300'} bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500`;
+  return `w-full min-h-[44px] rounded-xl border ${hasError ? 'border-red-400' : 'border-ios-gray-300'} bg-white px-3 py-2 text-base text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500`;
 }
 
 interface SectionHeaderProps {
@@ -29,8 +29,8 @@ interface SectionHeaderProps {
 function SectionHeader({ title, icon }: SectionHeaderProps) {
   return (
     <div className="flex items-center gap-2 mt-6 mb-2">
-      <span className="text-indigo-600">{icon}</span>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600">{title}</h2>
+      <span className="text-teal-600">{icon}</span>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-teal-600">{title}</h2>
     </div>
   );
 }
@@ -52,18 +52,18 @@ export function InputFormPage() {
   if (!activeProject || !inputs) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-400">
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-teal-400">
             <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
           </svg>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">No Project Selected</h2>
+          <h2 className="text-xl font-bold text-teal-900 mb-1">No Project Selected</h2>
           <p className="text-ios-gray-600 text-sm">Go to Projects tab and select or create a project.</p>
         </div>
         <button
           onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' })}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80"
         >
           Go to Projects
         </button>
@@ -136,7 +136,7 @@ export function InputFormPage() {
               className="flex items-center gap-1 min-w-0 max-w-full"
             >
               <div className="min-w-0">
-                <h1 className="text-xl font-bold text-gray-900 leading-tight truncate text-left">
+                <h1 className="text-xl font-bold text-teal-900 leading-tight truncate text-left">
                   {inputs.clientName || 'New Project'}
                 </h1>
                 {inputs.clientName && (
@@ -157,11 +157,11 @@ export function InputFormPage() {
                         dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
                         setPickerOpen(false);
                       }}
-                      className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-indigo-50' : 'active:bg-ios-gray-50'}`}
+                      className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-teal-50' : 'active:bg-ios-gray-50'}`}
                     >
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-teal-600' : 'bg-ios-gray-300'}`} />
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-teal-700' : 'text-teal-900'}`}>
                           {p.inputs.clientName || 'Untitled'}
                         </p>
                         <p className="text-xs text-ios-gray-500 truncate">{p.inputs.community}</p>
@@ -200,7 +200,7 @@ export function InputFormPage() {
               isFormComplete
                 ? saved
                   ? 'bg-green-100 text-green-800'
-                  : 'bg-indigo-600 text-white active:opacity-80'
+                  : 'bg-teal-600 text-white active:opacity-80'
                 : 'bg-ios-gray-100 text-ios-gray-500'
             }`}
           >
@@ -359,8 +359,8 @@ export function InputFormPage() {
                   onClick={() => update('clientTimePreference', pref)}
                   className={`flex-1 font-semibold text-sm transition-colors ${
                     inputs.clientTimePreference === pref
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-700'
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-white text-teal-700'
                   }`}
                 >
                   {pref}
@@ -393,7 +393,7 @@ export function InputFormPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between min-h-[44px]">
               <div>
-                <p className="font-medium text-gray-900">Cleanout</p>
+                <p className="font-medium text-teal-900">Cleanout</p>
                 <p className="text-xs text-ios-gray-600">Post-move cleanout service</p>
               </div>
               <button
@@ -401,7 +401,7 @@ export function InputFormPage() {
                   update('cleanout', { ...inputs.cleanout, enabled: !inputs.cleanout.enabled })
                 }
                 className={`relative w-12 h-7 rounded-full transition-colors ${
-                  inputs.cleanout.enabled ? 'bg-indigo-600' : 'bg-ios-gray-300'
+                  inputs.cleanout.enabled ? 'bg-teal-600' : 'bg-ios-gray-300'
                 }`}
               >
                 <span
@@ -413,7 +413,7 @@ export function InputFormPage() {
             </div>
 
             {inputs.cleanout.enabled && (
-              <div className="space-y-3 pl-2 border-l-2 border-indigo-200">
+              <div className="space-y-3 pl-2 border-l-2 border-teal-200">
                 <FormField label="Cleanout Type">
                   <SelectField
                     value={inputs.cleanout.type || ''}
@@ -431,7 +431,7 @@ export function InputFormPage() {
                   />
                 </FormField>
                 {inputs.cleanout.type === 'Full - Auction' && (
-                  <p className="text-xs text-indigo-600 font-medium">
+                  <p className="text-xs text-teal-600 font-medium">
                     Auction scheduling will be automatically added.
                   </p>
                 )}
@@ -473,7 +473,7 @@ export function InputFormPage() {
                   type="date"
                   value={override.date}
                   onChange={(e) => updateOverride(override.id, 'date', e.target.value)}
-                  className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
                 <SelectField
                   value={override.shift}
@@ -488,7 +488,7 @@ export function InputFormPage() {
                   value={override.reason}
                   onChange={(e) => updateOverride(override.id, 'reason', e.target.value)}
                   placeholder="Reason (optional)"
-                  className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
                 <button
                   onClick={() => removeOverride(override.id)}
@@ -520,7 +520,7 @@ export function InputFormPage() {
             disabled={!isFormComplete}
             className={`w-full py-4 rounded-2xl font-bold text-base min-h-[56px] transition-colors ${
               isFormComplete
-                ? 'bg-indigo-600 text-white active:opacity-80'
+                ? 'bg-teal-600 text-white active:opacity-80'
                 : 'bg-ios-gray-200 text-ios-gray-500'
             }`}
           >

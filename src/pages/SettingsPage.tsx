@@ -45,23 +45,23 @@ function phaseRoleCellDisplay(r: MemberPhaseRole): string {
 
 function phaseRoleCellColor(r: MemberPhaseRole): string {
   if (r === 'N/A' || r.length === 0) return 'bg-ios-gray-200 text-ios-gray-400';
-  if (r.length > 1) return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+  if (r.length > 1) return 'bg-teal-100 text-teal-800 border border-teal-300';
   const single = r[0];
-  if (single === 'PM') return 'bg-indigo-600 text-white';
+  if (single === 'PM') return 'bg-teal-600 text-white';
   if (single === 'Assist PM') return 'bg-purple-500 text-white';
   if (single === 'Lead') return 'bg-sky-500 text-white';
-  if (single === 'PM/Lead') return 'bg-indigo-400 text-white';
+  if (single === 'PM/Lead') return 'bg-teal-400 text-white';
   if (single === 'Specialist') return 'bg-green-500 text-white';
   if (single === 'Mover') return 'bg-amber-500 text-white';
   return 'bg-ios-gray-200 text-ios-gray-400';
 }
 
 function roleButtonColors(role: RoleType, selected: boolean): string {
-  if (!selected) return 'bg-white text-gray-700 border border-ios-gray-300';
-  if (role === 'PM') return 'bg-indigo-600 text-white border-indigo-600';
+  if (!selected) return 'bg-white text-teal-700 border border-ios-gray-300';
+  if (role === 'PM') return 'bg-teal-600 text-white border-teal-600';
   if (role === 'Assist PM') return 'bg-purple-500 text-white border-purple-500';
   if (role === 'Lead') return 'bg-sky-500 text-white border-sky-500';
-  if (role === 'PM/Lead') return 'bg-indigo-400 text-white border-indigo-400';
+  if (role === 'PM/Lead') return 'bg-teal-400 text-white border-teal-400';
   if (role === 'Specialist') return 'bg-green-500 text-white border-green-500';
   if (role === 'Mover') return 'bg-amber-500 text-white border-amber-500';
   return 'bg-ios-gray-400 text-white border-ios-gray-400';
@@ -75,7 +75,7 @@ function slotLabel(s: AvailabilitySlot): string {
 }
 
 function slotColors(s: AvailabilitySlot): string {
-  if (s === 'Full Day') return 'bg-indigo-500 text-white';
+  if (s === 'Full Day') return 'bg-teal-500 text-white';
   if (s === 'AM') return 'bg-sky-400 text-white';
   if (s === 'PM') return 'bg-amber-400 text-white';
   return 'bg-ios-gray-200 text-ios-gray-400';
@@ -107,7 +107,7 @@ function AccordionSection({
         className="w-full flex items-center justify-between px-4 py-4 min-h-[56px]"
       >
         <div className="text-left">
-          <p className="font-bold text-gray-900">{title}</p>
+          <p className="font-bold text-teal-900">{title}</p>
           {subtitle && <p className="text-xs text-ios-gray-500 mt-0.5">{subtitle}</p>}
         </div>
         <svg
@@ -155,10 +155,10 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
         <div className="flex items-center gap-3 min-w-0">
           <div
             className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              member.isPriority ? 'bg-indigo-500' : 'bg-ios-gray-300'
+              member.isPriority ? 'bg-teal-500' : 'bg-ios-gray-300'
             }`}
           />
-          <span className="font-semibold text-gray-900 truncate">{member.name}</span>
+          <span className="font-semibold text-teal-900 truncate">{member.name}</span>
         </div>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -177,14 +177,14 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
             <input
               value={member.name}
               onChange={(e) => onChange({ ...member, name: e.target.value })}
-              className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base font-semibold text-gray-900 bg-white"
+              className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base font-semibold text-teal-900 bg-white"
               placeholder="Name"
             />
             <button
               onClick={() => onChange({ ...member, isPriority: !member.isPriority })}
               className={`px-3 py-2 rounded-xl text-sm font-semibold min-h-[44px] whitespace-nowrap transition-colors ${
                 member.isPriority
-                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                  ? 'bg-teal-100 text-teal-700 border border-teal-200'
                   : 'bg-ios-gray-100 text-ios-gray-600 border border-ios-gray-200'
               }`}
             >
@@ -318,9 +318,9 @@ function MemberPhaseRolesCard({
         className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${member.isPriority ? 'bg-indigo-500' : 'bg-ios-gray-300'}`} />
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${member.isPriority ? 'bg-teal-500' : 'bg-ios-gray-300'}`} />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{member.name}</p>
+            <p className="text-sm font-semibold text-teal-900 truncate">{member.name}</p>
             <p className="text-[11px] text-ios-gray-500 truncate">{summary}</p>
           </div>
         </div>
@@ -344,7 +344,7 @@ function MemberPhaseRolesCard({
                     onClick={() => setActivePhaseId(isActive ? null : phase.id)}
                     className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl min-h-[52px] transition-all
                       ${phaseRoleCellColor(role)}
-                      ${isActive ? 'ring-2 ring-offset-1 ring-indigo-500 scale-95' : ''}`}
+                      ${isActive ? 'ring-2 ring-offset-1 ring-teal-500 scale-95' : ''}`}
                   >
                     <span className="text-[8px] font-semibold opacity-70 leading-none text-center">{phase.label}</span>
                     <span className="text-[10px] font-bold leading-none">{phaseRoleCellDisplay(role)}</span>
@@ -359,8 +359,8 @@ function MemberPhaseRolesCard({
             const current = member.phaseRoles[activePhaseId];
             const activeLabel = PHASE_CONFIG.find(p => p.id === activePhaseId)?.label ?? '';
             return (
-              <div className="mt-2 p-3 bg-white rounded-xl border border-indigo-200 space-y-2">
-                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+              <div className="mt-2 p-3 bg-white rounded-xl border border-teal-200 space-y-2">
+                <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wide">
                   {activeLabel} — tap to toggle
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -444,7 +444,7 @@ function PhaseTemplateCard({
   return (
     <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 px-4 py-3">
       <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-sm font-semibold text-gray-900 flex-1">{template.name}</p>
+        <p className="text-sm font-semibold text-teal-900 flex-1">{template.name}</p>
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-ios-gray-200 text-ios-gray-600 whitespace-nowrap flex-shrink-0">
           {shiftLabel}
         </span>
@@ -473,7 +473,7 @@ function PhaseTemplateCard({
       </div>
       <div className="flex flex-wrap gap-1 mt-2">
         {template.roles.map((r, i) => (
-          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold">
+          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-semibold">
             {r.role}{r.isLocked ? ' 🔒' : ''}
           </span>
         ))}
@@ -547,7 +547,7 @@ function TableListCard({
         className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
       >
         <div className="text-left flex-1 min-w-0">
-          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-sm font-semibold text-teal-900 truncate block">{list.name}</span>
           <span className="text-[11px] text-ios-gray-500">{hint}</span>
         </div>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -661,7 +661,7 @@ function ShiftHoursCard({
         className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
       >
         <div className="text-left flex-1 min-w-0">
-          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-sm font-semibold text-teal-900 truncate block">{list.name}</span>
           <span className="text-[11px] text-ios-gray-500">Hours per shift block — used in sort day calculation</span>
         </div>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
@@ -742,7 +742,7 @@ function ListCategoryCard({
         className="w-full flex items-center justify-between px-4 py-3 min-h-[48px]"
       >
         <div className="text-left flex-1 min-w-0">
-          <span className="text-sm font-semibold text-gray-900 truncate block">{list.name}</span>
+          <span className="text-sm font-semibold text-teal-900 truncate block">{list.name}</span>
           <span className="text-[11px] text-ios-gray-500">{list.items.length} item{list.items.length !== 1 ? 's' : ''}</span>
         </div>
         <svg
@@ -761,14 +761,14 @@ function ListCategoryCard({
           <input
             value={list.name}
             onChange={(e) => onChange({ ...list, name: e.target.value })}
-            className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 bg-white"
+            className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-3 py-2 text-sm font-semibold text-teal-900 bg-white"
             placeholder="List name"
           />
           {/* Items */}
           <div className="space-y-1">
             {list.items.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 min-h-[40px] border border-ios-gray-200">
-                <span className="text-sm text-gray-900 flex-1 py-2">{item}</span>
+                <span className="text-sm text-teal-900 flex-1 py-2">{item}</span>
                 <button
                   onClick={() => removeItem(idx)}
                   className="w-7 h-7 flex items-center justify-center text-ios-gray-400 hover:text-red-500 rounded-lg"
@@ -791,7 +791,7 @@ function ListCategoryCard({
             />
             <button
               onClick={addItem}
-              className="bg-indigo-600 text-white px-3 rounded-xl font-semibold text-sm min-h-[40px]"
+              className="bg-teal-600 text-white px-3 rounded-xl font-semibold text-sm min-h-[40px]"
             >
               Add
             </button>
@@ -903,11 +903,11 @@ export function SettingsPage() {
       >
         <div className="flex items-center gap-2">
           <HamburgerButton />
-          <h1 className="text-xl font-bold text-gray-900 flex-1">Settings</h1>
+          <h1 className="text-xl font-bold text-teal-900 flex-1">Settings</h1>
           {isDirty ? (
             <button
               onClick={save}
-              className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-sm font-semibold min-h-[36px]"
+              className="bg-teal-600 text-white px-4 py-1.5 rounded-xl text-sm font-semibold min-h-[36px]"
             >
               Save
             </button>
@@ -1046,7 +1046,7 @@ export function SettingsPage() {
                 key={`${name}-${i}`}
                 className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
               >
-                <span className="text-sm text-gray-900 flex-1 py-3">{name}</span>
+                <span className="text-sm text-teal-900 flex-1 py-3">{name}</span>
                 <button
                   onClick={() => removeCommunity(i)}
                   className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
@@ -1068,7 +1068,7 @@ export function SettingsPage() {
               />
               <button
                 onClick={addCommunity}
-                className="bg-indigo-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
+                className="bg-teal-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
               >
                 Add
               </button>
@@ -1080,7 +1080,7 @@ export function SettingsPage() {
         {isDirty && (
           <button
             onClick={save}
-            className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold text-base min-h-[56px]"
+            className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-base min-h-[56px]"
           >
             Save All Changes
           </button>

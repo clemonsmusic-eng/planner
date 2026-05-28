@@ -82,14 +82,14 @@ export function HamburgerMenu() {
       <button
         onClick={() => selectProject(project.id)}
         className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
-          isSelected ? 'bg-indigo-50' : 'active:bg-ios-gray-100'
+          isSelected ? 'bg-teal-50' : 'active:bg-ios-gray-100'
         }`}
       >
         {/* Status dot */}
         <div
           className={`w-2 h-2 rounded-full flex-shrink-0 ${
             isSelected
-              ? 'bg-indigo-600'
+              ? 'bg-teal-600'
               : isDraft
               ? 'bg-amber-400'
               : 'bg-ios-gray-300'
@@ -97,7 +97,7 @@ export function HamburgerMenu() {
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className={`text-sm font-semibold truncate ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+            <p className={`text-sm font-semibold truncate ${isSelected ? 'text-teal-700' : 'text-teal-900'}`}>
               {project.inputs.clientName || 'Untitled Project'}
             </p>
             {isDraft && (
@@ -111,7 +111,7 @@ export function HamburgerMenu() {
           )}
         </div>
         {isSelected && (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-indigo-600 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-teal-600 flex-shrink-0">
             <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
           </svg>
         )}
@@ -137,7 +137,7 @@ export function HamburgerMenu() {
         <div className="flex items-center justify-between px-4 py-4 border-b border-ios-gray-200">
           <div>
             <p className="text-[11px] font-semibold text-ios-gray-500 uppercase tracking-wider">Smooth Transitions</p>
-            <h2 className="text-lg font-bold text-gray-900">Move Planner</h2>
+            <h2 className="text-lg font-bold text-teal-900">Move Planner</h2>
           </div>
           <button
             onClick={close}
@@ -155,7 +155,7 @@ export function HamburgerMenu() {
           <div className="px-3 pt-3 pb-1">
             <button
               onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab: 'calendar' }); close(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-gray-900 active:bg-ios-gray-100"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-teal-900 active:bg-ios-gray-100"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ios-gray-500 flex-shrink-0">
                 <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
@@ -251,7 +251,7 @@ export function HamburgerMenu() {
                           key={project.id}
                           onClick={() => selectProject(project.id)}
                           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors opacity-50 ${
-                            isSelected ? 'bg-indigo-50' : 'active:bg-ios-gray-100'
+                            isSelected ? 'bg-teal-50' : 'active:bg-ios-gray-100'
                           }`}
                         >
                           <div className="w-2 h-2 rounded-full flex-shrink-0 bg-ios-gray-400" />
@@ -274,7 +274,7 @@ export function HamburgerMenu() {
             {/* New project button */}
             <button
               onClick={createProject}
-              className="w-full flex items-center gap-3 px-3 py-3 mt-1 rounded-xl text-left text-indigo-600 active:bg-indigo-50"
+              className="w-full flex items-center gap-3 px-3 py-3 mt-1 rounded-xl text-left text-teal-600 active:bg-teal-50"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 flex-shrink-0">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -290,7 +290,7 @@ export function HamburgerMenu() {
           <div className="px-3 pb-4">
             <button
               onClick={goToSettings}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-gray-900 active:bg-ios-gray-100"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-teal-900 active:bg-ios-gray-100"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ios-gray-500 flex-shrink-0">
                 <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.992 6.992 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />

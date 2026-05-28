@@ -16,7 +16,7 @@ function ChevronDownIcon() {
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
 const ROLE_COLORS: Record<string, string> = {
-  PM: 'bg-indigo-100 text-indigo-800',
+  PM: 'bg-teal-100 text-teal-800',
   'Assist PM': 'bg-purple-100 text-purple-800',
   Lead: 'bg-blue-100 text-blue-800',
   Specialist: 'bg-green-100 text-green-800',
@@ -40,19 +40,19 @@ export function SchedulePage() {
   if (!activeProject) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-400">
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-teal-400">
             <path fillRule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0118 9.375v9.375a3 3 0 003-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 00-.673-.05A3 3 0 0015 1.5h-1.5a3 3 0 00-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6zM13.5 3A1.5 1.5 0 0012 4.5h4.5A1.5 1.5 0 0015 3h-1.5z" clipRule="evenodd" />
             <path fillRule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 013 20.625V9.375zm9.586 4.594a.75.75 0 00-1.172-.938l-2.476 3.096-.908-.907a.75.75 0 00-1.06 1.06l1.5 1.5a.75.75 0 001.116-.062l3-3.75z" clipRule="evenodd" />
           </svg>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">No Project Selected</h2>
+          <h2 className="text-xl font-bold text-teal-900 mb-1">No Project Selected</h2>
           <p className="text-ios-gray-600 text-sm">Select a project from the Projects tab first.</p>
         </div>
         <button
           onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' })}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
         >
           Go to Projects
         </button>
@@ -143,7 +143,7 @@ export function SchedulePage() {
                 className="flex items-center gap-1 min-w-0 max-w-full"
               >
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-gray-900 leading-tight text-left">Schedule</h1>
+                  <h1 className="text-xl font-bold text-teal-900 leading-tight text-left">Schedule</h1>
                   <p className="text-xs text-ios-gray-600 truncate text-left">
                     {activeProject.inputs.clientName || 'No project'} · {schedule?.days.length ?? 0} days
                   </p>
@@ -161,11 +161,11 @@ export function SchedulePage() {
                           dispatch({ type: 'SET_ACTIVE_PROJECT', id: p.id });
                           setPickerOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-indigo-50' : 'active:bg-ios-gray-50'}`}
+                        className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-teal-50' : 'active:bg-ios-gray-50'}`}
                       >
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-teal-600' : 'bg-ios-gray-300'}`} />
                         <div className="min-w-0">
-                          <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                          <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-teal-700' : 'text-teal-900'}`}>
                             {p.inputs.clientName || 'Untitled'}
                           </p>
                           <p className="text-xs text-ios-gray-500 truncate">{p.inputs.community}</p>
@@ -182,7 +182,7 @@ export function SchedulePage() {
             </div>
             <button
               onClick={() => generateAndSaveSchedule(activeProject.id)}
-              className="flex-shrink-0 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
             >
               Regenerate
             </button>
@@ -192,7 +192,7 @@ export function SchedulePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilterSheet(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-ios-gray-100 rounded-full text-sm font-medium text-gray-700 min-h-[36px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-ios-gray-100 rounded-full text-sm font-medium text-teal-700 min-h-[36px]"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                 <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
@@ -226,7 +226,7 @@ export function SchedulePage() {
               <p className="text-ios-gray-600 text-sm">No schedule generated yet.</p>
               <button
                 onClick={() => generateAndSaveSchedule(activeProject.id)}
-                className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
+                className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
               >
                 Generate Schedule
               </button>
@@ -308,12 +308,12 @@ function DaySection({
       >
         <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-sm font-bold text-gray-800 truncate">{day.label}</h3>
+            <h3 className="text-sm font-bold text-teal-800 truncate">{day.label}</h3>
             {hasConflict && (
               <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
             )}
             {hasOverride && (
-              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 flex-shrink-0">
                 Override
               </span>
             )}
@@ -346,7 +346,7 @@ function DaySection({
           {groupEntriesByPhase(day.entries).map(({ phaseName, entries: phaseEntries }) => (
             <Card key={phaseName} className="overflow-hidden">
               <div className="px-3 py-2 bg-ios-gray-100 border-b border-ios-gray-200">
-                <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">{phaseName}</p>
+                <p className="text-xs font-bold text-teal-700 uppercase tracking-wide">{phaseName}</p>
               </div>
               <div className="divide-y divide-ios-gray-100">
                 {phaseEntries.map((entry) => (
@@ -381,7 +381,7 @@ function EntryRow({ entry }: { entry: ScheduleEntry }) {
     <div className={`px-3 py-2.5 flex items-start gap-2 ${isConflict ? 'bg-red-50' : isOverMax ? 'bg-yellow-50' : ''}`}>
       <span
         className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 ${
-          ROLE_COLORS[entry.role] ?? 'bg-gray-100 text-gray-700'
+          ROLE_COLORS[entry.role] ?? 'bg-gray-100 text-teal-700'
         }`}
       >
         {entry.role}
@@ -391,7 +391,7 @@ function EntryRow({ entry }: { entry: ScheduleEntry }) {
           {entry.status === 'needs-assignment' ? (
             <span className="text-sm font-semibold text-red-600">NEEDS ASSIGNMENT</span>
           ) : (
-            <span className="text-sm font-medium text-gray-900 truncate">
+            <span className="text-sm font-medium text-teal-900 truncate">
               {entry.assignedMemberName}
             </span>
           )}
@@ -439,7 +439,7 @@ function FilterSheet({
       <div className="relative mt-auto bg-white rounded-t-3xl max-h-[60vh] flex flex-col">
         <div className="px-4 py-4 border-b border-ios-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-bold">Filter Schedule</h2>
-          <button onClick={onClose} className="text-indigo-600 font-semibold">Done</button>
+          <button onClick={onClose} className="text-teal-600 font-semibold">Done</button>
         </div>
         <div className="overflow-y-auto divide-y divide-ios-gray-100">
           <FilterOption
@@ -488,13 +488,13 @@ function FilterOption({
     >
       <span
         className={`text-base ${
-          variant === 'warning' ? 'text-red-600 font-medium' : active ? 'text-indigo-600 font-semibold' : 'text-gray-900'
+          variant === 'warning' ? 'text-red-600 font-medium' : active ? 'text-teal-600 font-semibold' : 'text-teal-900'
         }`}
       >
         {label}
       </span>
       {active && (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-indigo-600">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-teal-600">
           <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
         </svg>
       )}

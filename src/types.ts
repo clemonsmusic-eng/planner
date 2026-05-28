@@ -74,6 +74,13 @@ export interface ListCategory {
 
 // ─── Project Inputs ───────────────────────────────────────────────────────────
 export type MoveType = 'Full Move' | 'Emergency Move' | 'Downsize Only' | 'Cleanout' | 'Pack Only';
+
+export interface PhaseDateMove {
+  id: string;
+  phaseId: string;
+  originalDate: string;
+  newDate: string;
+}
 export type FlexibilityLevel = 'None' | 'Low' | 'Medium' | 'High';
 export type DensityLevel = 'Light' | 'Moderate' | 'Heavy';
 export type TimePreference = 'AM' | 'PM';
@@ -120,6 +127,8 @@ export interface ProjectInputs {
   auction: AuctionOptions;
   // Schedule Overrides
   dateOverrides: DateOverride[];
+  isLocked?: boolean;
+  phaseDateMoves?: PhaseDateMove[];
 }
 
 // ─── Schedule ─────────────────────────────────────────────────────────────────

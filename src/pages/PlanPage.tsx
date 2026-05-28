@@ -27,18 +27,18 @@ export function PlanPage() {
   if (!activeProject) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-400">
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-teal-400">
             <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
           </svg>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">No Project Selected</h2>
+          <h2 className="text-xl font-bold text-teal-900 mb-1">No Project Selected</h2>
           <p className="text-ios-gray-600 text-sm">Select a project from the Projects tab first.</p>
         </div>
         <button
           onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' })}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
         >
           Go to Projects
         </button>
@@ -65,7 +65,7 @@ export function PlanPage() {
                 className="flex items-center gap-1 min-w-0 max-w-full"
               >
                 <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-gray-900 leading-tight truncate text-left">
+                  <h1 className="text-xl font-bold text-teal-900 leading-tight truncate text-left">
                     {activeProject.inputs.clientName || 'Plan'}
                   </h1>
                   {activeProject.inputs.clientName && (
@@ -85,11 +85,11 @@ export function PlanPage() {
                           dispatch({ type: 'SET_ACTIVE_PROJECT', id: p.id });
                           setPickerOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-indigo-50' : 'active:bg-ios-gray-50'}`}
+                        className={`w-full flex items-center gap-2 px-4 py-3 text-left border-b border-ios-gray-100 last:border-0 ${p.id === activeProject?.id ? 'bg-teal-50' : 'active:bg-ios-gray-50'}`}
                       >
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-indigo-600' : 'bg-ios-gray-300'}`} />
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${p.id === activeProject?.id ? 'bg-teal-600' : 'bg-ios-gray-300'}`} />
                         <div className="min-w-0">
-                          <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-indigo-700' : 'text-gray-900'}`}>
+                          <p className={`text-sm font-semibold truncate ${p.id === activeProject?.id ? 'text-teal-700' : 'text-teal-900'}`}>
                             {p.inputs.clientName || 'Untitled'}
                           </p>
                           <p className="text-xs text-ios-gray-500 truncate">{p.inputs.community}</p>
@@ -153,25 +153,25 @@ function NoScheduleState({
 }) {
   return (
     <div className="flex flex-col items-center text-center py-12 gap-4">
-      <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-indigo-400">
+      <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-teal-400">
           <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm.53 5.47a.75.75 0 00-1.06 0l-3 3a.75.75 0 101.06 1.06l1.72-1.72v5.69a.75.75 0 001.5 0v-5.69l1.72 1.72a.75.75 0 101.06-1.06l-3-3z" clipRule="evenodd" />
         </svg>
       </div>
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">No Schedule Yet</h2>
+        <h2 className="text-xl font-bold text-teal-900 mb-1">No Schedule Yet</h2>
         <p className="text-ios-gray-600 text-sm">Complete the project inputs to generate a move plan.</p>
       </div>
       <div className="flex gap-3">
         <button
           onClick={onEdit}
-          className="px-4 py-2.5 border border-indigo-600 text-indigo-600 rounded-xl font-semibold text-sm min-h-[44px]"
+          className="px-4 py-2.5 border border-teal-600 text-teal-600 rounded-xl font-semibold text-sm min-h-[44px]"
         >
           Edit Inputs
         </button>
         <button
           onClick={onGenerate}
-          className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm min-h-[44px]"
+          className="px-4 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm min-h-[44px]"
         >
           Generate Plan
         </button>
@@ -198,7 +198,7 @@ function JobSummaryCard({
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900">Job Summary</h2>
+        <h2 className="font-bold text-teal-900">Job Summary</h2>
         <StatusBadge
           label={schedule.status}
           variant={getScheduleStatusVariant(schedule.status)}
@@ -208,15 +208,15 @@ function JobSummaryCard({
 
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="text-center">
-          <p className="text-2xl font-bold text-gray-900">{schedule.totalScheduledHours}</p>
+          <p className="text-2xl font-bold text-teal-900">{schedule.totalScheduledHours}</p>
           <p className="text-xs text-ios-gray-600">Scheduled</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-gray-900">{budgetedHours}</p>
+          <p className="text-2xl font-bold text-teal-900">{budgetedHours}</p>
           <p className="text-xs text-ios-gray-600">Budget</p>
         </div>
         <div className="text-center">
-          <p className={`text-2xl font-bold ${schedule.remainingHours < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+          <p className={`text-2xl font-bold ${schedule.remainingHours < 0 ? 'text-red-600' : 'text-teal-900'}`}>
             {schedule.remainingHours < 0 ? '-' : '+'}{Math.abs(schedule.remainingHours)}
           </p>
           <p className="text-xs text-ios-gray-600">Remaining</p>
@@ -286,7 +286,7 @@ function SuggestedDatesCard({
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center justify-between min-h-[48px]"
       >
-        <h2 className="font-bold text-gray-900">Suggested Dates</h2>
+        <h2 className="font-bold text-teal-900">Suggested Dates</h2>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
@@ -308,17 +308,17 @@ function SuggestedDatesCard({
               >
                 <div
                   className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                    item.accent ? 'bg-indigo-600' : 'bg-ios-gray-300'
+                    item.accent ? 'bg-teal-600' : 'bg-ios-gray-300'
                   }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${item.accent ? 'text-indigo-700' : 'text-gray-900'}`}>
+                  <p className={`text-sm font-medium ${item.accent ? 'text-teal-700' : 'text-teal-900'}`}>
                     {item.label}
                   </p>
                   <p className="text-xs text-ios-gray-500">{formatDateLabel(item.date)}</p>
                 </div>
                 {override && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 flex-shrink-0">
                     {override.shift}
                   </span>
                 )}
@@ -367,18 +367,18 @@ function MoveDaySnapshotCard({
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900">Move Day Snapshot</h2>
+        <h2 className="font-bold text-teal-900">Move Day Snapshot</h2>
         <span className="text-sm text-ios-gray-600">{moveDate ? formatDateLabel(moveDate) : '—'}</span>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center gap-2 py-1">
-          <span className="text-xs font-semibold text-indigo-600 w-16 flex-shrink-0">PM</span>
-          <span className="text-sm font-medium text-gray-900">{pm}</span>
+          <span className="text-xs font-semibold text-teal-600 w-16 flex-shrink-0">PM</span>
+          <span className="text-sm font-medium text-teal-900">{pm}</span>
         </div>
         <div className="flex items-center gap-2 py-1 border-t border-ios-gray-100">
           <span className="text-xs font-semibold text-purple-600 w-16 flex-shrink-0">Assist PM</span>
-          <span className="text-sm font-medium text-gray-900">{assistPm}</span>
+          <span className="text-sm font-medium text-teal-900">{assistPm}</span>
         </div>
         {specialists.length > 0 && (
           <div className="flex items-start gap-2 py-1 border-t border-ios-gray-100">
@@ -394,7 +394,7 @@ function MoveDaySnapshotCard({
         )}
         <div className="pt-2 border-t border-ios-gray-100">
           <p className="text-sm text-ios-gray-600">
-            Total team: <span className="font-bold text-gray-900">{totalTeamSize}</span> members
+            Total team: <span className="font-bold text-teal-900">{totalTeamSize}</span> members
           </p>
         </div>
       </div>
@@ -412,14 +412,14 @@ function TeamHoursCard({ teamHours }: { teamHours: TeamHoursSummary[] }) {
 
   return (
     <Card className="p-4">
-      <h2 className="font-bold text-gray-900 mb-3">Team Hours</h2>
+      <h2 className="font-bold text-teal-900 mb-3">Team Hours</h2>
       <div className="space-y-3">
         {teamHours
           .sort((a, b) => b.scheduledHours - a.scheduledHours)
           .map((member) => (
             <div key={member.memberId}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-gray-900">{member.memberName}</span>
+                <span className="text-sm font-medium text-teal-900">{member.memberName}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-ios-gray-600">
                     {member.scheduledHours}h
@@ -432,7 +432,7 @@ function TeamHoursCard({ teamHours }: { teamHours: TeamHoursSummary[] }) {
               </div>
               <div className="h-2 bg-ios-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${member.isOverMax ? 'bg-red-500' : 'bg-indigo-500'}`}
+                  className={`h-full rounded-full ${member.isOverMax ? 'bg-red-500' : 'bg-teal-500'}`}
                   style={{ width: `${(member.scheduledHours / maxHours) * 100}%` }}
                 />
               </div>

@@ -38,6 +38,8 @@ function createExampleProject(teamMembers: TeamMember[], lists: ListCategory[] =
     cleanout: { enabled: false, type: '', startDate: '' },
     auction: { enabled: false },
     dateOverrides: [],
+    isLocked: false,
+    phaseDateMoves: [],
   };
   const project: Project = {
     id: crypto.randomUUID(),
@@ -64,7 +66,8 @@ type Action =
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
-  | { type: 'LOAD_STATE'; state: Partial<AppState> };
+  | { type: 'LOAD_STATE'; state: Partial<AppState> }
+  | { type: 'TOGGLE_LOCK'; id: string };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +145,16 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'LOAD_STATE':
       return { ...state, ...action.state };
+
+    case 'TOGGLE_LOCK': {
+      const projects = state.projects.map((p) =>
+        p.id === action.id
+          ? { ...p, inputs: { ...p.inputs, isLocked: !p.inputs.isLocked }, updatedAt: new Date().toISOString() }
+          : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
 
     default:
       return state;

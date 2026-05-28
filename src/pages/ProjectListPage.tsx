@@ -73,7 +73,7 @@ export function ProjectListPage() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+          <h1 className="text-2xl font-bold text-teal-900">Projects</h1>
           <span className="text-sm text-ios-gray-600">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -99,7 +99,7 @@ export function ProjectListPage() {
       {projects.length > 0 && (
         <button
           onClick={handleCreateProject}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+72px)] right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+72px)] right-4 w-14 h-14 bg-teal-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
           aria-label="Create new project"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
@@ -132,7 +132,7 @@ function ProjectCard({
         <div className="flex-1 p-4">
           <div className="flex items-start justify-between gap-2 mb-1">
             <div>
-              <h2 className="font-semibold text-gray-900 text-base leading-tight">
+              <h2 className="font-semibold text-teal-900 text-base leading-tight">
                 {clientName}
               </h2>
               {inputs.projectName && (
@@ -204,18 +204,18 @@ function ProjectCard({
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-indigo-400">
+      <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-teal-400">
           <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.33.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
         </svg>
       </div>
-      <h2 className="text-xl font-bold text-gray-900 mb-2">No Projects Yet</h2>
+      <h2 className="text-xl font-bold text-teal-900 mb-2">No Projects Yet</h2>
       <p className="text-ios-gray-600 mb-6 max-w-xs">
         Create your first move plan project for a Smooth Transitions client.
       </p>
       <button
         onClick={onCreate}
-        className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold text-base active:opacity-80 transition-opacity min-h-[44px]"
+        className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-semibold text-base active:opacity-80 transition-opacity min-h-[44px]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
           <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />

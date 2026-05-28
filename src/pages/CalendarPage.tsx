@@ -37,7 +37,7 @@ interface CalendarJob {
 // ─── Project Color Palette ────────────────────────────────────────────────────
 
 const PROJECT_COLORS = [
-  { bg: 'bg-indigo-100',  text: 'text-indigo-800',  border: 'border-indigo-200',  dot: 'bg-indigo-500'  },
+  { bg: 'bg-teal-100',  text: 'text-teal-800',  border: 'border-teal-200',  dot: 'bg-teal-500'  },
   { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500' },
   { bg: 'bg-rose-100',    text: 'text-rose-800',    border: 'border-rose-200',    dot: 'bg-rose-500'    },
   { bg: 'bg-amber-100',   text: 'text-amber-800',   border: 'border-amber-200',   dot: 'bg-amber-500'   },
@@ -136,7 +136,7 @@ function JobCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
-          <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-gray-700'}`}>{job.projectName}</p>
+          <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-teal-700'}`}>{job.projectName}</p>
           {job.memberNames.length > 0 && (
             <p className={`text-[11px] truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>
               {job.memberNames.join(', ')}
@@ -240,7 +240,7 @@ function WeekView({
               </span>
               <span
                 className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                  isToday ? 'bg-teal-600 text-white' : 'text-teal-900'
                 }`}
               >
                 {format(day, 'd')}
@@ -340,7 +340,7 @@ function MonthView({
             >
               <span
                 className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-indigo-600 text-white' : inMonth ? 'text-gray-900' : 'text-ios-gray-300'
+                  isToday ? 'bg-teal-600 text-white' : inMonth ? 'text-teal-900' : 'text-ios-gray-300'
                 }`}
               >
                 {format(day, 'd')}
@@ -398,12 +398,12 @@ function FilterSheet({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-ios-gray-200">
-          <h3 className="font-bold text-gray-900">Filters</h3>
+          <h3 className="font-bold text-teal-900">Filters</h3>
           <div className="flex items-center gap-3">
             {hasFilter && (
               <button onClick={clearAll} className="text-sm text-red-600 font-semibold">Clear All</button>
             )}
-            <button onClick={onClose} className="text-sm text-indigo-600 font-semibold">Done</button>
+            <button onClick={onClose} className="text-sm text-teal-600 font-semibold">Done</button>
           </div>
         </div>
 
@@ -417,7 +417,7 @@ function FilterSheet({
                   key={shift}
                   onClick={() => setShiftFilter(shiftFilter === shift ? null : shift)}
                   className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
-                    shiftFilter === shift ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+                    shiftFilter === shift ? 'bg-teal-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
                   }`}
                 >
                   {shift}
@@ -441,7 +441,7 @@ function FilterSheet({
                       key={p.id}
                       onClick={() => setProjectFilter(active ? null : p.id)}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-colors ${
-                        active ? `${c.bg} ${c.text}` : 'bg-ios-gray-50 text-gray-900'
+                        active ? `${c.bg} ${c.text}` : 'bg-ios-gray-50 text-teal-900'
                       }`}
                     >
                       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${c.dot}`} />
@@ -463,7 +463,7 @@ function FilterSheet({
                     key={m.id}
                     onClick={() => setMemberFilter(memberFilter === m.id ? null : m.id)}
                     className={`px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
-                      memberFilter === m.id ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+                      memberFilter === m.id ? 'bg-teal-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
                     }`}
                   >
                     {m.name}
@@ -557,7 +557,7 @@ export function CalendarPage() {
       >
         <div className="flex items-center justify-between">
           <HamburgerButton />
-          <h1 className="text-lg font-bold text-gray-900">Calendar</h1>
+          <h1 className="text-lg font-bold text-teal-900">Calendar</h1>
           <button
             onClick={() => setShowFilters(true)}
             className="relative w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-600 active:bg-ios-gray-100"
@@ -566,7 +566,7 @@ export function CalendarPage() {
               <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
             </svg>
             {activeFilterCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-indigo-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-teal-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
@@ -580,7 +580,7 @@ export function CalendarPage() {
               key={v}
               onClick={() => setView(v)}
               className={`flex-1 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
-                view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-ios-gray-600'
+                view === v ? 'bg-white text-teal-900 shadow-sm' : 'text-ios-gray-600'
               }`}
             >
               {v}
@@ -599,7 +599,7 @@ export function CalendarPage() {
             </svg>
           </button>
           <button onClick={goToday} className="flex-1 text-center">
-            <span className="text-sm font-semibold text-gray-900">{dateLabel()}</span>
+            <span className="text-sm font-semibold text-teal-900">{dateLabel()}</span>
           </button>
           <button
             onClick={() => navigate(1)}
