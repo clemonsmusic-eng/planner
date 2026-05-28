@@ -67,7 +67,8 @@ type Action =
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
-  | { type: 'TOGGLE_LOCK'; id: string };
+  | { type: 'TOGGLE_LOCK'; id: string }
+  | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,24 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, projects };
     }
 
+    case 'MOVE_PHASE_DATE': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.id) return p;
+        const existing = p.inputs.phaseDateMoves ?? [];
+        // Replace any prior move for this phaseId+originalDate or add new
+        const filtered = existing.filter(
+          (m) => !(m.phaseId === action.phaseId && m.originalDate === action.originalDate)
+        );
+        const phaseDateMoves = [
+          ...filtered,
+          { id: crypto.randomUUID(), phaseId: action.phaseId, originalDate: action.originalDate, newDate: action.newDate },
+        ];
+        return { ...p, inputs: { ...p.inputs, phaseDateMoves }, updatedAt: new Date().toISOString() };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
     default:
       return state;
   }
@@ -181,6 +200,7 @@ interface AppContextValue {
   activeProject: Project | null;
   generateAndSaveSchedule: (projectId: string) => void;
   setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
+  movePhaseDate: (projectId: string, phaseId: string, originalDate: string, newDate: string) => ScheduleResult;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -268,8 +288,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
   }
 
+  function movePhaseDate(projectId: string, phaseId: string, originalDate: string, newDate: string): ScheduleResult {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) throw new Error('Project not found');
+    const existing = project.inputs.phaseDateMoves ?? [];
+    const filtered = existing.filter(
+      (m) => !(m.phaseId === phaseId && m.originalDate === originalDate)
+    );
+    const phaseDateMoves = [
+      ...filtered,
+      { id: crypto.randomUUID(), phaseId, originalDate, newDate },
+    ];
+    const inputs = { ...project.inputs, phaseDateMoves };
+    const extBookings = buildExternalBookings(projectId);
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
+    dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
+    return schedule;
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride }}>
+    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate }}>
       {children}
     </AppContext.Provider>
   );

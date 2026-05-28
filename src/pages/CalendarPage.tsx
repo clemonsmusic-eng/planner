@@ -122,9 +122,15 @@ function applyFilters(
 function JobCard({
   job,
   colorIdx,
+  onDoubleClick,
+  onDragStart,
+  isDragging,
 }: {
   job: CalendarJob;
   colorIdx: number;
+  onDoubleClick?: () => void;
+  onDragStart?: () => void;
+  isDragging?: boolean;
 }) {
   const c = job.isArchived
     ? { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
@@ -132,7 +138,15 @@ function JobCard({
   const shiftLabel = job.shift === 'Full Day' ? 'Full' : job.shift;
 
   return (
-    <div className={`rounded-xl px-3 py-2.5 border ${c.bg} ${c.border}`}>
+    <div
+      draggable={!job.isArchived}
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart?.();
+      }}
+      onDoubleClick={onDoubleClick}
+      className={`rounded-xl px-3 py-2.5 border cursor-grab active:cursor-grabbing select-none transition-opacity ${c.bg} ${c.border} ${isDragging ? 'opacity-40' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
@@ -152,22 +166,86 @@ function JobCard({
   );
 }
 
+// ─── Conflict Dialog ──────────────────────────────────────────────────────────
+
+function ConflictDialog({
+  issues,
+  onKeep,
+  onRevert,
+}: {
+  issues: string[];
+  onKeep: () => void;
+  onRevert: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50" />
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-amber-600">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+          </span>
+          <h3 className="font-bold text-teal-900">Schedule Conflict Detected</h3>
+        </div>
+        <p className="text-sm text-ios-gray-600 mb-3">Moving this shift created the following issues:</p>
+        <ul className="space-y-1 mb-5">
+          {issues.slice(0, 5).map((issue, i) => (
+            <li key={i} className="text-xs text-red-600 flex items-start gap-1.5">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1 flex-shrink-0" />
+              {issue}
+            </li>
+          ))}
+        </ul>
+        <div className="flex gap-3">
+          <button onClick={onRevert} className="flex-1 py-3 rounded-xl border border-ios-gray-300 text-teal-900 font-semibold text-sm">
+            Revert
+          </button>
+          <button onClick={onKeep} className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold text-sm">
+            Keep Change
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Day View ─────────────────────────────────────────────────────────────────
 
 function DayView({
   date,
   jobs,
   colorMap,
+  dragJob,
+  dragOverDate,
+  onJobDoubleClick,
+  onJobDragStart,
+  onDayDragOver,
+  onDayDrop,
 }: {
   date: Date;
   jobs: CalendarJob[];
   colorMap: Map<string, number>;
+  dragJob: CalendarJob | null;
+  dragOverDate: string | null;
+  onJobDoubleClick: (job: CalendarJob) => void;
+  onJobDragStart: (job: CalendarJob) => void;
+  onDayDragOver: (dateStr: string) => void;
+  onDayDrop: (dateStr: string) => void;
 }) {
+  const dateStr = format(date, 'yyyy-MM-dd');
   const dayJobs = jobsForDate(jobs, date);
+  const isDropTarget = dragOverDate === dateStr && dragJob?.date !== dateStr;
 
   if (dayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
+      <div
+        className={`flex flex-col items-center justify-center py-16 gap-2 text-center px-6 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
+        onDrop={() => onDayDrop(dateStr)}
+        onDragLeave={() => onDayDragOver('')}
+      >
         <div className="w-12 h-12 bg-ios-gray-100 rounded-full flex items-center justify-center mb-1">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-ios-gray-400">
             <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
@@ -189,14 +267,26 @@ function DayView({
         <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-2">{label}</p>
         <div className="space-y-2">
           {list.map((j, i) => (
-            <JobCard key={i} job={j} colorIdx={colorMap.get(j.projectId) ?? 0} />
+            <JobCard
+              key={i}
+              job={j}
+              colorIdx={colorMap.get(j.projectId) ?? 0}
+              onDoubleClick={() => onJobDoubleClick(j)}
+              onDragStart={() => onJobDragStart(j)}
+              isDragging={dragJob?.projectId === j.projectId && dragJob?.phaseId === j.phaseId && dragJob?.date === j.date && dragJob?.shift === j.shift}
+            />
           ))}
         </div>
       </div>
     ) : null;
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div
+      className={`px-4 py-4 space-y-4 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
+      onDrop={() => onDayDrop(dateStr)}
+      onDragLeave={() => onDayDragOver('')}
+    >
       {section('AM', am)}
       {section('PM', pm)}
       {section('Full Day', full)}
@@ -211,11 +301,23 @@ function WeekView({
   jobs,
   colorMap,
   onSelectDay,
+  dragJob,
+  dragOverDate,
+  onJobDoubleClick,
+  onJobDragStart,
+  onDayDragOver,
+  onDayDrop,
 }: {
   date: Date;
   jobs: CalendarJob[];
   colorMap: Map<string, number>;
   onSelectDay: (d: Date) => void;
+  dragJob: CalendarJob | null;
+  dragOverDate: string | null;
+  onJobDoubleClick: (job: CalendarJob) => void;
+  onJobDragStart: (job: CalendarJob) => void;
+  onDayDragOver: (dateStr: string) => void;
+  onDayDrop: (dateStr: string) => void;
 }) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
@@ -261,15 +363,30 @@ function WeekView({
       {/* Events per day */}
       <div className="grid grid-cols-7 flex-1 divide-x divide-ios-gray-100">
         {days.map((day) => {
+          const dateStr = format(day, 'yyyy-MM-dd');
           const dayJobs = jobsForDate(jobs, day);
+          const isDropTarget = dragOverDate === dateStr && dragJob?.date !== dateStr;
           return (
-            <div key={day.toISOString()} className="min-h-[120px] p-1 space-y-1">
+            <div
+              key={day.toISOString()}
+              className={`min-h-[120px] p-1 space-y-1 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
+              onDrop={() => onDayDrop(dateStr)}
+              onDragLeave={() => onDayDragOver('')}
+            >
               {dayJobs.slice(0, 4).map((j, i) => {
                 const c = j.isArchived
                   ? { bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-gray-400' }
                   : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
+                const isDragging = dragJob?.projectId === j.projectId && dragJob?.phaseId === j.phaseId && dragJob?.date === j.date && dragJob?.shift === j.shift;
                 return (
-                  <div key={i} className={`rounded px-1 py-0.5 border ${c.bg} ${c.border}`}>
+                  <div
+                    key={i}
+                    draggable={!j.isArchived}
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onJobDragStart(j); }}
+                    onDoubleClick={() => onJobDoubleClick(j)}
+                    className={`rounded px-1 py-0.5 border cursor-grab active:cursor-grabbing select-none transition-opacity ${c.bg} ${c.border} ${isDragging ? 'opacity-40' : ''}`}
+                  >
                     <p className={`text-[9px] font-semibold leading-tight truncate ${c.text}`}>
                       {j.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
                     </p>
@@ -481,13 +598,16 @@ function FilterSheet({
 // ─── Calendar Page ─────────────────────────────────────────────────────────────
 
 export function CalendarPage() {
-  const { state } = useApp();
+  const { state, dispatch, movePhaseDate } = useApp();
   const [view, setView] = useState<CalendarView>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const [shiftFilter, setShiftFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [dragJob, setDragJob] = useState<CalendarJob | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [conflictInfo, setConflictInfo] = useState<{ job: CalendarJob; newDate: string; issues: string[] } | null>(null);
 
   const colorMap = useMemo(() => buildColorMap(state.projects), [state.projects]);
   const allJobs   = useMemo(() => buildJobs(state.projects), [state.projects]);
@@ -534,6 +654,27 @@ export function CalendarPage() {
   function handleSelectDay(day: Date) {
     setCurrentDate(day);
     setView('day');
+  }
+
+  function handleJobDoubleClick(job: CalendarJob) {
+    dispatch({ type: 'SET_ACTIVE_PROJECT', id: job.projectId });
+    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
+  }
+
+  function handleDayDrop(dateStr: string) {
+    if (!dragJob || dragJob.date === dateStr || dragJob.isArchived) {
+      setDragJob(null);
+      setDragOverDate(null);
+      return;
+    }
+    const newSchedule = movePhaseDate(dragJob.projectId, dragJob.phaseId, dragJob.date, dateStr);
+    const newDay = newSchedule.days.find((d) => d.date === dateStr);
+    const issues = (newDay?.entries ?? [])
+      .filter((e) => e.phaseId === dragJob.phaseId && (e.status === 'conflict' || e.status === 'needs-assignment' || e.status === 'over-max'))
+      .flatMap((e) => e.warnings.length > 0 ? e.warnings : [`${e.assignedMemberName ?? 'Unassigned'}: ${e.status}`]);
+    if (issues.length > 0) setConflictInfo({ job: dragJob, newDate: dateStr, issues });
+    setDragJob(null);
+    setDragOverDate(null);
   }
 
   function dateLabel() {
@@ -629,14 +770,48 @@ export function CalendarPage() {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto">
-        {view === 'day' && <DayView date={currentDate} jobs={filteredJobs} colorMap={colorMap} />}
+        {view === 'day' && (
+          <DayView
+            date={currentDate}
+            jobs={filteredJobs}
+            colorMap={colorMap}
+            dragJob={dragJob}
+            dragOverDate={dragOverDate}
+            onJobDoubleClick={handleJobDoubleClick}
+            onJobDragStart={(j) => setDragJob(j)}
+            onDayDragOver={(d) => setDragOverDate(d || null)}
+            onDayDrop={handleDayDrop}
+          />
+        )}
         {view === 'week' && (
-          <WeekView date={currentDate} jobs={filteredJobs} colorMap={colorMap} onSelectDay={handleSelectDay} />
+          <WeekView
+            date={currentDate}
+            jobs={filteredJobs}
+            colorMap={colorMap}
+            onSelectDay={handleSelectDay}
+            dragJob={dragJob}
+            dragOverDate={dragOverDate}
+            onJobDoubleClick={handleJobDoubleClick}
+            onJobDragStart={(j) => setDragJob(j)}
+            onDayDragOver={(d) => setDragOverDate(d || null)}
+            onDayDrop={handleDayDrop}
+          />
         )}
         {view === 'month' && (
           <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} onSelectDay={handleSelectDay} />
         )}
       </div>
+
+      {conflictInfo && (
+        <ConflictDialog
+          issues={conflictInfo.issues}
+          onKeep={() => setConflictInfo(null)}
+          onRevert={() => {
+            movePhaseDate(conflictInfo.job.projectId, conflictInfo.job.phaseId, conflictInfo.newDate, conflictInfo.job.date);
+            setConflictInfo(null);
+          }}
+        />
+      )}
 
       <FilterSheet
         show={showFilters}

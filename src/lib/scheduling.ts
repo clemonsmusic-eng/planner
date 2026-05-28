@@ -371,6 +371,17 @@ export function generateSchedule(
     addPhaseOnDate('phase-7', parseISO(auctionPickup));
   }
 
+  // Apply phaseDateMoves: shift specific phase occurrences to a new date
+  if (inputs.phaseDateMoves && inputs.phaseDateMoves.length > 0) {
+    for (const move of inputs.phaseDateMoves) {
+      for (const task of tasks) {
+        if (task.phaseId === move.phaseId && task.date === move.originalDate) {
+          task.date = move.newDate;
+        }
+      }
+    }
+  }
+
   // Ensure move-day tasks are assigned before cleanout/pickup regardless of date
   const PHASE_PRIORITY: Record<string, number> = {
     'phase-1': 0, 'phase-2': 1, 'phase-3': 2,
