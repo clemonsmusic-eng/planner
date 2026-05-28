@@ -13,6 +13,28 @@ function ChevronDownIcon() {
   );
 }
 
+function LockButton({ isLocked, onToggle }: { isLocked: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
+        isLocked ? 'bg-teal-100 text-teal-700' : 'bg-ios-gray-100 text-ios-gray-500'
+      }`}
+      aria-label={isLocked ? 'Unlock project' : 'Lock project'}
+    >
+      {isLocked ? (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+        </svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+          <path d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5a3 3 0 116 0v2.75a.75.75 0 001.5 0V5.5A4.5 4.5 0 0010 1z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
 const ROLE_COLORS: Record<string, string> = {
@@ -30,12 +52,13 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 export function SchedulePage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate } = useApp();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
+  const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
 
   if (!activeProject) {
     return (
@@ -180,6 +203,10 @@ export function SchedulePage() {
                 </div>
               )}
             </div>
+            <LockButton
+              isLocked={!!activeProject.inputs.isLocked}
+              onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
+            />
             <button
               onClick={() => generateAndSaveSchedule(activeProject.id)}
               className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
@@ -248,6 +275,7 @@ export function SchedulePage() {
                   onToggle={() => toggleDay(day.date)}
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
                   onOverride={() => setOverrideDate(day.date)}
+                  onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
                 />
               ))}
             </div>
@@ -278,6 +306,23 @@ export function SchedulePage() {
           onClose={() => setOverrideDate(null)}
         />
       )}
+
+      {dateMovePicker && (
+        <DateMoveSheet
+          originalDate={dateMovePicker.originalDate}
+          onMove={(newDate) => {
+            // Move all phases that appear on this day
+            const phasesOnDay = [...new Set(
+              (activeProject.schedule?.days.find(d => d.date === dateMovePicker.originalDate)?.entries ?? [])
+                .map(e => e.phaseId)
+            )];
+            for (const phaseId of phasesOnDay) {
+              movePhaseDate(activeProject.id, phaseId, dateMovePicker.originalDate, newDate);
+            }
+          }}
+          onClose={() => setDateMovePicker(null)}
+        />
+      )}
     </>
   );
 }
@@ -288,12 +333,14 @@ function DaySection({
   onToggle,
   hasOverride,
   onOverride,
+  onDateChange,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
   onToggle: () => void;
   hasOverride: boolean;
   onOverride: () => void;
+  onDateChange: () => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -337,6 +384,15 @@ function DaySection({
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+          </svg>
+        </button>
+        <button
+          onClick={onDateChange}
+          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+          aria-label="Move to different date"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
@@ -499,5 +555,43 @@ function FilterOption({
         </svg>
       )}
     </button>
+  );
+}
+
+function DateMoveSheet({
+  originalDate,
+  onMove,
+  onClose,
+}: {
+  originalDate: string;
+  onMove: (newDate: string) => void;
+  onClose: () => void;
+}) {
+  const [newDate, setNewDate] = useState(originalDate);
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl px-4 py-5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
+      >
+        <h3 className="font-bold text-teal-900 mb-4">Move to Different Date</h3>
+        <input
+          type="date"
+          value={newDate}
+          onChange={e => setNewDate(e.target.value)}
+          className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900 mb-4"
+        />
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-ios-gray-300 text-ios-gray-600 font-semibold">Cancel</button>
+          <button
+            onClick={() => { if (newDate && newDate !== originalDate) onMove(newDate); onClose(); }}
+            className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold"
+          >
+            Move
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
