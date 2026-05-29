@@ -14,6 +14,7 @@ import BootCampPage from './pages/BootCampPage';
 import HubPage from './pages/HubPage';
 import ZonePage from './pages/ZonePage';
 import TeacherDashboardPage from './pages/TeacherDashboardPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,11 @@ export default function App() {
       {/* Teacher */}
       <Route path="/dashboard" element={
         <RequireAuth><TeacherDashboardPage /></RequireAuth>
+      } />
+
+      {/* Leaderboard */}
+      <Route path="/leaderboard" element={
+        <RequireCharacter><LeaderboardPage /></RequireCharacter>
       } />
 
       {/* Fallback */}

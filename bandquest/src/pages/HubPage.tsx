@@ -3,6 +3,8 @@ import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { INSTRUMENTS, getInstrumentColor, xpToNextLevel } from '../lib/instruments';
 import CharacterCard from '../components/CharacterCard';
+import { useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 const ZONES = [
   { id: 1, name: 'The Rehearsal Halls', quarter: 'Quarter 1 · Fall', act: 1, available: true },
@@ -21,8 +23,19 @@ const ZONES = [
 
 export default function HubPage() {
   const { character } = useGameStore();
-  const { signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
+
+  // Update last_active_date and practice streak on hub visit
+  useEffect(() => {
+    if (!character || !user) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('characters')
+      .update({ last_active_date: today })
+      .eq('id', character.id)
+      .then(() => {});
+  }, [character?.id]);
 
   if (!character) return null;
 
@@ -86,10 +99,10 @@ export default function HubPage() {
             The Academy
           </h2>
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <NavCard icon="⚔️" label="Battle Simulator" sublabel="Practice with feedback" onClick={() => {}} />
-            <NavCard icon="📚" label="The Library" sublabel="Music history & theory" onClick={() => {}} />
-            <NavCard icon="🗺️" label="World Map" sublabel="Symphonica awaits" onClick={() => {}} />
-            <NavCard icon="🎶" label="Symphony Allies" sublabel={`${character.freedAllies.length}/10 freed`} onClick={() => {}} />
+            <NavCard icon="⚔️" label="Battle Simulator" sublabel="Practice with feedback" onClick={() => navigate('/simulator')} />
+            <NavCard icon="📚" label="The Library" sublabel="Music history & theory" onClick={() => navigate('/library')} />
+            <NavCard icon="🏆" label="Leaderboard" sublabel="Class standings" onClick={() => navigate('/leaderboard')} />
+            <NavCard icon="🎶" label="Symphony Allies" sublabel={`${character.freedAllies.length}/10 freed`} onClick={() => navigate('/allies')} />
           </div>
         </div>
 

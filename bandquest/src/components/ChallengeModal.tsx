@@ -16,9 +16,10 @@ interface Props {
   character: Character;
   onComplete: (rating: Rating, score: number) => void;
   onClose: () => void;
+  pitchToleranceOverride?: number;  // override from battle debuffs
 }
 
-export default function ChallengeModal({ challenge, character, onComplete, onClose }: Props) {
+export default function ChallengeModal({ challenge, character, onComplete, onClose, pitchToleranceOverride }: Props) {
   const [phase, setPhase] = useState<'intro' | 'challenge' | 'result'>('intro');
   const [rating, setRating] = useState<Rating | null>(null);
   const [score, setScore] = useState(0);
@@ -45,6 +46,7 @@ export default function ChallengeModal({ challenge, character, onComplete, onClo
             character={character}
             onRating={handleRating}
             onClose={onClose}
+            pitchToleranceOverride={pitchToleranceOverride}
           />
         )}
         {phase === 'result' && rating && (
@@ -118,13 +120,14 @@ function IntroPhase({ challenge, onStart, onClose }: {
   );
 }
 
-function ActiveChallenge({ challenge, character, onRating, onClose }: {
+function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleranceOverride }: {
   challenge: Challenge;
   character: Character;
   onRating: (rating: Rating, score: number) => void;
   onClose: () => void;
+  pitchToleranceOverride?: number;
 }) {
-  const pitchTolerance = pitchToleranceCents(character.stats.accuracy);
+  const pitchTolerance = pitchToleranceOverride ?? pitchToleranceCents(character.stats.accuracy);
   const rhythmTolerance = rhythmToleranceMs(character.stats.technique);
 
   // Route to appropriate challenge UI

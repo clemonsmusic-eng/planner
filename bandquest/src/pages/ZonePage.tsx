@@ -1,6 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import Zone1Page from './zones/Zone1Page';
+import Zone2Page from './zones/Zone2Page';
+import Zone3Page from './zones/Zone3Page';
+import Zone4Page from './zones/Zone4Page';
 
 export default function ZonePage() {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -17,8 +20,10 @@ export default function ZonePage() {
   }
 
   switch (id) {
-    case 1:
-      return <Zone1Page />;
+    case 1: return <Zone1Page />;
+    case 2: return <Zone2Page />;
+    case 3: return <Zone3Page />;
+    case 4: return <Zone4Page />;
     default:
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">

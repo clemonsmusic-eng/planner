@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { INSTRUMENTS } from '../../lib/instruments';
 import ChallengeModal from '../../components/ChallengeModal';
+import BattleScreen from '../../components/BattleScreen';
+import { ENEMIES, BATTLES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
 
 interface Challenge {
@@ -107,6 +109,7 @@ export default function Zone1Page() {
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
+  const [activeBattle, setActiveBattle] = useState<'mini_boss' | 'boss' | null>(null);
 
   if (!character) return null;
 
@@ -116,12 +119,35 @@ export default function Zone1Page() {
   const completedRequired = required.filter((c) => c.completed).length;
   const allRequiredDone = completedRequired === required.length;
   const instrument = INSTRUMENTS[character.instrument];
+  const miniBossUnlocked = completedRequired >= 4;
+  const miniBossDefeated = character.completedChallenges.includes('z1_mini_boss_defeated');
+  const bossDefeated = character.completedChallenges.includes('z1_boss_defeated');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
     await awardChallenge(activeChallenge.id, activeChallenge.type, score, rating);
     setLastRating({ id: activeChallenge.id, rating });
     setActiveChallenge(null);
+  }
+
+  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number) {
+    const challengeId = battleId === 'mini_boss' ? 'z1_mini_boss_defeated' : 'z1_boss_defeated';
+    const battleConfig = BATTLES[battleId === 'mini_boss' ? 'z1_mini_boss' : 'z1_boss'];
+    await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
+    void rpEarned; void battleConfig;
+    setActiveBattle(null);
+  }
+
+  if (activeBattle) {
+    const enemyId = activeBattle === 'mini_boss' ? 'enchanted_music_stand' : 'flat_dragon';
+    return (
+      <BattleScreen
+        character={character}
+        enemy={ENEMIES[enemyId]}
+        onVictory={(rp) => handleBattleVictory(activeBattle, rp)}
+        onDefeat={() => setActiveBattle(null)}
+      />
+    );
   }
 
   return (
@@ -216,17 +242,55 @@ export default function Zone1Page() {
           ))}
         </div>
 
-        {/* Mini-boss hint */}
-        <div className="card-panel mt-8 border-amber-700/30">
+        {/* Mini-boss */}
+        <div className={`card-panel mt-8 ${miniBossUnlocked ? 'border-amber-600/50' : 'border-amber-700/20 opacity-60'}`}>
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">
-            Mini-Boss (unlocks at 4/7 required)
+            Mini-Boss
           </div>
-          <div className="text-academy-cream/70 text-sm">
-            🎼 <strong>The Enchanted Music Stand</strong> — A practice room stand possessed by a
-            wandering Flatling. It rattles the music and drains your Accuracy. Defeat it to earn
-            the <em>Iron Stand</em>.
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-academy-cream/80 text-sm font-semibold mb-1">
+                🎼 The Enchanted Music Stand
+              </div>
+              <div className="text-academy-cream/50 text-xs">
+                A practice room stand possessed by a wandering Flatling. Drains your Accuracy.
+                {!miniBossUnlocked && <span className="text-academy-gold/50"> (Complete 4 required challenges)</span>}
+              </div>
+            </div>
+            {miniBossUnlocked && !miniBossDefeated && (
+              <button onClick={() => setActiveBattle('mini_boss')} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">
+                Fight
+              </button>
+            )}
+            {miniBossDefeated && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
+
+        {/* Zone boss */}
+        {allRequiredDone && (
+          <div className={`card-panel mt-4 ${!bossDefeated ? 'border-discord-crimson/40' : 'border-rating-superior/30'}`}>
+            <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">
+              Zone Boss
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-academy-cream/80 text-sm font-semibold mb-1">
+                  🐉 The Flat Dragon
+                </div>
+                <div className="text-academy-cream/50 text-xs">
+                  Its breath pulls every note flat. Your pitch tolerance is halved for the entire battle.
+                </div>
+              </div>
+              {!bossDefeated ? (
+                <button onClick={() => setActiveBattle('boss')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">
+                  Battle
+                </button>
+              ) : (
+                <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Challenge Modal */}

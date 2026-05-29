@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
-import type { InstrumentId } from '../types/game';
+import type { InstrumentId, Rating } from '../types/game';
 
 interface StudentRow {
   id: string;
@@ -46,6 +46,7 @@ export default function TeacherDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'roster' | 'analytics' | 'leaderboard'>('roster');
+  const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
 
   useEffect(() => {
     if (!user) { navigate('/'); return; }
@@ -204,7 +205,7 @@ export default function TeacherDashboardPage() {
               ))}
             </div>
 
-            {activeTab === 'roster' && <RosterTab students={students} />}
+            {activeTab === 'roster' && <RosterTab students={students} onSelectStudent={setSelectedStudent} />}
             {activeTab === 'analytics' && <AnalyticsTab students={students} />}
             {activeTab === 'leaderboard' && <LeaderboardTab students={students} />}
           </>
@@ -220,13 +221,21 @@ export default function TeacherDashboardPage() {
           onClose={() => setShowCreateModal(false)}
         />
       )}
+
+      {selectedStudent && (
+        <StudentDetailModal
+          student={selectedStudent}
+          teacherId={user!.id}
+          onClose={() => setSelectedStudent(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ── Roster Tab ────────────────────────────────────────────────────────────────
 
-function RosterTab({ students }: { students: StudentRow[] }) {
+function RosterTab({ students, onSelectStudent }: { students: StudentRow[]; onSelectStudent: (s: StudentRow) => void }) {
   const daysSinceActive = (dateStr: string | null) => {
     if (!dateStr) return 999;
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -252,7 +261,11 @@ function RosterTab({ students }: { students: StudentRow[] }) {
         const days = daysSinceActive(s.lastActiveDate);
 
         return (
-          <div key={s.id} className="card-panel flex items-center gap-4 py-3">
+          <button
+            key={s.id}
+            onClick={() => onSelectStudent(s)}
+            className="w-full card-panel flex items-center gap-4 py-3 hover:border-academy-gold/40 transition-all text-left"
+          >
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
               style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, border: '1px solid' }}
@@ -285,8 +298,9 @@ function RosterTab({ students }: { students: StudentRow[] }) {
                 <div className="text-[10px] text-academy-cream/40">END</div>
                 <div className="text-xs font-fantasy" style={{ color }}>{s.endurance}</div>
               </div>
+              <div className="text-academy-gold/40 text-xs">→</div>
             </div>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -497,4 +511,289 @@ function getEmoji(id: string): string {
     oboe: '🪘', bassoon: '🎵',
   };
   return map[id] ?? '🎵';
+}
+
+// ── Student Detail Modal with Rating Override ─────────────────────────────────
+
+interface ChallengeResult {
+  id: string;
+  challengeId: string;
+  challengeType: string;
+  rating: Rating;
+  score: number;
+  xpAwarded: number;
+  overrideRating: Rating | null;
+  overrideNote: string | null;
+  recordedAt: string;
+}
+
+function StudentDetailModal({ student, teacherId, onClose }: {
+  student: StudentRow;
+  teacherId: string;
+  onClose: () => void;
+}) {
+  const [results, setResults] = useState<ChallengeResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [overrideTarget, setOverrideTarget] = useState<ChallengeResult | null>(null);
+  const [bootCampConfirm, setBootCampConfirm] = useState(false);
+
+  const color = getInstrumentColor(student.instrument);
+  const inst = INSTRUMENTS[student.instrument];
+
+  useEffect(() => {
+    supabase
+      .from('challenge_results')
+      .select('*')
+      .eq('character_id', student.id)
+      .order('recorded_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) {
+          setResults(data.map((d) => ({
+            id: d.id,
+            challengeId: d.challenge_id,
+            challengeType: d.challenge_type,
+            rating: (d.override_rating ?? d.rating) as Rating,
+            score: d.score,
+            xpAwarded: d.xp_awarded,
+            overrideRating: d.override_rating as Rating | null,
+            overrideNote: d.override_note,
+            recordedAt: d.recorded_at,
+          })));
+        }
+        setLoading(false);
+      });
+  }, [student.id]);
+
+  async function confirmBootCampStep(stepId: string) {
+    await supabase.from('boot_camp_progress').upsert({
+      character_id: student.id,
+      step_id: stepId,
+      completed: true,
+      completed_at: new Date().toISOString(),
+    });
+    setBootCampConfirm(true);
+    setTimeout(() => setBootCampConfirm(false), 2000);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/80" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-academy-dark border border-academy-gold/30 rounded-t-2xl sm:rounded-2xl mx-0 sm:mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-academy-dark/95 backdrop-blur-sm border-b border-academy-gold/10 p-4 flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+            style={{ backgroundColor: `${color}20`, border: `1px solid ${color}40` }}
+          >
+            {getEmoji(student.instrument)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-fantasy text-base text-academy-cream truncate">{student.displayName}</div>
+            <div className="text-academy-cream/40 text-xs">
+              {inst?.className} · Lv.{student.level} · Zone {student.currentZone}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-academy-cream/40 hover:text-academy-cream/80 text-xl p-1">✕</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-4 gap-2">
+            {(['power', 'accuracy', 'technique', 'endurance'] as const).map((stat) => (
+              <div key={stat} className="card-panel py-2 text-center">
+                <div className="text-[10px] text-academy-cream/40 capitalize mb-1">{stat}</div>
+                <div className="font-fantasy text-base" style={{ color }}>
+                  {student[stat as keyof StudentRow] as number}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick info */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="card-panel py-2">
+              <div className="text-[10px] text-academy-cream/40 mb-1">Streak</div>
+              <div className="font-fantasy text-sm text-academy-gold">{student.practiceStreak}d</div>
+            </div>
+            <div className="card-panel py-2">
+              <div className="text-[10px] text-academy-cream/40 mb-1">Attempts</div>
+              <div className="font-fantasy text-sm text-academy-gold">{student.totalAttempts}</div>
+            </div>
+            <div className="card-panel py-2">
+              <div className="text-[10px] text-academy-cream/40 mb-1">Boot Camp</div>
+              <div className={`font-fantasy text-sm ${student.bootCampComplete ? 'text-rating-superior' : 'text-rating-fair'}`}>
+                {student.bootCampComplete ? '✓ Done' : 'Pending'}
+              </div>
+            </div>
+          </div>
+
+          {/* Boot camp confirmation (if not complete) */}
+          {!student.bootCampComplete && (
+            <div className="card-panel border-academy-gold/30">
+              <div className="text-xs text-academy-gold/70 uppercase tracking-widest font-fantasy mb-3">Confirm Boot Camp Steps</div>
+              {['posture', 'assembly', 'hold'].map((step) => (
+                <button
+                  key={step}
+                  onClick={() => confirmBootCampStep(step)}
+                  className="w-full text-left py-2 px-3 mb-1 rounded-lg border border-academy-gold/20 hover:border-academy-gold/50 text-academy-cream/70 text-sm transition-all capitalize"
+                >
+                  ✓ Confirm: {step}
+                </button>
+              ))}
+              {bootCampConfirm && (
+                <div className="text-rating-superior text-xs text-center mt-2">Step confirmed!</div>
+              )}
+            </div>
+          )}
+
+          {/* Recent challenges + override */}
+          <div>
+            <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-3">Recent Challenges</div>
+            {loading ? (
+              <div className="text-academy-cream/40 text-sm text-center py-4">Loading…</div>
+            ) : results.length === 0 ? (
+              <div className="text-academy-cream/40 text-sm text-center py-4">No challenges yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {results.map((r) => (
+                  <div key={r.id} className="card-panel py-2 px-3 flex items-center gap-3">
+                    <RatingChip rating={r.rating} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-academy-cream/80 text-xs truncate">{r.challengeId}</div>
+                      <div className="text-academy-cream/40 text-[10px]">
+                        {new Date(r.recordedAt).toLocaleDateString()} · {r.xpAwarded} XP
+                      </div>
+                      {r.overrideNote && (
+                        <div className="text-academy-gold/60 text-[10px] italic mt-0.5">
+                          Teacher: {r.overrideNote}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setOverrideTarget(r)}
+                      className="text-academy-gold/50 hover:text-academy-gold text-xs px-2 py-1 border border-academy-gold/20 rounded flex-shrink-0 transition-colors"
+                    >
+                      Override
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {overrideTarget && (
+        <RatingOverrideModal
+          result={overrideTarget}
+          teacherId={teacherId}
+          onSaved={() => {
+            setOverrideTarget(null);
+            // Refresh results
+            supabase
+              .from('challenge_results')
+              .select('*')
+              .eq('character_id', student.id)
+              .order('recorded_at', { ascending: false })
+              .limit(20)
+              .then(({ data }) => {
+                if (data) setResults(data.map((d) => ({
+                  id: d.id, challengeId: d.challenge_id, challengeType: d.challenge_type,
+                  rating: (d.override_rating ?? d.rating) as Rating, score: d.score,
+                  xpAwarded: d.xp_awarded, overrideRating: d.override_rating as Rating | null,
+                  overrideNote: d.override_note, recordedAt: d.recorded_at,
+                })));
+              });
+          }}
+          onClose={() => setOverrideTarget(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RatingOverrideModal({ result, teacherId, onSaved, onClose }: {
+  result: ChallengeResult;
+  teacherId: string;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const [newRating, setNewRating] = useState<Rating>(result.rating);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await supabase
+      .from('challenge_results')
+      .update({
+        override_rating: newRating,
+        override_note: note.trim() || null,
+        override_by: teacherId,
+        override_at: new Date().toISOString(),
+      })
+      .eq('id', result.id);
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-sm bg-academy-dark border border-academy-gold/40 rounded-2xl p-5 mx-4">
+        <h3 className="fantasy-title text-lg mb-1">Override Rating</h3>
+        <p className="text-academy-cream/50 text-xs mb-4">{result.challengeId}</p>
+
+        <div className="mb-4">
+          <div className="text-xs text-academy-gold/60 uppercase tracking-widest mb-2">New Rating</div>
+          <div className="grid grid-cols-5 gap-1">
+            {(['superior', 'excellent', 'good', 'fair', 'poor'] as Rating[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setNewRating(r)}
+                className={`py-2 rounded-lg border text-xs font-fantasy capitalize transition-all
+                  ${newRating === r ? 'border-academy-gold bg-academy-gold/20 text-academy-gold' : 'border-academy-gold/20 text-academy-cream/50 hover:border-academy-gold/50'}`}
+              >
+                {r.slice(0, 3).toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-5">
+          <div className="text-xs text-academy-gold/60 uppercase tracking-widest mb-2">Note (optional)</div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Observed in class — significant improvement"
+            rows={2}
+            className="w-full bg-black/40 border border-academy-gold/30 rounded-lg px-3 py-2 text-academy-cream text-sm focus:outline-none focus:border-academy-gold/70 resize-none"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
+          <button onClick={save} disabled={saving} className="btn-primary flex-1 text-sm py-2 disabled:opacity-50">
+            {saving ? 'Saving…' : 'Save Override'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RatingChip({ rating }: { rating: Rating }) {
+  const colors: Record<Rating, string> = {
+    superior: '#FFD700', excellent: '#4ADE80',
+    good: '#60A5FA', fair: '#FB923C', poor: '#F87171',
+  };
+  return (
+    <span
+      className="text-[10px] font-fantasy px-2 py-0.5 rounded flex-shrink-0"
+      style={{ color: colors[rating], backgroundColor: `${colors[rating]}20` }}
+    >
+      {rating.toUpperCase().slice(0, 3)}
+    </span>
+  );
 }
