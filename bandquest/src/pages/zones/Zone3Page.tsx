@@ -103,7 +103,7 @@ function buildChallenges(completed: string[]): Challenge[] {
 }
 
 export default function Zone3Page() {
-  const { character, awardChallenge } = useGameStore();
+  const { character, awardChallenge, advanceZone } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
@@ -128,6 +128,7 @@ export default function Zone3Page() {
 
   async function handleBattleVictory() {
     await awardChallenge('z3_mini_boss_defeated', 'mini_boss', 100, 'superior');
+    if (completedRequired === required.length) await advanceZone(4);
     setActiveBattle(false);
   }
 

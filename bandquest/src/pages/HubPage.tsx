@@ -22,7 +22,7 @@ const ZONES = [
 ];
 
 export default function HubPage() {
-  const { character } = useGameStore();
+  const { character, classroom } = useGameStore();
   const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
 
@@ -113,9 +113,10 @@ export default function HubPage() {
           </h2>
           <div className="space-y-2">
             {ZONES.map((zone) => {
-              const isCurrentZone = zone.id === character.currentZone;
-              const isCompleted = zone.id < character.currentZone;
-              const isLocked = zone.id > character.currentZone;
+              const maxZone = Math.max(classroom?.currentZone ?? 1, character.currentZone);
+              const isCurrentZone = zone.id === maxZone;
+              const isCompleted = zone.id < maxZone;
+              const isLocked = zone.id > maxZone;
               const actColors = { 1: '#D4A017', 2: '#60A5FA', 3: '#F87171' };
 
               return (

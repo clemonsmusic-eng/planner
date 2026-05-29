@@ -4,7 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { INSTRUMENTS } from '../../lib/instruments';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
-import { ENEMIES, BATTLES } from '../../lib/enemies';
+import { ENEMIES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
 
 interface Challenge {
@@ -104,7 +104,7 @@ function buildChallenges(completedChallenges: string[]): Challenge[] {
 }
 
 export default function Zone1Page() {
-  const { character, awardChallenge } = useGameStore();
+  const { character, awardChallenge, advanceZone } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
@@ -132,9 +132,9 @@ export default function Zone1Page() {
 
   async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number) {
     const challengeId = battleId === 'mini_boss' ? 'z1_mini_boss_defeated' : 'z1_boss_defeated';
-    const battleConfig = BATTLES[battleId === 'mini_boss' ? 'z1_mini_boss' : 'z1_boss'];
     await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
-    void rpEarned; void battleConfig;
+    if (battleId === 'boss') await advanceZone(2);
+    void rpEarned;
     setActiveBattle(null);
   }
 

@@ -102,6 +102,8 @@ export default function InstrumentSelectPage() {
       completedChallenges: [],
       completedQuests: [],
       bootCampComplete: false,
+      totalAttempts: 0,
+      weeklyXp: 0,
       createdAt: char.created_at,
       updatedAt: char.updated_at,
     });

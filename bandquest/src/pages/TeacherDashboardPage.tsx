@@ -115,6 +115,18 @@ export default function TeacherDashboardPage() {
     await loadStudents(cls.id);
   }
 
+  async function advanceClassroomZone() {
+    if (!selectedClassroom || selectedClassroom.currentZone >= 12) return;
+    const newZone = selectedClassroom.currentZone + 1;
+    await supabase
+      .from('classrooms')
+      .update({ current_zone: newZone })
+      .eq('id', selectedClassroom.id);
+    const updated = { ...selectedClassroom, currentZone: newZone };
+    setSelectedClassroom(updated);
+    setClassrooms((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -181,6 +193,13 @@ export default function TeacherDashboardPage() {
                   <div className="text-academy-cream/40 text-xs mb-1">Zone</div>
                   <div className="font-fantasy text-xl text-academy-gold">{selectedClassroom.currentZone}</div>
                 </div>
+                <button
+                  onClick={advanceClassroomZone}
+                  disabled={selectedClassroom.currentZone >= 12}
+                  className="btn-secondary text-xs py-2 px-3 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Advance Zone →
+                </button>
                 <div className="text-center">
                   <div className="text-academy-cream/40 text-xs mb-1">Students</div>
                   <div className="font-fantasy text-xl text-academy-gold">{students.length}</div>

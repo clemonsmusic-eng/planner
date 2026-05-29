@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Character, Classroom, AllyId } from '../types/game';
+import type { Character, Classroom, AllyId, ZoneId } from '../types/game';
 import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
-import { xpToNextLevel } from '../lib/instruments';
+import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
 
 interface GameState {
   character: Character | null;
@@ -13,6 +13,8 @@ interface GameState {
   loadCharacter: (userId: string) => Promise<void>;
   loadClassroom: (classroomId: string) => Promise<void>;
   awardChallenge: (challengeId: string, challengeType: string, score: number, rating: Rating) => Promise<void>;
+  advanceZone: (newZone: ZoneId) => Promise<void>;
+  advanceClassroomZone: (newZone: ZoneId) => Promise<void>;
   freeAlly: (allyId: AllyId) => Promise<void>;
   spendResonancePoints: (amount: number) => void;
   completeBootCampStep: (stepId: string) => Promise<void>;
@@ -27,6 +29,21 @@ const BASE_XP: Record<string, number> = {
   side_quest_short: 500,
   side_quest_long: 1000,
 };
+
+// Compute stats for a given level using base stats + growth per level
+function computeStatsAtLevel(
+  instrument: Character['instrument'],
+  level: number,
+): Character['stats'] {
+  const def = INSTRUMENTS[instrument];
+  const levelsGained = level - 1;
+  return {
+    power:     Math.round(def.baseStats.power     + def.statGrowth.power     * levelsGained),
+    accuracy:  Math.round(def.baseStats.accuracy  + def.statGrowth.accuracy  * levelsGained),
+    technique: Math.round(def.baseStats.technique + def.statGrowth.technique * levelsGained),
+    endurance: Math.round(def.baseStats.endurance + def.statGrowth.endurance * levelsGained),
+  };
+}
 
 export const useGameStore = create<GameState>((set, get) => ({
   character: null,
@@ -44,7 +61,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       .single();
 
     if (data) {
-      set({ character: dbRowToCharacter(data) });
+      const char = dbRowToCharacter(data);
+      set({ character: char });
+      // Load classroom alongside character
+      if (char.classroomId) {
+        get().loadClassroom(char.classroomId);
+      }
     }
     set({ loading: false });
   },
@@ -64,7 +86,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           name: data.name,
           period: data.period ?? '',
           joinCode: data.join_code,
-          currentZone: data.current_zone,
+          currentZone: data.current_zone as ZoneId,
           baseInstrumentsOnly: data.base_instruments_only,
           createdAt: data.created_at,
         },
@@ -92,7 +114,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       rp_awarded: rpAwarded,
     });
 
-    // Update character locally first (optimistic)
+    // Compute new level from total XP
     const newXp = character.xp + xpAwarded;
     const newRp = character.resonancePoints + rpAwarded;
     let newLevel = character.level;
@@ -100,24 +122,42 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     while (remainingXp >= xpToNextLevel(newLevel)) {
       remainingXp -= xpToNextLevel(newLevel);
-      newLevel += 1;
+      newLevel = Math.min(100, newLevel + 1);
     }
+
+    const didLevelUp = newLevel > character.level;
+
+    // Recompute stats if level changed
+    const newStats = didLevelUp
+      ? computeStatsAtLevel(character.instrument, newLevel)
+      : character.stats;
+
+    // HP scales with endurance: maxHp = endurance * 5
+    const newMaxHp = newStats.endurance * 5;
+    // Keep HP ratio when leveling up, capped at new max
+    const newHp = didLevelUp
+      ? Math.min(newMaxHp, Math.round((character.hp / character.maxHp) * newMaxHp))
+      : character.hp;
 
     const completedChallenges = character.completedChallenges.includes(challengeId)
       ? character.completedChallenges
       : [...character.completedChallenges, challengeId];
 
-    const updatedCharacter = {
+    const updatedCharacter: Character = {
       ...character,
       xp: remainingXp,
+      xpToNextLevel: xpToNextLevel(newLevel),
       level: newLevel,
       resonancePoints: newRp,
+      stats: newStats,
+      hp: newHp,
+      maxHp: newMaxHp,
       completedChallenges,
     };
 
     set({ character: updatedCharacter });
 
-    // Persist to Supabase
+    // Persist everything to Supabase
     await supabase
       .from('characters')
       .update({
@@ -125,10 +165,45 @@ export const useGameStore = create<GameState>((set, get) => ({
         level: newLevel,
         resonance_points: newRp,
         completed_challenges: completedChallenges,
-        total_attempts: character.completedChallenges.length + 1,
-        weekly_xp: (character as any).weeklyXp + xpAwarded,
+        total_attempts: character.totalAttempts + 1,
+        weekly_xp: character.weeklyXp + xpAwarded,
+        // Stats (updated on level-up)
+        ...(didLevelUp ? {
+          power: newStats.power,
+          accuracy: newStats.accuracy,
+          technique: newStats.technique,
+          endurance: newStats.endurance,
+          max_hp: newMaxHp,
+          hp: newHp,
+        } : {}),
       })
       .eq('id', character.id);
+  },
+
+  advanceZone: async (newZone: ZoneId) => {
+    const { character } = get();
+    if (!character || newZone <= character.currentZone) return;
+
+    const updated = { ...character, currentZone: newZone };
+    set({ character: updated });
+
+    await supabase
+      .from('characters')
+      .update({ current_zone: newZone })
+      .eq('id', character.id);
+  },
+
+  advanceClassroomZone: async (newZone: ZoneId) => {
+    const { classroom } = get();
+    if (!classroom || newZone <= classroom.currentZone) return;
+
+    const updated = { ...classroom, currentZone: newZone };
+    set({ classroom: updated });
+
+    await supabase
+      .from('classrooms')
+      .update({ current_zone: newZone })
+      .eq('id', classroom.id);
   },
 
   freeAlly: async (allyId: AllyId) => {
@@ -193,6 +268,9 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     completedChallenges: (row.completed_challenges as string[]) ?? [],
     completedQuests: (row.completed_quests as string[]) ?? [],
     bootCampComplete: row.boot_camp_complete as boolean,
+    // Extra fields stored in DB but not in core Character type — keep for gameStore logic
+    totalAttempts: (row.total_attempts as number) ?? 0,
+    weeklyXp: (row.weekly_xp as number) ?? 0,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

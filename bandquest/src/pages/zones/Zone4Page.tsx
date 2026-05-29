@@ -91,7 +91,7 @@ function buildChallenges(completed: string[]): Challenge[] {
 }
 
 export default function Zone4Page() {
-  const { character, awardChallenge } = useGameStore();
+  const { character, awardChallenge, advanceZone } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
@@ -116,6 +116,7 @@ export default function Zone4Page() {
 
   async function handleGraduation(rating: Rating) {
     await awardChallenge('z4_graduation', 'zone_boss', 100, rating);
+    await advanceZone(5);
     setShowGraduation(false);
   }
 

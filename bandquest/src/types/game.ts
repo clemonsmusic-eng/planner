@@ -195,6 +195,8 @@ export interface Character {
   completedChallenges: string[];
   completedQuests: string[];
   bootCampComplete: boolean;
+  totalAttempts: number;
+  weeklyXp: number;
   createdAt: string;
   updatedAt: string;
 }
