@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-academy-dark text-academy-cream font-body antialiased;
+    background-image:
+      radial-gradient(ellipse at top, #2A1B0A 0%, #1A1209 60%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A227' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-academy-gold text-academy-dark font-fantasy font-semibold px-6 py-3 rounded-lg
+           hover:bg-yellow-400 active:scale-95 transition-all duration-150
+           shadow-lg shadow-academy-gold/20;
+  }
+
+  .btn-secondary {
+    @apply border border-academy-gold/50 text-academy-gold font-fantasy font-semibold px-6 py-3 rounded-lg
+           hover:bg-academy-gold/10 active:scale-95 transition-all duration-150;
+  }
+
+  .btn-danger {
+    @apply bg-discord-crimson text-white font-fantasy font-semibold px-6 py-3 rounded-lg
+           hover:bg-red-700 active:scale-95 transition-all duration-150;
+  }
+
+  .card-panel {
+    @apply bg-academy-dark/80 border border-academy-gold/20 rounded-xl p-6
+           backdrop-blur-sm shadow-xl;
+  }
+
+  .stat-bar {
+    @apply h-2 rounded-full bg-black/40 overflow-hidden;
+  }
+
+  .stat-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+  }
+
+  .rating-superior  { @apply text-rating-superior; }
+  .rating-excellent { @apply text-rating-excellent; }
+  .rating-good      { @apply text-rating-good; }
+  .rating-fair      { @apply text-rating-fair; }
+  .rating-poor      { @apply text-rating-poor; }
+
+  .fantasy-title {
+    @apply font-fantasy text-academy-gold tracking-wider;
+  }
+
+  .pitch-meter {
+    @apply w-2 rounded-full transition-all duration-100;
+  }
+
+  .notation-display {
+    @apply bg-amber-50/5 border border-academy-gold/30 rounded-lg p-4
+           font-mono text-academy-cream;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-shadow-glow {
+    text-shadow: 0 0 20px currentColor;
+  }
+}
