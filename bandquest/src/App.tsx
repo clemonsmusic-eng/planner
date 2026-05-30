@@ -15,6 +15,8 @@ import HubPage from './pages/HubPage';
 import ZonePage from './pages/ZonePage';
 import TeacherDashboardPage from './pages/TeacherDashboardPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import LibraryPage from './pages/LibraryPage';
+import AlliesPage from './pages/AlliesPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -103,6 +105,16 @@ export default function App() {
       {/* Leaderboard */}
       <Route path="/leaderboard" element={
         <RequireCharacter><LeaderboardPage /></RequireCharacter>
+      } />
+
+      {/* Library */}
+      <Route path="/library" element={
+        <RequireCharacter><LibraryPage /></RequireCharacter>
+      } />
+
+      {/* Symphony Allies */}
+      <Route path="/allies" element={
+        <RequireCharacter><AlliesPage /></RequireCharacter>
       } />
 
       {/* Fallback */}
