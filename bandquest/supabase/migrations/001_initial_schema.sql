@@ -48,15 +48,8 @@ create policy "Teachers manage own classrooms"
   on public.classrooms for all
   using (auth.uid() = teacher_id);
 
-create policy "Students read their classroom"
-  on public.classrooms for select
-  using (
-    exists (
-      select 1 from public.characters c
-      where c.classroom_id = classrooms.id
-        and c.user_id = auth.uid()
-    )
-  );
+-- NOTE: "Students read their classroom" policy is created after the
+-- characters table below, because it references public.characters.
 
 -- ── Characters ────────────────────────────────────────────────────────────────
 create table public.characters (
@@ -115,6 +108,17 @@ create policy "Students read classmates for leaderboard"
       select 1 from public.characters my_char
       where my_char.user_id = auth.uid()
         and my_char.classroom_id = characters.classroom_id
+    )
+  );
+
+-- Deferred classroom policy: references public.characters (now exists)
+create policy "Students read their classroom"
+  on public.classrooms for select
+  using (
+    exists (
+      select 1 from public.characters c
+      where c.classroom_id = classrooms.id
+        and c.user_id = auth.uid()
     )
   );
 
