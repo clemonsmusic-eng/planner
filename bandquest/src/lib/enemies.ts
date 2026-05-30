@@ -6,6 +6,7 @@ export type DebuffType = 'accuracy_drain' | 'silence' | 'resonance_lock' | 'conf
 export interface EnemyDef {
   id: string;
   tier: EnemyTier;
+  zone: number;          // first zone where this enemy appears
   name: string;
   description: string;
   power: number;
@@ -17,7 +18,7 @@ export interface EnemyDef {
   debuffDuration?: number;
   vulnerableTo: InstrumentId[];
   isBoss: boolean;
-  phase2Threshold?: number; // HP % to trigger phase 2
+  phase2Threshold?: number;
   lore?: string;
 }
 
@@ -26,6 +27,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   flatling: {
     id: 'flatling',
     tier: 1,
+    zone: 1,
     name: 'Flatling',
     description: 'Small, blue-grey, droopy. Emits flat, sagging notes.',
     power: 8,
@@ -42,6 +44,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   sharp_creature: {
     id: 'sharp_creature',
     tier: 1,
+    zone: 1,
     name: 'Sharp',
     description: 'Red-orange, spiked, aggressive. Screeches piercing tones.',
     power: 12,
@@ -55,6 +58,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   natural_creature: {
     id: 'natural_creature',
     tier: 1,
+    zone: 1,
     name: 'Natural',
     description: 'White, neutral, annoying. Appears alongside others.',
     power: 6,
@@ -66,6 +70,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   double_flat_wretch: {
     id: 'double_flat_wretch',
     tier: 1,
+    zone: 3,
     name: 'Double-Flat Wretch',
     description: 'Larger Flatling variant, deeper droop, more powerful.',
     power: 14,
@@ -83,6 +88,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   chronoton_scout: {
     id: 'chronoton_scout',
     tier: 2,
+    zone: 3,
     name: 'Chronoton Scout',
     description: 'Tick-tock robot marching in perfect 4/4.',
     power: 10,
@@ -96,6 +102,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   chronoton_shifter: {
     id: 'chronoton_shifter',
     tier: 2,
+    zone: 3,
     name: 'Chronoton Shifter',
     description: 'Shifts time signature mid-battle without warning.',
     power: 14,
@@ -111,6 +118,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   enchanted_music_stand: {
     id: 'enchanted_music_stand',
     tier: 1,
+    zone: 1,
     name: 'The Enchanted Music Stand',
     description: 'A practice room stand possessed by a wandering Flatling. It rattles the music and drains your Accuracy.',
     power: 18,
@@ -128,6 +136,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   flat_dragon: {
     id: 'flat_dragon',
     tier: 1,
+    zone: 1,
     name: 'The Flat Dragon',
     description: 'A dragon whose very breath pulls everything flat. Your accuracy window is halved for the entire fight.',
     power: 22,
@@ -145,6 +154,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   interval_imp: {
     id: 'interval_imp',
     tier: 2,
+    zone: 2,
     name: 'The Interval Imp',
     description: 'Born from a mis-played tritone in the theory classroom. Chaotic, scrambles player timing.',
     power: 20,

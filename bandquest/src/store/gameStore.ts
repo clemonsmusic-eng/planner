@@ -12,7 +12,7 @@ interface GameState {
 
   loadCharacter: (userId: string) => Promise<void>;
   loadClassroom: (classroomId: string) => Promise<void>;
-  awardChallenge: (challengeId: string, challengeType: string, score: number, rating: Rating) => Promise<void>;
+  awardChallenge: (challengeId: string, challengeType: string, score: number, rating: Rating, opts?: { xpMultiplier?: number; trackCompletion?: boolean }) => Promise<void>;
   advanceZone: (newZone: ZoneId) => Promise<void>;
   advanceClassroomZone: (newZone: ZoneId) => Promise<void>;
   freeAlly: (allyId: AllyId) => Promise<void>;
@@ -94,12 +94,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  awardChallenge: async (challengeId, challengeType, score, rating) => {
+  awardChallenge: async (challengeId, challengeType, score, rating, opts) => {
     const { character } = get();
     if (!character) return;
 
+    const xpMult = opts?.xpMultiplier ?? 1.0;
+    const trackCompletion = opts?.trackCompletion ?? true;
     const baseXp = BASE_XP[challengeType] ?? 150;
-    const xpAwarded = Math.round(baseXp * RATING_XP_MULTIPLIERS[rating]);
+    const xpAwarded = Math.round(baseXp * RATING_XP_MULTIPLIERS[rating] * xpMult);
     const rpAwarded = RATING_RP_AWARD[rating];
 
     // Insert challenge result
@@ -139,9 +141,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? Math.min(newMaxHp, Math.round((character.hp / character.maxHp) * newMaxHp))
       : character.hp;
 
-    const completedChallenges = character.completedChallenges.includes(challengeId)
-      ? character.completedChallenges
-      : [...character.completedChallenges, challengeId];
+    const completedChallenges = (trackCompletion && !character.completedChallenges.includes(challengeId))
+      ? [...character.completedChallenges, challengeId]
+      : character.completedChallenges;
 
     const updatedCharacter: Character = {
       ...character,

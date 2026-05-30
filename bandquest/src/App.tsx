@@ -17,6 +17,7 @@ import TeacherDashboardPage from './pages/TeacherDashboardPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import LibraryPage from './pages/LibraryPage';
 import AlliesPage from './pages/AlliesPage';
+import SimulatorPage from './pages/SimulatorPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -115,6 +116,11 @@ export default function App() {
       {/* Symphony Allies */}
       <Route path="/allies" element={
         <RequireCharacter><AlliesPage /></RequireCharacter>
+      } />
+
+      {/* Battle Simulator */}
+      <Route path="/simulator" element={
+        <RequireCharacter><SimulatorPage /></RequireCharacter>
       } />
 
       {/* Fallback */}

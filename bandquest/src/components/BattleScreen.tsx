@@ -30,7 +30,8 @@ interface BattleState {
   enemy: EnemyState;
   log: string[];
   turn: 'player' | 'enemy' | 'victory' | 'defeat';
-  weakpointExposed: boolean; // from Sage's Resonant Frequency
+  weakpointExposed: boolean;
+  simulatorMode: boolean;
 }
 
 type BattleAction =
@@ -46,7 +47,7 @@ type BattleAction =
   | { type: 'EARN_RP'; amount: number }
   | { type: 'EXPOSE_WEAKPOINT' };
 
-function buildInitialState(character: Character, enemy: EnemyDef): BattleState {
+function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode = false): BattleState {
   return {
     playerHp: character.hp,
     playerMaxHp: character.maxHp,
@@ -63,6 +64,7 @@ function buildInitialState(character: Character, enemy: EnemyDef): BattleState {
     log: [`Battle starts! ${enemy.name} appears!`],
     turn: 'player',
     weakpointExposed: false,
+    simulatorMode,
   };
 }
 
@@ -84,7 +86,8 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
     }
     case 'APPLY_DAMAGE_TO_PLAYER': {
       const reduction = state.defending ? 0.5 : 1.0;
-      const newHp = Math.max(0, state.playerHp - Math.floor(action.amount * reduction));
+      const minHp = state.simulatorMode ? 1 : 0;
+      const newHp = Math.max(minHp, state.playerHp - Math.floor(action.amount * reduction));
       return {
         ...state,
         playerHp: newHp,
@@ -137,6 +140,14 @@ const RP_AWARDS: Record<Rating, number> = {
   poor: 0,
 };
 
+const RATING_COLORS: Record<Rating, string> = {
+  superior:  'text-rating-superior bg-rating-superior/10',
+  excellent: 'text-rating-excellent bg-rating-excellent/10',
+  good:      'text-rating-good bg-rating-good/10',
+  fair:      'text-rating-fair bg-rating-fair/10',
+  poor:      'text-rating-poor bg-rating-poor/10',
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -144,12 +155,14 @@ interface Props {
   enemy: EnemyDef;
   onVictory: (rpEarned: number) => void;
   onDefeat: () => void;
+  simulatorMode?: boolean;
 }
 
-export default function BattleScreen({ character, enemy, onVictory, onDefeat }: Props) {
-  const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemy));
+export default function BattleScreen({ character, enemy, onVictory, onDefeat, simulatorMode = false }: Props) {
+  const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemy, simulatorMode));
   const [activeAbility, setActiveAbility] = useState<Ability | null>(null);
   const [isEnemyTurnAnimating, setIsEnemyTurnAnimating] = useState(false);
+  const [lastRating, setLastRating] = useState<Rating | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
 
@@ -168,6 +181,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat }: 
   async function handleAbilityComplete(rating: Rating, _score: number) {
     if (!activeAbility) return;
     setActiveAbility(null);
+    setLastRating(rating);
 
     const rp = RP_AWARDS[rating];
     rpEarnedRef.current += rp;
@@ -252,6 +266,23 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat }: 
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Simulator top bar */}
+      {simulatorMode && (
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2 bg-academy-dark/95 backdrop-blur-sm border-b border-academy-gold/10">
+          <span className="text-[10px] font-fantasy uppercase tracking-widest text-academy-gold/60 bg-academy-gold/10 px-2 py-0.5 rounded">
+            ⚙ Simulator
+          </span>
+          {lastRating && (
+            <span className={`text-[10px] font-fantasy uppercase tracking-widest px-2 py-0.5 rounded ${RATING_COLORS[lastRating]}`}>
+              Last: {lastRating}
+            </span>
+          )}
+          <button onClick={onDefeat} className="text-academy-cream/40 hover:text-academy-cream/80 text-xs transition-colors">
+            Exit ✕
+          </button>
+        </div>
+      )}
+
       {/* Battle arena */}
       <div className="flex-1 relative px-4 pt-4 pb-2">
         {/* Enemy section */}
