@@ -137,6 +137,15 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
   if (challenge.type === 'aural_rhythm_echo') {
     return <RhythmEchoChallenge onRating={onRating} />;
   }
+  if (challenge.type === 'aural_melody_mapper') {
+    return <MelodyMapperChallenge onRating={onRating} />;
+  }
+  if (challenge.type === 'aural_interval_quest') {
+    return <IntervalQuestChallenge onRating={onRating} />;
+  }
+  if (challenge.type === 'aural_chord_oracle') {
+    return <ChordOracleChallenge onRating={onRating} />;
+  }
   if (challenge.type === 'rhythm_performance') {
     return <RhythmTapChallenge onRating={onRating} tolerance={rhythmTolerance} />;
   }
@@ -321,22 +330,27 @@ function RhythmEchoChallenge({ onRating }: { onRating: (r: Rating, s: number) =>
   const pattern = RHYTHM_PATTERNS[patternIndex.current];
   const [phase, setPhase] = useState<'listen' | 'tap' | 'done'>('listen');
   const [taps, setTaps] = useState<number[]>([]);
+  const tapsRef = useRef<number[]>([]); // ref so setTimeout closure reads current taps
   const startTime = useRef<number>(0);
   const BPM = 80;
   const beatMs = (60 / BPM) * 1000;
 
   function startTapping() {
+    tapsRef.current = [];
+    setTaps([]);
     setPhase('tap');
     startTime.current = Date.now();
     setTimeout(() => {
       setPhase('done');
-      scoreTaps(taps, pattern.beats, beatMs, onRating);
+      scoreTaps(tapsRef.current, pattern.beats, beatMs, onRating);
     }, beatMs * 5);
   }
 
   function tap() {
     if (phase !== 'tap') return;
-    setTaps((prev) => [...prev, (Date.now() - startTime.current) / beatMs]);
+    const t = (Date.now() - startTime.current) / beatMs;
+    tapsRef.current = [...tapsRef.current, t];
+    setTaps((prev) => [...prev, t]);
   }
 
   return (
@@ -365,6 +379,7 @@ function RhythmEchoChallenge({ onRating }: { onRating: (r: Rating, s: number) =>
           className="btn-primary w-full h-20 text-xl active:scale-95 transition-transform"
         >
           TAP
+          <div className="text-sm mt-1 opacity-60">{taps.length} taps</div>
         </button>
       )}
       {phase === 'done' && (
@@ -432,6 +447,205 @@ function RhythmTapChallenge({ onRating, tolerance: _tolerance }: {
   );
 }
 
+// ── Melody Mapper Challenge ───────────────────────────────────────────────────
+
+const MELODIES = [
+  { label: 'C  D  E  C',  notes: ['C4','D4','E4','C4']  },
+  { label: 'C  E  G  E',  notes: ['C4','E4','G4','E4']  },
+  { label: 'G  F  E  D',  notes: ['G4','F4','E4','D4']  },
+  { label: 'C  D  E  F',  notes: ['C4','D4','E4','F4']  },
+  { label: 'E  D  C  G',  notes: ['E4','D4','C4','G4']  },
+  { label: 'G  E  D  C',  notes: ['G4','E4','D4','C4']  },
+];
+
+function MelodyMapperChallenge({ onRating }: { onRating: (r: Rating, s: number) => void }) {
+  const idx = useRef(Math.floor(Math.random() * MELODIES.length));
+  const target = MELODIES[idx.current];
+  const [selected, setSelected] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+
+  const options = buildChoices(target.label, MELODIES.map((m) => m.label), 4);
+
+  function playMelody() {
+    const ctx = new AudioContext();
+    target.notes.forEach((note, i) => {
+      playToneAt(ctx, noteToFreq(note), ctx.currentTime + i * 0.42, 0.38);
+    });
+  }
+
+  function pick(label: string) {
+    if (answered) return;
+    setSelected(label);
+    setAnswered(true);
+    const correct = label === target.label;
+    setTimeout(() => onRating(correct ? 'superior' : 'poor', correct ? 100 : 0), 1200);
+  }
+
+  return (
+    <div className="text-center">
+      <h3 className="fantasy-title text-lg mb-2">Melody Mapper</h3>
+      <p className="text-academy-cream/60 text-sm mb-4">
+        Listen to the melody and identify the correct note sequence.
+      </p>
+      <div className="bg-black/30 rounded-lg p-6 mb-6 flex items-center justify-center gap-3">
+        <button className="text-4xl hover:scale-110 transition-transform" onClick={playMelody}>🔊</button>
+        <span className="text-academy-cream/40 text-sm">Click to play</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((label) => (
+          <button
+            key={label}
+            onClick={() => pick(label)}
+            disabled={answered}
+            className={`py-3 px-3 rounded-lg border font-fantasy text-sm transition-all
+              ${!answered ? 'border-academy-gold/30 hover:border-academy-gold text-academy-cream/80' :
+                label === target.label ? 'border-rating-superior bg-rating-superior/20 text-rating-superior' :
+                label === selected ? 'border-rating-poor bg-rating-poor/20 text-rating-poor' :
+                'border-academy-gold/20 text-academy-cream/30 opacity-50'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Interval Quest Challenge ───────────────────────────────────────────────────
+
+const INTERVALS = [
+  { name: 'Unison',      semitones: 0  },
+  { name: 'Minor 2nd',   semitones: 1  },
+  { name: 'Major 2nd',   semitones: 2  },
+  { name: 'Minor 3rd',   semitones: 3  },
+  { name: 'Major 3rd',   semitones: 4  },
+  { name: 'Perfect 4th', semitones: 5  },
+  { name: 'Tritone',     semitones: 6  },
+  { name: 'Perfect 5th', semitones: 7  },
+  { name: 'Minor 6th',   semitones: 8  },
+  { name: 'Major 6th',   semitones: 9  },
+  { name: 'Minor 7th',   semitones: 10 },
+  { name: 'Major 7th',   semitones: 11 },
+  { name: 'Octave',      semitones: 12 },
+];
+
+const INTERVAL_ROOTS = [261.63, 293.66, 329.63, 349.23, 392.0]; // C4 D4 E4 F4 G4
+
+function IntervalQuestChallenge({ onRating }: { onRating: (r: Rating, s: number) => void }) {
+  const targetInterval = useRef(INTERVALS[Math.floor(Math.random() * INTERVALS.length)]);
+  const rootFreq = useRef(INTERVAL_ROOTS[Math.floor(Math.random() * INTERVAL_ROOTS.length)]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+
+  const options = buildChoices(targetInterval.current.name, INTERVALS.map((i) => i.name), 4);
+
+  function playInterval() {
+    const ctx = new AudioContext();
+    const upper = transposeFreq(rootFreq.current, targetInterval.current.semitones);
+    playToneAt(ctx, rootFreq.current, ctx.currentTime, 0.55);
+    playToneAt(ctx, upper, ctx.currentTime + 0.65, 0.55);
+  }
+
+  function pick(name: string) {
+    if (answered) return;
+    setSelected(name);
+    setAnswered(true);
+    const correct = name === targetInterval.current.name;
+    setTimeout(() => onRating(correct ? 'superior' : 'poor', correct ? 100 : 0), 1200);
+  }
+
+  return (
+    <div className="text-center">
+      <h3 className="fantasy-title text-lg mb-2">Interval Quest</h3>
+      <p className="text-academy-cream/60 text-sm mb-4">
+        Listen to two notes played in sequence. Name the interval.
+      </p>
+      <div className="bg-black/30 rounded-lg p-6 mb-6 flex items-center justify-center gap-3">
+        <button className="text-4xl hover:scale-110 transition-transform" onClick={playInterval}>🔊</button>
+        <span className="text-academy-cream/40 text-sm">Click to play</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((name) => (
+          <button
+            key={name}
+            onClick={() => pick(name)}
+            disabled={answered}
+            className={`py-3 px-3 rounded-lg border font-fantasy text-sm transition-all
+              ${!answered ? 'border-academy-gold/30 hover:border-academy-gold text-academy-cream/80' :
+                name === targetInterval.current.name ? 'border-rating-superior bg-rating-superior/20 text-rating-superior' :
+                name === selected ? 'border-rating-poor bg-rating-poor/20 text-rating-poor' :
+                'border-academy-gold/20 text-academy-cream/30 opacity-50'}`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Chord Oracle Challenge ─────────────────────────────────────────────────────
+
+const CHORD_QUALITIES = [
+  { name: 'Major',          semitones: [0, 4, 7]     },
+  { name: 'Minor',          semitones: [0, 3, 7]     },
+  { name: 'Dominant 7th',   semitones: [0, 4, 7, 10] },
+  { name: 'Diminished',     semitones: [0, 3, 6]     },
+];
+
+function ChordOracleChallenge({ onRating }: { onRating: (r: Rating, s: number) => void }) {
+  const targetQuality = useRef(CHORD_QUALITIES[Math.floor(Math.random() * CHORD_QUALITIES.length)]);
+  const rootFreq = useRef(INTERVAL_ROOTS[Math.floor(Math.random() * INTERVAL_ROOTS.length)]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+
+  const options = buildChoices(targetQuality.current.name, CHORD_QUALITIES.map((q) => q.name), 4);
+
+  function playChord() {
+    const ctx = new AudioContext();
+    targetQuality.current.semitones.forEach((st) => {
+      playToneAt(ctx, transposeFreq(rootFreq.current, st), ctx.currentTime, 1.2);
+    });
+  }
+
+  function pick(name: string) {
+    if (answered) return;
+    setSelected(name);
+    setAnswered(true);
+    const correct = name === targetQuality.current.name;
+    setTimeout(() => onRating(correct ? 'superior' : 'poor', correct ? 100 : 0), 1200);
+  }
+
+  return (
+    <div className="text-center">
+      <h3 className="fantasy-title text-lg mb-2">Chord Oracle</h3>
+      <p className="text-academy-cream/60 text-sm mb-4">
+        Listen to the chord and identify its quality.
+      </p>
+      <div className="bg-black/30 rounded-lg p-6 mb-6 flex items-center justify-center gap-3">
+        <button className="text-4xl hover:scale-110 transition-transform" onClick={playChord}>🔊</button>
+        <span className="text-academy-cream/40 text-sm">Click to play</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((name) => (
+          <button
+            key={name}
+            onClick={() => pick(name)}
+            disabled={answered}
+            className={`py-3 px-3 rounded-lg border font-fantasy text-sm transition-all
+              ${!answered ? 'border-academy-gold/30 hover:border-academy-gold text-academy-cream/80' :
+                name === targetQuality.current.name ? 'border-rating-superior bg-rating-superior/20 text-rating-superior' :
+                name === selected ? 'border-rating-poor bg-rating-poor/20 text-rating-poor' :
+                'border-academy-gold/20 text-academy-cream/30 opacity-50'}`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Result Phase ─────────────────────────────────────────────────────────────
 
 function ResultPhase({ challenge, rating, score, character, onContinue }: {
@@ -484,6 +698,32 @@ function ResultPhase({ challenge, rating, score, character, onContinue }: {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function transposeFreq(freq: number, semitones: number): number {
+  return freq * Math.pow(2, semitones / 12);
+}
+
+function playToneAt(ctx: AudioContext, freq: number, startTime: number, duration: number) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = freq;
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0.28, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+}
+
+function buildChoices(target: string, pool: string[], count: number): string[] {
+  const choices = [target];
+  const others = pool.filter((p) => p !== target).sort(() => Math.random() - 0.5);
+  while (choices.length < count && others.length > 0) {
+    choices.push(others.pop()!);
+  }
+  return choices.sort(() => Math.random() - 0.5);
+}
 
 function scoreToRating(score: number): Rating {
   if (score >= 90) return 'superior';
