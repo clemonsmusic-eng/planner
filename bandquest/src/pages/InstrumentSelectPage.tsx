@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import { INSTRUMENTS, BASE_SIX, OPTIONAL_INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
+import { getStartingGear } from '../lib/gear';
 import type { InstrumentId } from '../types/game';
 
 export default function InstrumentSelectPage() {
@@ -36,6 +37,7 @@ export default function InstrumentSelectPage() {
     setError('');
 
     const instrument = INSTRUMENTS[selected];
+    const startingGear = getStartingGear(selected);
     const { data: existing } = await supabase
       .from('characters')
       .select('id')
@@ -65,6 +67,7 @@ export default function InstrumentSelectPage() {
         hp: instrument.baseStats.endurance * 5,
         max_hp: instrument.baseStats.endurance * 5,
         resonance_points: 0,
+        gear: startingGear,
       })
       .select()
       .single();
@@ -97,7 +100,7 @@ export default function InstrumentSelectPage() {
       hp: instrument.baseStats.endurance * 5,
       maxHp: instrument.baseStats.endurance * 5,
       resonancePoints: 0,
-      gear: {},
+      gear: startingGear,
       freedAllies: [],
       completedChallenges: [],
       completedQuests: [],

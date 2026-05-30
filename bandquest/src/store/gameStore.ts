@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Character, Classroom, AllyId, ZoneId } from '../types/game';
+import type { Character, Classroom, AllyId, ZoneId, GearItem } from '../types/game';
 import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
 import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
@@ -15,6 +15,7 @@ interface GameState {
   awardChallenge: (challengeId: string, challengeType: string, score: number, rating: Rating, opts?: { xpMultiplier?: number; trackCompletion?: boolean }) => Promise<void>;
   advanceZone: (newZone: ZoneId) => Promise<void>;
   advanceClassroomZone: (newZone: ZoneId) => Promise<void>;
+  equipGear: (item: GearItem) => Promise<void>;
   freeAlly: (allyId: AllyId) => Promise<void>;
   spendResonancePoints: (amount: number) => void;
   completeBootCampStep: (stepId: string) => Promise<void>;
@@ -206,6 +207,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       .from('classrooms')
       .update({ current_zone: newZone })
       .eq('id', classroom.id);
+  },
+
+  equipGear: async (item: GearItem) => {
+    const { character } = get();
+    if (!character) return;
+    const newGear = { ...character.gear, [item.slot]: item };
+    set({ character: { ...character, gear: newGear } });
+    await supabase
+      .from('characters')
+      .update({ gear: newGear })
+      .eq('id', character.id);
   },
 
   freeAlly: async (allyId: AllyId) => {

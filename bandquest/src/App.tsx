@@ -18,6 +18,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import LibraryPage from './pages/LibraryPage';
 import AlliesPage from './pages/AlliesPage';
 import SimulatorPage from './pages/SimulatorPage';
+import GearPage from './pages/GearPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -121,6 +122,11 @@ export default function App() {
       {/* Battle Simulator */}
       <Route path="/simulator" element={
         <RequireCharacter><SimulatorPage /></RequireCharacter>
+      } />
+
+      {/* Equipment / Gear */}
+      <Route path="/gear" element={
+        <RequireCharacter><GearPage /></RequireCharacter>
       } />
 
       {/* Fallback */}

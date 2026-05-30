@@ -4,6 +4,7 @@ import type { EnemyDef } from '../lib/enemies';
 import type { Ability } from '../lib/abilities';
 import { getAbilitiesForInstrument } from '../lib/abilities';
 import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
+import { getEffectiveStats } from '../lib/gear';
 import ChallengeModal from './ChallengeModal';
 
 // ── State types ───────────────────────────────────────────────────────────────
@@ -168,12 +169,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
   const color = getInstrumentColor(character.instrument);
   const abilities = getAbilitiesForInstrument(character.instrument, character.level);
-  const pitchTolerance = pitchToleranceCents(character.stats.accuracy);
+  const effectiveStats = getEffectiveStats(character);
+  const pitchTolerance = pitchToleranceCents(effectiveStats.accuracy);
 
   const addLog = useCallback((msg: string) => dispatch({ type: 'ADD_LOG', message: msg }), []);
 
   function computeDamage(ability: Ability, rating: Rating): number {
-    const base = character.stats.power * ability.damageMultiplier * RATING_DAMAGE_MULTIPLIERS[rating];
+    const base = effectiveStats.power * ability.damageMultiplier * RATING_DAMAGE_MULTIPLIERS[rating];
     const multiplier = state.weakpointExposed ? 2 : 1;
     return Math.max(1, Math.round(base * multiplier));
   }
@@ -204,7 +206,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     }
 
     if (activeAbility.isHealing && !activeAbility.isRevive) {
-      const healAmount = Math.round(character.stats.endurance * 3 * RATING_DAMAGE_MULTIPLIERS[rating]);
+      const healAmount = Math.round(effectiveStats.endurance * 3 * RATING_DAMAGE_MULTIPLIERS[rating]);
       dispatch({ type: 'HEAL_PLAYER', amount: healAmount });
       addLog(`${activeAbility.name} — restored ${healAmount} HP (${rating.toUpperCase()})`);
       dispatch({ type: 'END_PLAYER_TURN' });
@@ -226,7 +228,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setIsEnemyTurnAnimating(true);
     setTimeout(() => {
       const enemyPower = state.enemy.def.power + (state.enemy.phase === 2 ? 5 : 0);
-      const dmg = Math.max(1, enemyPower - Math.floor(character.stats.endurance * 0.5));
+      const dmg = Math.max(1, enemyPower - Math.floor(effectiveStats.endurance * 0.5));
       dispatch({ type: 'APPLY_DAMAGE_TO_PLAYER', amount: dmg });
       addLog(`${enemy.name} attacks! ${dmg} damage.`);
 

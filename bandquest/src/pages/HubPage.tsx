@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import { INSTRUMENTS, getInstrumentColor, xpToNextLevel } from '../lib/instruments';
+import { getEffectiveStats } from '../lib/gear';
 import CharacterCard from '../components/CharacterCard';
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -43,6 +44,7 @@ export default function HubPage() {
   const color = getInstrumentColor(character.instrument);
   const xpNeeded = xpToNextLevel(character.level);
   const xpPercent = (character.xp / xpNeeded) * 100;
+  const effectiveStats = getEffectiveStats(character);
 
   return (
     <div className="min-h-screen pb-24">
@@ -83,14 +85,20 @@ export default function HubPage() {
           </div>
         </div>
 
-        {/* Quick stats */}
+        {/* Quick stats — shows effective (base + gear) */}
         <div className="grid grid-cols-4 gap-2 mt-4">
-          {(['power', 'accuracy', 'technique', 'endurance'] as const).map((stat) => (
-            <div key={stat} className="card-panel py-3 text-center">
-              <div className="text-academy-cream/40 text-[10px] uppercase tracking-wider mb-1">{stat}</div>
-              <div className="font-fantasy text-lg" style={{ color }}>{character.stats[stat]}</div>
-            </div>
-          ))}
+          {(['power', 'accuracy', 'technique', 'endurance'] as const).map((stat) => {
+            const gearBonus = effectiveStats[stat] - character.stats[stat];
+            return (
+              <div key={stat} className="card-panel py-3 text-center">
+                <div className="text-academy-cream/40 text-[10px] uppercase tracking-wider mb-1">{stat.slice(0, 3)}</div>
+                <div className="font-fantasy text-lg" style={{ color }}>{effectiveStats[stat]}</div>
+                {gearBonus > 0 && (
+                  <div className="text-rating-good text-[9px] font-fantasy">+{gearBonus}</div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Navigation sections */}
@@ -103,6 +111,7 @@ export default function HubPage() {
             <NavCard icon="📚" label="The Library" sublabel="Music history & theory" onClick={() => navigate('/library')} />
             <NavCard icon="🏆" label="Leaderboard" sublabel="Class standings" onClick={() => navigate('/leaderboard')} />
             <NavCard icon="🎶" label="Symphony Allies" sublabel={`${character.freedAllies.length}/10 freed`} onClick={() => navigate('/allies')} />
+            <NavCard icon="⚙️" label="Equipment" sublabel="Gear & effective stats" onClick={() => navigate('/gear')} />
           </div>
         </div>
 

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
+import { getBossGearDrop } from '../../lib/gear';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import { ENEMIES } from '../../lib/enemies';
-import type { Rating } from '../../types/game';
+import type { Rating, GearItem } from '../../types/game';
 
 interface Challenge {
   id: string;
@@ -103,14 +104,16 @@ function buildChallenges(completed: string[]): Challenge[] {
 }
 
 export default function Zone2Page() {
-  const { character, awardChallenge, advanceZone } = useGameStore();
+  const { character, awardChallenge, advanceZone, equipGear } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
   const [activeBattle, setActiveBattle] = useState(false);
+  const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
 
   if (!character) return null;
+  const char = character;
 
   const challenges = buildChallenges(character.completedChallenges);
   const required = challenges.filter((c) => c.required);
@@ -129,6 +132,8 @@ export default function Zone2Page() {
   async function handleBattleVictory() {
     await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
     if (completedRequired === required.length) await advanceZone(3);
+    const drop = getBossGearDrop('z2_mini_boss_defeated', char.instrument);
+    if (drop) { await equipGear(drop); setGearDrop(drop); }
     setActiveBattle(false);
   }
 
@@ -238,6 +243,9 @@ export default function Zone2Page() {
         </div>
       </div>
 
+      {gearDrop && (
+        <GearDropBanner item={gearDrop} onDismiss={() => setGearDrop(null)} />
+      )}
       {activeChallenge && (
         <ChallengeModal
           challenge={activeChallenge}
@@ -246,6 +254,24 @@ export default function Zone2Page() {
           onClose={() => setActiveChallenge(null)}
         />
       )}
+    </div>
+  );
+}
+
+function GearDropBanner({ item, onDismiss }: { item: GearItem; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-6">
+      <div className="card-panel w-full max-w-sm border-rating-excellent/60">
+        <div className="text-[10px] text-rating-excellent uppercase tracking-widest font-fantasy mb-2">
+          ⚔️ Gear Acquired
+        </div>
+        <div className="text-academy-cream/90 font-fantasy text-base mb-0.5">{item.name}</div>
+        <div className="text-academy-cream/50 text-xs italic mb-2">{item.fantasyName}</div>
+        <div className="text-rating-good text-xs mb-4">
+          {Object.entries(item.statBonus).filter(([, v]) => (v ?? 0) > 0).map(([k, v]) => `+${v} ${k}`).join('  ·  ') || 'Unlocks challenge types'}
+        </div>
+        <button onClick={onDismiss} className="btn-primary w-full text-sm py-2">Equip →</button>
+      </div>
     </div>
   );
 }
