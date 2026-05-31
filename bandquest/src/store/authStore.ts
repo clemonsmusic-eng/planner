@@ -11,6 +11,7 @@ interface AuthState {
   setUser: (user: AppUser | null) => void;
   setLoading: (loading: boolean) => void;
   signInWithGoogle: () => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   loadProfile: (supabaseUser: User) => Promise<void>;
 }
@@ -34,6 +35,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         },
       },
     });
+  },
+
+  signInWithMagicLink: async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    return { error: error?.message ?? null };
   },
 
   signOut: async () => {

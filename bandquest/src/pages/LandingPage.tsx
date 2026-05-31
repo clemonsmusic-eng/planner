@@ -1,12 +1,30 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 
 export default function LandingPage() {
-  const { user, loading, signInWithGoogle } = useAuthStore();
+  const { user, loading, signInWithGoogle, signInWithMagicLink } = useAuthStore();
   const { character } = useGameStore();
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
+  const [sendingLink, setSendingLink] = useState(false);
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSendingLink(true);
+    setMagicLinkError(null);
+    const { error } = await signInWithMagicLink(email.trim());
+    setSendingLink(false);
+    if (error) {
+      setMagicLinkError(error);
+    } else {
+      setMagicLinkSent(true);
+    }
+  }
 
   useEffect(() => {
     if (!loading && user) {
@@ -74,18 +92,72 @@ export default function LandingPage() {
             <div className="w-5 h-5 border-2 border-academy-gold/40 border-t-academy-gold rounded-full animate-spin" />
             <span className="font-body text-sm">Loading…</span>
           </div>
+        ) : magicLinkSent ? (
+          <div className="card-panel py-6 px-6 text-center">
+            <div className="text-3xl mb-3">📬</div>
+            <p className="text-academy-gold font-fantasy text-lg mb-2">Check your email!</p>
+            <p className="text-academy-cream/60 text-sm">
+              We sent a sign-in link to <span className="text-academy-cream/90">{email}</span>.
+              Click the link in that email to enter the Academy.
+            </p>
+            <button
+              onClick={() => { setMagicLinkSent(false); setEmail(''); }}
+              className="mt-4 text-academy-cream/40 hover:text-academy-cream/70 text-xs underline transition-colors"
+            >
+              Use a different email
+            </button>
+          </div>
         ) : (
-          <button
-            onClick={signInWithGoogle}
-            className="btn-primary flex items-center gap-3 mx-auto"
-          >
-            <GoogleIcon />
-            Sign in with Google
-          </button>
+          <div className="w-full space-y-4">
+            {/* Google sign-in */}
+            <button
+              onClick={signInWithGoogle}
+              className="btn-primary flex items-center gap-3 mx-auto"
+            >
+              <GoogleIcon />
+              Sign in with Google
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-academy-gold/20" />
+              <span className="text-academy-cream/30 text-xs">or</span>
+              <div className="flex-1 h-px bg-academy-gold/20" />
+            </div>
+
+            {/* Magic link */}
+            <form onSubmit={handleMagicLink} className="space-y-3">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                required
+                className="w-full bg-academy-dark/60 border border-academy-gold/20 rounded-lg px-4 py-3 text-academy-cream placeholder-academy-cream/30 text-sm focus:outline-none focus:border-academy-gold/50 transition-colors"
+              />
+              {magicLinkError && (
+                <p className="text-red-400 text-xs text-center">{magicLinkError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={sendingLink || !email.trim()}
+                className="w-full btn-secondary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingLink ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                    Sending…
+                  </>
+                ) : (
+                  <>✉️ Send Magic Link</>
+                )}
+              </button>
+            </form>
+          </div>
         )}
 
         <p className="mt-6 text-academy-cream/40 text-xs">
-          Use your school Google account to sign in.
+          Use your school Google account or email to sign in.
         </p>
       </div>
 
