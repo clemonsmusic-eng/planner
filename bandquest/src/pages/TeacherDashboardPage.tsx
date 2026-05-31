@@ -25,6 +25,7 @@ interface StudentRow {
   bossVictories: number;
   ensembleTechs: number;
   totalAttempts: number;
+  suspended: boolean;
 }
 
 interface ClassroomData {
@@ -34,6 +35,7 @@ interface ClassroomData {
   joinCode: string;
   currentZone: number;
   baseInstrumentsOnly: boolean;
+  archived: boolean;
 }
 
 export default function TeacherDashboardPage() {
@@ -70,6 +72,7 @@ export default function TeacherDashboardPage() {
         joinCode: d.join_code,
         currentZone: d.current_zone,
         baseInstrumentsOnly: d.base_instruments_only,
+        archived: d.archived ?? false,
       }));
       setClassrooms(cls);
       setSelectedClassroom(cls[0]);
@@ -106,6 +109,7 @@ export default function TeacherDashboardPage() {
         bossVictories: d.boss_victories,
         ensembleTechs: d.ensemble_techs,
         totalAttempts: d.total_attempts,
+        suspended: d.suspended ?? false,
       })));
     }
   }
@@ -125,6 +129,35 @@ export default function TeacherDashboardPage() {
     const updated = { ...selectedClassroom, currentZone: newZone };
     setSelectedClassroom(updated);
     setClassrooms((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+  }
+
+  async function toggleArchiveClassroom() {
+    if (!selectedClassroom) return;
+    const next = !selectedClassroom.archived;
+    const { error } = await supabase
+      .from('classrooms')
+      .update({ archived: next })
+      .eq('id', selectedClassroom.id);
+    if (error) { alert('Could not update class: ' + error.message); return; }
+    const updated = { ...selectedClassroom, archived: next };
+    setSelectedClassroom(updated);
+    setClassrooms((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+  }
+
+  async function deleteClassroom() {
+    if (!selectedClassroom) return;
+    const ok = window.confirm(
+      `Delete "${selectedClassroom.name}" permanently?\n\nThis removes the class and ALL student characters in it. This cannot be undone.`
+    );
+    if (!ok) return;
+    const { error } = await supabase
+      .from('classrooms')
+      .delete()
+      .eq('id', selectedClassroom.id);
+    if (error) { alert('Could not delete class: ' + error.message); return; }
+    setSelectedClassroom(null);
+    setStudents([]);
+    await loadClassrooms();
   }
 
   if (loading) {
@@ -175,35 +208,59 @@ export default function TeacherDashboardPage() {
         {selectedClassroom ? (
           <>
             {/* Classroom info card */}
-            <div className="card-panel mb-6 flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <div className="fantasy-title text-lg">{selectedClassroom.name}</div>
-                {selectedClassroom.period && (
-                  <div className="text-academy-cream/50 text-sm">{selectedClassroom.period}</div>
-                )}
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <div className="text-academy-cream/40 text-xs mb-1">Join Code</div>
-                  <div className="font-fantasy text-xl text-academy-gold tracking-widest">
-                    {selectedClassroom.joinCode}
+            <div className="card-panel mb-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <div className="fantasy-title text-lg flex items-center gap-2">
+                    {selectedClassroom.name}
+                    {selectedClassroom.archived && (
+                      <span className="text-[10px] uppercase tracking-widest bg-academy-cream/10 text-academy-cream/50 px-2 py-0.5 rounded">
+                        Archived
+                      </span>
+                    )}
+                  </div>
+                  {selectedClassroom.period && (
+                    <div className="text-academy-cream/50 text-sm">{selectedClassroom.period}</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <div className="text-academy-cream/40 text-xs mb-1">Join Code</div>
+                    <div className="font-fantasy text-xl text-academy-gold tracking-widest">
+                      {selectedClassroom.joinCode}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-academy-cream/40 text-xs mb-1">Class Zone</div>
+                    <div className="font-fantasy text-xl text-academy-gold">{selectedClassroom.currentZone}</div>
+                  </div>
+                  <button
+                    onClick={advanceClassroomZone}
+                    disabled={selectedClassroom.currentZone >= 12}
+                    className="btn-secondary text-xs py-2 px-3 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Advance Class →
+                  </button>
+                  <div className="text-center">
+                    <div className="text-academy-cream/40 text-xs mb-1">Students</div>
+                    <div className="font-fantasy text-xl text-academy-gold">{students.length}</div>
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-academy-cream/40 text-xs mb-1">Zone</div>
-                  <div className="font-fantasy text-xl text-academy-gold">{selectedClassroom.currentZone}</div>
-                </div>
+              </div>
+              {/* Class management row */}
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-academy-gold/10">
                 <button
-                  onClick={advanceClassroomZone}
-                  disabled={selectedClassroom.currentZone >= 12}
-                  className="btn-secondary text-xs py-2 px-3 disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={toggleArchiveClassroom}
+                  className="text-academy-cream/50 hover:text-academy-cream text-xs px-3 py-1.5 border border-academy-gold/20 rounded transition-colors"
                 >
-                  Advance Zone →
+                  {selectedClassroom.archived ? '↩ Unarchive' : '📦 Archive'}
                 </button>
-                <div className="text-center">
-                  <div className="text-academy-cream/40 text-xs mb-1">Students</div>
-                  <div className="font-fantasy text-xl text-academy-gold">{students.length}</div>
-                </div>
+                <button
+                  onClick={deleteClassroom}
+                  className="text-red-400/70 hover:text-red-400 text-xs px-3 py-1.5 border border-red-500/30 rounded transition-colors"
+                >
+                  🗑 Delete Class
+                </button>
               </div>
             </div>
 
@@ -241,11 +298,15 @@ export default function TeacherDashboardPage() {
         />
       )}
 
-      {selectedStudent && (
+      {selectedStudent && selectedClassroom && (
         <StudentDetailModal
           student={selectedStudent}
           teacherId={user!.id}
           onClose={() => setSelectedStudent(null)}
+          onChanged={async () => {
+            setSelectedStudent(null);
+            await loadStudents(selectedClassroom.id);
+          }}
         />
       )}
     </div>
@@ -566,18 +627,58 @@ interface ChallengeResult {
   recordedAt: string;
 }
 
-function StudentDetailModal({ student, teacherId, onClose }: {
+function StudentDetailModal({ student, teacherId, onClose, onChanged }: {
   student: StudentRow;
   teacherId: string;
   onClose: () => void;
+  onChanged: () => void;
 }) {
   const [results, setResults] = useState<ChallengeResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [overrideTarget, setOverrideTarget] = useState<ChallengeResult | null>(null);
   const [bootCampConfirm, setBootCampConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const color = getInstrumentColor(student.instrument);
   const inst = INSTRUMENTS[student.instrument];
+
+  async function advanceStudentZone() {
+    if (student.currentZone >= 12) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from('characters')
+      .update({ current_zone: student.currentZone + 1 })
+      .eq('id', student.id);
+    setBusy(false);
+    if (error) { alert('Could not advance student: ' + error.message); return; }
+    onChanged();
+  }
+
+  async function toggleSuspend() {
+    setBusy(true);
+    const { error } = await supabase
+      .from('characters')
+      .update({ suspended: !student.suspended })
+      .eq('id', student.id);
+    setBusy(false);
+    if (error) { alert('Could not update student: ' + error.message); return; }
+    onChanged();
+  }
+
+  async function removeStudent() {
+    const ok = window.confirm(
+      `Remove ${student.displayName} from this class?\n\nTheir character and all progress will be permanently deleted. They can rejoin with the class code to start over.`
+    );
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await supabase
+      .from('characters')
+      .delete()
+      .eq('id', student.id);
+    setBusy(false);
+    if (error) { alert('Could not remove student: ' + error.message); return; }
+    onChanged();
+  }
 
   useEffect(() => {
     supabase
@@ -665,6 +766,41 @@ function StudentDetailModal({ student, teacherId, onClose }: {
                 {student.bootCampComplete ? '✓ Done' : 'Pending'}
               </div>
             </div>
+          </div>
+
+          {/* Student management */}
+          <div className="card-panel border-academy-gold/30">
+            <div className="text-xs text-academy-gold/70 uppercase tracking-widest font-fantasy mb-3">Manage Student</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={advanceStudentZone}
+                disabled={busy || student.currentZone >= 12}
+                className="text-academy-cream/70 hover:text-academy-cream text-xs px-3 py-1.5 border border-academy-gold/20 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ↗ Advance to Zone {Math.min(student.currentZone + 1, 12)}
+              </button>
+              <button
+                onClick={toggleSuspend}
+                disabled={busy}
+                className={`text-xs px-3 py-1.5 border rounded transition-colors disabled:opacity-40 ${
+                  student.suspended
+                    ? 'text-rating-superior border-rating-superior/30 hover:text-rating-superior'
+                    : 'text-amber-400/80 border-amber-500/30 hover:text-amber-400'
+                }`}
+              >
+                {student.suspended ? '▶ Reinstate' : '⏸ Suspend'}
+              </button>
+              <button
+                onClick={removeStudent}
+                disabled={busy}
+                className="text-red-400/70 hover:text-red-400 text-xs px-3 py-1.5 border border-red-500/30 rounded transition-colors disabled:opacity-40"
+              >
+                🗑 Remove from Class
+              </button>
+            </div>
+            {student.suspended && (
+              <p className="text-amber-400/70 text-[11px] mt-2">This student is suspended and cannot play until reinstated.</p>
+            )}
           </div>
 
           {/* Boot camp confirmation (if not complete) */}

@@ -35,8 +35,24 @@ function RequireCharacter({ children }: { children: React.ReactNode }) {
   if (authLoading || gameLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/" replace />;
   if (!character) return <Navigate to="/class-select" replace />;
+  if (character.suspended) return <SuspendedScreen />;
   if (!character.bootCampComplete) return <Navigate to="/boot-camp" replace />;
   return <>{children}</>;
+}
+
+function SuspendedScreen() {
+  const { signOut } = useAuthStore();
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
+      <div className="text-5xl mb-4">⏸</div>
+      <h1 className="fantasy-title text-2xl text-academy-gold mb-3">Account Paused</h1>
+      <p className="text-academy-cream/60 text-sm max-w-sm mb-6">
+        Your band director has temporarily paused your account. Please check with your
+        teacher to have it reinstated.
+      </p>
+      <button onClick={signOut} className="btn-secondary text-sm">Sign out</button>
+    </div>
+  );
 }
 
 export default function App() {

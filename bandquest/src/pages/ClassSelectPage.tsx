@@ -21,14 +21,19 @@ export default function ClassSelectPage() {
     setLoading(true);
     setError('');
 
-    const { data: classroom, error: fetchErr } = await supabase
-      .from('classrooms')
-      .select('id, name, period, base_instruments_only')
-      .eq('join_code', code)
-      .single();
+    const { data, error: fetchErr } = await supabase
+      .rpc('lookup_classroom_by_code', { p_code: code });
+
+    const classroom = Array.isArray(data) ? data[0] : null;
 
     if (fetchErr || !classroom) {
       setError('Classroom not found. Check the code with your teacher.');
+      setLoading(false);
+      return;
+    }
+
+    if (classroom.archived) {
+      setError('This class has been archived by the teacher.');
       setLoading(false);
       return;
     }

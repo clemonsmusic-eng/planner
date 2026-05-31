@@ -107,6 +107,7 @@ export default function InstrumentSelectPage() {
       bootCampComplete: false,
       totalAttempts: 0,
       weeklyXp: 0,
+      suspended: false,
       createdAt: char.created_at,
       updatedAt: char.updated_at,
     });

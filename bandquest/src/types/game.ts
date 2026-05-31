@@ -197,6 +197,7 @@ export interface Character {
   bootCampComplete: boolean;
   totalAttempts: number;
   weeklyXp: number;
+  suspended: boolean;
   createdAt: string;
   updatedAt: string;
 }

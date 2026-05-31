@@ -285,6 +285,7 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     // Extra fields stored in DB but not in core Character type — keep for gameStore logic
     totalAttempts: (row.total_attempts as number) ?? 0,
     weeklyXp: (row.weekly_xp as number) ?? 0,
+    suspended: (row.suspended as boolean) ?? false,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
