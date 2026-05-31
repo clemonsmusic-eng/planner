@@ -4,13 +4,44 @@ import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 
 export default function LandingPage() {
-  const { user, loading, signInWithGoogle, signInWithMagicLink } = useAuthStore();
+  const { user, loading, signInWithGoogle, signInWithMagicLink, signInWithPassword, signUpWithPassword } = useAuthStore();
   const { character } = useGameStore();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
   const [sendingLink, setSendingLink] = useState(false);
+
+  // Email + password
+  const [mode, setMode] = useState<'password' | 'magic'>('password');
+  const [password, setPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwNotice, setPwNotice] = useState<string | null>(null);
+
+  async function handlePasswordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    setPwBusy(true); setPwError(null); setPwNotice(null);
+    const { error } = await signInWithPassword(email.trim(), password);
+    setPwBusy(false);
+    if (error) setPwError(error);
+    // success → onAuthStateChange handles redirect
+  }
+
+  async function handlePasswordSignUp() {
+    if (!email.trim() || !password) { setPwError('Enter an email and password first.'); return; }
+    if (password.length < 6) { setPwError('Password must be at least 6 characters.'); return; }
+    setPwBusy(true); setPwError(null); setPwNotice(null);
+    const { error, needsConfirm } = await signUpWithPassword(email.trim(), password);
+    setPwBusy(false);
+    if (error) { setPwError(error); return; }
+    if (needsConfirm) {
+      setPwNotice('Account created — check your email to confirm, then sign in. (Or disable "Confirm email" in Supabase to skip this.)');
+    } else {
+      setPwNotice('Account created! Signing you in…');
+    }
+  }
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
@@ -125,34 +156,89 @@ export default function LandingPage() {
               <div className="flex-1 h-px bg-academy-gold/20" />
             </div>
 
-            {/* Magic link */}
-            <form onSubmit={handleMagicLink} className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                required
-                className="w-full bg-academy-dark/60 border border-academy-gold/20 rounded-lg px-4 py-3 text-academy-cream placeholder-academy-cream/30 text-sm focus:outline-none focus:border-academy-gold/50 transition-colors"
-              />
-              {magicLinkError && (
-                <p className="text-red-400 text-xs text-center">{magicLinkError}</p>
-              )}
-              <button
-                type="submit"
-                disabled={sendingLink || !email.trim()}
-                className="w-full btn-secondary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingLink ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
-                    Sending…
-                  </>
-                ) : (
-                  <>✉️ Send Magic Link</>
+            {mode === 'password' ? (
+              /* Email + password */
+              <form onSubmit={handlePasswordSignIn} className="space-y-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address"
+                  required
+                  className="w-full bg-academy-dark/60 border border-academy-gold/20 rounded-lg px-4 py-3 text-academy-cream placeholder-academy-cream/30 text-sm focus:outline-none focus:border-academy-gold/50 transition-colors"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  className="w-full bg-academy-dark/60 border border-academy-gold/20 rounded-lg px-4 py-3 text-academy-cream placeholder-academy-cream/30 text-sm focus:outline-none focus:border-academy-gold/50 transition-colors"
+                />
+                {pwError && <p className="text-red-400 text-xs text-center">{pwError}</p>}
+                {pwNotice && <p className="text-academy-gold text-xs text-center">{pwNotice}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={pwBusy || !email.trim() || !password}
+                    className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pwBusy ? '…' : 'Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePasswordSignUp}
+                    disabled={pwBusy || !email.trim() || !password}
+                    className="flex-1 btn-secondary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Create Account
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setMode('magic'); setPwError(null); setPwNotice(null); }}
+                  className="text-academy-cream/40 hover:text-academy-cream/70 text-xs underline transition-colors"
+                >
+                  Email me a magic link instead
+                </button>
+              </form>
+            ) : (
+              /* Magic link */
+              <form onSubmit={handleMagicLink} className="space-y-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  required
+                  className="w-full bg-academy-dark/60 border border-academy-gold/20 rounded-lg px-4 py-3 text-academy-cream placeholder-academy-cream/30 text-sm focus:outline-none focus:border-academy-gold/50 transition-colors"
+                />
+                {magicLinkError && (
+                  <p className="text-red-400 text-xs text-center">{magicLinkError}</p>
                 )}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={sendingLink || !email.trim()}
+                  className="w-full btn-secondary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingLink ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>✉️ Send Magic Link</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('password'); setMagicLinkError(null); }}
+                  className="text-academy-cream/40 hover:text-academy-cream/70 text-xs underline transition-colors"
+                >
+                  Use email + password instead
+                </button>
+              </form>
+            )}
           </div>
         )}
 

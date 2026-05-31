@@ -12,6 +12,8 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signInWithGoogle: () => Promise<void>;
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>;
   signOut: () => Promise<void>;
   loadProfile: (supabaseUser: User) => Promise<void>;
 }
@@ -45,6 +47,23 @@ export const useAuthStore = create<AuthState>((set) => ({
       },
     });
     return { error: error?.message ?? null };
+  },
+
+  signInWithPassword: async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
+  },
+
+  signUpWithPassword: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) return { error: error.message, needsConfirm: false };
+    // If email confirmation is on, there's a user but no session yet.
+    const needsConfirm = !data.session && !!data.user;
+    return { error: null, needsConfirm };
   },
 
   signOut: async () => {
