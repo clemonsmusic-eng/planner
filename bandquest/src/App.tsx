@@ -19,6 +19,7 @@ import LibraryPage from './pages/LibraryPage';
 import AlliesPage from './pages/AlliesPage';
 import SimulatorPage from './pages/SimulatorPage';
 import GearPage from './pages/GearPage';
+import WorldMapPage from './pages/WorldMapPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -143,6 +144,11 @@ export default function App() {
       {/* Equipment / Gear */}
       <Route path="/gear" element={
         <RequireCharacter><GearPage /></RequireCharacter>
+      } />
+
+      {/* World Map */}
+      <Route path="/world" element={
+        <RequireCharacter><WorldMapPage /></RequireCharacter>
       } />
 
       {/* Fallback */}

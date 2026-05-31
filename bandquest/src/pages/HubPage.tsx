@@ -101,6 +101,33 @@ export default function HubPage() {
           })}
         </div>
 
+        {/* World Map — primary CTA */}
+        <button
+          onClick={() => navigate('/world')}
+          className="w-full mt-6 relative overflow-hidden rounded-xl border border-academy-gold/40 hover:border-academy-gold/80 transition-all duration-300 hover:scale-[1.01] cursor-pointer text-left"
+          style={{ background: 'linear-gradient(135deg, rgba(212,160,23,0.12) 0%, rgba(212,160,23,0.04) 100%)' }}
+        >
+          {/* Decorative shimmer line */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-academy-gold/60 to-transparent" />
+          <div className="px-5 py-5 flex items-center gap-4">
+            <div className="text-4xl">🗺️</div>
+            <div className="flex-1">
+              <div className="fantasy-title text-lg text-academy-gold mb-0.5">Explore Symphonica</div>
+              <div className="text-academy-cream/50 text-xs">
+                Zone {Math.max(classroom?.currentZone ?? 1, character.currentZone)} of 12 · {
+                  ZONES.find(z => z.id === Math.max(classroom?.currentZone ?? 1, character.currentZone))?.name
+                }
+              </div>
+            </div>
+            <div
+              className="text-xs font-fantasy px-3 py-2 rounded-lg border"
+              style={{ color: '#D4A017', borderColor: 'rgba(212,160,23,0.4)', background: 'rgba(212,160,23,0.1)' }}
+            >
+              Open Map →
+            </div>
+          </div>
+        </button>
+
         {/* Navigation sections */}
         <div className="mt-8">
           <h2 className="fantasy-title text-base text-academy-gold/70 uppercase tracking-widest mb-4">
@@ -115,51 +142,45 @@ export default function HubPage() {
           </div>
         </div>
 
-        {/* Zone progression */}
+        {/* Quick zone access */}
         <div>
-          <h2 className="fantasy-title text-base text-academy-gold/70 uppercase tracking-widest mb-4">
-            Zone Progression
-          </h2>
-          <div className="space-y-2">
-            {ZONES.map((zone) => {
-              const maxZone = Math.max(classroom?.currentZone ?? 1, character.currentZone);
-              const isCurrentZone = zone.id === maxZone;
-              const isCompleted = zone.id < maxZone;
-              const isLocked = zone.id > maxZone;
-              const actColors = { 1: '#D4A017', 2: '#60A5FA', 3: '#F87171' };
-
-              return (
-                <button
-                  key={zone.id}
-                  onClick={() => isCurrentZone && navigate(`/zone/${zone.id}`)}
-                  disabled={isLocked}
-                  className={`w-full card-panel py-3 px-4 flex items-center gap-4 text-left transition-all
-                    ${isCurrentZone ? 'border-academy-gold/60 hover:border-academy-gold cursor-pointer' : ''}
-                    ${isCompleted ? 'opacity-60' : ''}
-                    ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-fantasy flex-shrink-0"
-                    style={{
-                      backgroundColor: isCompleted ? '#4ADE8030' : isCurrentZone ? `${actColors[zone.act as 1|2|3]}20` : '#00000040',
-                      border: `1px solid ${isCurrentZone ? actColors[zone.act as 1|2|3] : '#C9A22720'}`,
-                      color: isCompleted ? '#4ADE80' : actColors[zone.act as 1|2|3],
-                    }}
-                  >
-                    {isCompleted ? '✓' : zone.id}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-academy-cream/80 text-sm font-semibold truncate">{zone.name}</div>
-                    <div className="text-academy-cream/40 text-xs">{zone.quarter} · Act {zone.act}</div>
-                  </div>
-                  {isCurrentZone && (
-                    <div className="text-academy-gold text-xs font-fantasy">ACTIVE →</div>
-                  )}
-                  {isLocked && <div className="text-academy-cream/20 text-lg">🔒</div>}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="fantasy-title text-base text-academy-gold/70 uppercase tracking-widest">
+              Current Zone
+            </h2>
+            <button
+              onClick={() => navigate('/world')}
+              className="text-academy-gold/50 hover:text-academy-gold text-xs font-fantasy transition-colors"
+            >
+              Full Map →
+            </button>
           </div>
+          {(() => {
+            const maxZone = Math.max(classroom?.currentZone ?? 1, character.currentZone);
+            const zone = ZONES.find(z => z.id === maxZone);
+            if (!zone) return null;
+            const actColors: Record<number, string> = { 1: '#D4A017', 2: '#60A5FA', 3: '#F87171' };
+            const col = actColors[zone.act];
+            return (
+              <button
+                onClick={() => navigate(`/zone/${zone.id}`)}
+                className="w-full card-panel py-4 px-4 flex items-center gap-4 text-left transition-all hover:border-academy-gold/60 cursor-pointer"
+                style={{ borderColor: `${col}40`, backgroundColor: `${col}08` }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-base font-fantasy font-bold flex-shrink-0"
+                  style={{ backgroundColor: `${col}20`, border: `2px solid ${col}`, color: col, boxShadow: `0 0 12px ${col}40` }}
+                >
+                  {zone.id}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-academy-cream/90 text-sm font-semibold">{zone.name}</div>
+                  <div className="text-academy-cream/40 text-xs">{zone.quarter} · Act {zone.act}</div>
+                </div>
+                <div className="text-xs font-fantasy" style={{ color: col }}>ENTER →</div>
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>
