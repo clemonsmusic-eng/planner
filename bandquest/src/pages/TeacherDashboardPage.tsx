@@ -498,7 +498,9 @@ function CreateClassroomModal({ teacherId, onCreated, onClose }: {
         </div>
 
         {error && (
-          <p className="mt-3 text-rating-poor text-sm">{error}</p>
+          <div className="mt-3 bg-red-900/40 border border-red-500/60 rounded-lg px-4 py-3">
+            <p className="text-red-300 text-sm font-semibold">Error: {error}</p>
+          </div>
         )}
 
         <div className="flex gap-3 mt-6">
