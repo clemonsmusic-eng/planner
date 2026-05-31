@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { AppUser, UserRole } from '../types/game';
+import type { AppUser, UserRole, Appearance } from '../types/game';
+import { normalizeAppearance } from '../lib/appearance';
 
 interface AuthState {
   session: Session | null;
@@ -16,9 +17,10 @@ interface AuthState {
   signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>;
   signOut: () => Promise<void>;
   loadProfile: (supabaseUser: User) => Promise<void>;
+  saveAppearance: (appearance: Appearance) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
   loading: true,
@@ -85,6 +87,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           email: supabaseUser.email ?? '',
           role: profile.role as UserRole,
           displayName: profile.display_name,
+          appearance: normalizeAppearance(profile.appearance),
         },
       });
     } else {
@@ -95,8 +98,19 @@ export const useAuthStore = create<AuthState>((set) => ({
           email: supabaseUser.email ?? '',
           role: 'student',  // default; user will choose
           displayName: supabaseUser.user_metadata?.full_name ?? supabaseUser.email ?? 'Musician',
+          appearance: normalizeAppearance(null),
         },
       });
     }
+  },
+
+  saveAppearance: async (appearance: Appearance) => {
+    const { user } = get();
+    if (!user) return;
+    set({ user: { ...user, appearance } });
+    await supabase
+      .from('profiles')
+      .update({ appearance })
+      .eq('id', user.id);
   },
 }));

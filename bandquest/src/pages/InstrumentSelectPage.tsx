@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import { INSTRUMENTS, BASE_SIX, OPTIONAL_INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
 import { getStartingGear } from '../lib/gear';
+import { randomAppearance } from '../lib/appearance';
 import type { InstrumentId } from '../types/game';
 
 export default function InstrumentSelectPage() {
@@ -38,6 +39,7 @@ export default function InstrumentSelectPage() {
 
     const instrument = INSTRUMENTS[selected];
     const startingGear = getStartingGear(selected);
+    const appearance = randomAppearance(user.id);
     const { data: existing } = await supabase
       .from('characters')
       .select('id')
@@ -68,6 +70,7 @@ export default function InstrumentSelectPage() {
         max_hp: instrument.baseStats.endurance * 5,
         resonance_points: 0,
         gear: startingGear,
+        appearance,
       })
       .select()
       .single();
@@ -108,6 +111,7 @@ export default function InstrumentSelectPage() {
       totalAttempts: 0,
       weeklyXp: 0,
       suspended: false,
+      appearance,
       createdAt: char.created_at,
       updatedAt: char.updated_at,
     });

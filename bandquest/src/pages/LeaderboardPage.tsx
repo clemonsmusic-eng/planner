@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
 import { INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
+import Avatar from '../components/Avatar';
+import { normalizeAppearance } from '../lib/appearance';
 import type { InstrumentId } from '../types/game';
 
 type TabId = 'overall' | 'this_week' | 'boss_victories' | 'streak' | 'ensemble';
@@ -17,6 +19,7 @@ interface LeaderEntry {
   bossVictories: number;
   practiceStreak: number;
   ensembleTechs: number;
+  appearance: unknown;
   isMe: boolean;
 }
 
@@ -51,7 +54,7 @@ export default function LeaderboardPage() {
   async function loadLeaderboard(classroomId: string) {
     const { data } = await supabase
       .from('characters')
-      .select('id, display_name, instrument, level, weekly_xp, boss_victories, practice_streak, ensemble_techs, user_id')
+      .select('id, display_name, instrument, level, weekly_xp, boss_victories, practice_streak, ensemble_techs, appearance, user_id')
       .eq('classroom_id', classroomId);
 
     if (data) {
@@ -64,6 +67,7 @@ export default function LeaderboardPage() {
         bossVictories: d.boss_victories ?? 0,
         practiceStreak: d.practice_streak ?? 0,
         ensembleTechs: d.ensemble_techs ?? 0,
+        appearance: d.appearance,
         isMe: d.user_id === user?.id,
       })));
     }
@@ -157,10 +161,10 @@ export default function LeaderboardPage() {
                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                   </div>
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
-                    style={{ backgroundColor: `${color}20`, border: `1px solid ${color}40` }}
+                    className="rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ border: `1px solid ${color}40` }}
                   >
-                    {getEmoji(entry.instrument)}
+                    <Avatar appearance={normalizeAppearance(entry.appearance)} size={36} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -186,14 +190,4 @@ export default function LeaderboardPage() {
       </div>
     </div>
   );
-}
-
-function getEmoji(id: string): string {
-  const map: Record<string, string> = {
-    flute: '🪈', clarinet: '🎵', alto_sax: '🎷',
-    trumpet: '🎺', trombone: '📯', euphonium: '🎶',
-    percussion: '🥁', french_horn: '📯', tuba: '🎺',
-    oboe: '🪘', bassoon: '🎵',
-  };
-  return map[id] ?? '🎵';
 }

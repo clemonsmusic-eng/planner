@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
+import Avatar from '../components/Avatar';
+import { normalizeAppearance } from '../lib/appearance';
 import type { InstrumentId, Rating } from '../types/game';
 
 interface StudentRow {
@@ -26,6 +28,7 @@ interface StudentRow {
   ensembleTechs: number;
   totalAttempts: number;
   suspended: boolean;
+  appearance: unknown;
 }
 
 interface ClassroomData {
@@ -110,6 +113,7 @@ export default function TeacherDashboardPage() {
         ensembleTechs: d.ensemble_techs,
         totalAttempts: d.total_attempts,
         suspended: d.suspended ?? false,
+        appearance: d.appearance,
       })));
     }
   }
@@ -174,7 +178,18 @@ export default function TeacherDashboardPage() {
       <div className="sticky top-0 z-20 bg-academy-dark/95 backdrop-blur-sm border-b border-academy-gold/10 px-4 py-3 flex items-center justify-between">
         <div className="fantasy-title text-lg text-academy-gold">Teacher Dashboard</div>
         <div className="flex items-center gap-3">
-          <span className="text-academy-cream/40 text-xs">{user?.displayName}</span>
+          <button
+            onClick={() => navigate('/customize')}
+            className="flex items-center gap-2 group"
+            aria-label="Customize avatar"
+          >
+            <span className="text-academy-cream/40 group-hover:text-academy-cream/80 text-xs transition-colors hidden sm:inline">
+              {user?.displayName}
+            </span>
+            <span className="rounded-lg overflow-hidden ring-1 ring-academy-gold/20 group-hover:ring-academy-gold/60 transition-all">
+              <Avatar appearance={user?.appearance} size={32} />
+            </span>
+          </button>
           <button onClick={signOut} className="text-academy-cream/40 hover:text-academy-cream/80 text-xs transition-colors">
             Sign out
           </button>
@@ -347,10 +362,10 @@ function RosterTab({ students, onSelectStudent }: { students: StudentRow[]; onSe
             className="w-full card-panel flex items-center gap-4 py-3 hover:border-academy-gold/40 transition-all text-left"
           >
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
-              style={{ backgroundColor: `${color}20`, borderColor: `${color}40`, border: '1px solid' }}
+              className="rounded-lg overflow-hidden flex-shrink-0"
+              style={{ border: `1px solid ${color}40` }}
             >
-              {getEmoji(s.instrument)}
+              <Avatar appearance={normalizeAppearance(s.appearance)} size={40} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -723,10 +738,10 @@ function StudentDetailModal({ student, teacherId, onClose, onChanged }: {
         {/* Header */}
         <div className="sticky top-0 bg-academy-dark/95 backdrop-blur-sm border-b border-academy-gold/10 p-4 flex items-center gap-3">
           <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
-            style={{ backgroundColor: `${color}20`, border: `1px solid ${color}40` }}
+            className="rounded-lg overflow-hidden flex-shrink-0"
+            style={{ border: `1px solid ${color}40` }}
           >
-            {getEmoji(student.instrument)}
+            <Avatar appearance={normalizeAppearance(student.appearance)} size={40} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-fantasy text-base text-academy-cream truncate">{student.displayName}</div>

@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Character, Classroom, AllyId, ZoneId, GearItem } from '../types/game';
+import type { Character, Classroom, AllyId, ZoneId, GearItem, Appearance } from '../types/game';
 import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
 import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
+import { normalizeAppearance } from '../lib/appearance';
 
 interface GameState {
   character: Character | null;
@@ -19,6 +20,7 @@ interface GameState {
   freeAlly: (allyId: AllyId) => Promise<void>;
   spendResonancePoints: (amount: number) => void;
   completeBootCampStep: (stepId: string) => Promise<void>;
+  saveAppearance: (appearance: Appearance) => Promise<void>;
   setCharacter: (character: Character | null) => void;
 }
 
@@ -255,6 +257,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       completed_at: new Date().toISOString(),
     });
   },
+
+  saveAppearance: async (appearance: Appearance) => {
+    const { character } = get();
+    if (!character) return;
+    set({ character: { ...character, appearance } });
+    await supabase
+      .from('characters')
+      .update({ appearance })
+      .eq('id', character.id);
+  },
 }));
 
 function dbRowToCharacter(row: Record<string, unknown>): Character {
@@ -286,6 +298,7 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     totalAttempts: (row.total_attempts as number) ?? 0,
     weeklyXp: (row.weekly_xp as number) ?? 0,
     suspended: (row.suspended as boolean) ?? false,
+    appearance: normalizeAppearance(row.appearance),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

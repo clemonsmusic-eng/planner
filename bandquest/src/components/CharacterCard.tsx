@@ -1,12 +1,14 @@
 import type { Character, InstrumentDef } from '../types/game';
+import Avatar from './Avatar';
 
 interface Props {
   character: Character;
   instrument: InstrumentDef;
   color: string;
+  onAvatarClick?: () => void;
 }
 
-export default function CharacterCard({ character, instrument, color }: Props) {
+export default function CharacterCard({ character, instrument, color, onAvatarClick }: Props) {
   return (
     <div
       className="card-panel relative overflow-hidden"
@@ -16,13 +18,20 @@ export default function CharacterCard({ character, instrument, color }: Props) {
       <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
 
       <div className="flex items-start gap-4 pt-2">
-        {/* Avatar placeholder */}
-        <div
-          className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl flex-shrink-0 border"
-          style={{ backgroundColor: `${color}15`, borderColor: `${color}40` }}
+        {/* Avatar */}
+        <button
+          onClick={onAvatarClick}
+          disabled={!onAvatarClick}
+          className={`relative flex-shrink-0 rounded-xl overflow-hidden ${onAvatarClick ? 'cursor-pointer group' : ''}`}
+          aria-label={onAvatarClick ? 'Customize avatar' : undefined}
         >
-          {getInstrumentEmoji(character.instrument)}
-        </div>
+          <Avatar appearance={character.appearance} size={64} />
+          {onAvatarClick && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+              <span className="text-academy-cream/0 group-hover:text-academy-cream/90 text-sm transition-colors">✎</span>
+            </div>
+          )}
+        </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -52,14 +61,4 @@ export default function CharacterCard({ character, instrument, color }: Props) {
       </div>
     </div>
   );
-}
-
-function getInstrumentEmoji(id: string): string {
-  const map: Record<string, string> = {
-    flute: '🪈', clarinet: '🎵', alto_sax: '🎷',
-    trumpet: '🎺', trombone: '📯', euphonium: '🎶',
-    percussion: '🥁', french_horn: '📯', tuba: '🎺',
-    oboe: '🪘', bassoon: '🎵',
-  };
-  return map[id] ?? '🎵';
 }

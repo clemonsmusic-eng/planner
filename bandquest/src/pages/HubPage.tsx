@@ -68,8 +68,13 @@ export default function HubPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-6">
-        {/* Character summary */}
-        <CharacterCard character={character} instrument={instrument} color={color} />
+        {/* Character summary — tap avatar to customize */}
+        <CharacterCard
+          character={character}
+          instrument={instrument}
+          color={color}
+          onAvatarClick={() => navigate('/customize')}
+        />
 
         {/* XP bar */}
         <div className="card-panel mt-4 py-3">
@@ -139,6 +144,7 @@ export default function HubPage() {
             <NavCard icon="🏆" label="Leaderboard" sublabel="Class standings" onClick={() => navigate('/leaderboard')} />
             <NavCard icon="🎶" label="Symphony Allies" sublabel={`${character.freedAllies.length}/10 freed`} onClick={() => navigate('/allies')} />
             <NavCard icon="⚙️" label="Equipment" sublabel="Gear & effective stats" onClick={() => navigate('/gear')} />
+            <NavCard icon="🎨" label="Customize Avatar" sublabel="Your look & colors" onClick={() => navigate('/customize')} />
           </div>
         </div>
 

@@ -174,6 +174,21 @@ export interface SymphonyAlly {
   zone: ZoneId;
 }
 
+// ── Appearance / Avatar ───────────────────────────────────────────────────────
+
+// All fields are indices into the option palettes in lib/appearance.ts, so an
+// Appearance is a tiny serializable blob stored as jsonb in Supabase.
+export interface Appearance {
+  skinTone: number;
+  hairStyle: number;
+  hairColor: number;
+  outfitColor: number;
+  accentColor: number;
+  eyes: number;
+  accessory: number;
+  backdrop: number;
+}
+
 // ── Character (Player) ────────────────────────────────────────────────────────
 
 export interface Character {
@@ -198,6 +213,7 @@ export interface Character {
   totalAttempts: number;
   weeklyXp: number;
   suspended: boolean;
+  appearance: Appearance;
   createdAt: string;
   updatedAt: string;
 }
@@ -290,4 +306,5 @@ export interface AppUser {
   email: string;
   role: UserRole;
   displayName: string;
+  appearance: Appearance;
 }
