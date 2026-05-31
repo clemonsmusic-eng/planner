@@ -6,6 +6,7 @@ import { getAbilitiesForInstrument } from '../lib/abilities';
 import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
 import ChallengeModal from './ChallengeModal';
+import Avatar from './Avatar';
 
 // ── State types ───────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemy, simulatorMode));
   const [activeAbility, setActiveAbility] = useState<Ability | null>(null);
   const [isEnemyTurnAnimating, setIsEnemyTurnAnimating] = useState(false);
+  const [playerActing, setPlayerActing] = useState(false);
   const [lastRating, setLastRating] = useState<Rating | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
@@ -184,6 +186,10 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     if (!activeAbility) return;
     setActiveAbility(null);
     setLastRating(rating);
+
+    // Brief lunge — the player steps in to perform their action.
+    setPlayerActing(true);
+    setTimeout(() => setPlayerActing(false), 450);
 
     const rp = RP_AWARDS[rating];
     rpEarnedRef.current += rp;
@@ -307,12 +313,33 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
             />
           </div>
 
-          {/* Enemy sprite placeholder */}
-          <div className="flex items-center justify-center py-6">
-            <div
-              className={`text-7xl transition-transform ${isEnemyTurnAnimating ? 'animate-pulse scale-110' : ''}`}
-            >
-              {getEnemyEmoji(enemy.id)}
+          {/* Battle stage — player faces off against the enemy (FFVI side-view) */}
+          <div className="flex items-end justify-between gap-2 py-5 px-1">
+            {/* Player combatant */}
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{
+                  boxShadow: `0 0 24px ${color}33`,
+                  transform: playerActing ? 'translateX(26px) scale(1.06)' : 'translateX(0) scale(1)',
+                  transition: 'transform 220ms ease-out',
+                }}
+              >
+                <Avatar appearance={character.appearance} size={76} />
+              </div>
+              <div className="mt-1.5 w-14 h-1.5 rounded-full bg-black/50 blur-[1px]" />
+            </div>
+
+            {/* Enemy combatant */}
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div
+                className={`text-7xl transition-transform duration-200
+                  ${isEnemyTurnAnimating ? 'animate-pulse scale-110' : ''}
+                  ${playerActing ? '-translate-x-1.5' : ''}`}
+              >
+                {getEnemyEmoji(enemy.id)}
+              </div>
+              <div className="mt-1.5 w-16 h-1.5 rounded-full bg-black/50 blur-[1px]" />
             </div>
           </div>
 
@@ -327,10 +354,10 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         <div className="card-panel py-3 mb-4">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
-              style={{ backgroundColor: `${color}20`, border: `1px solid ${color}40` }}
+              className="rounded-lg overflow-hidden flex-shrink-0"
+              style={{ border: `1px solid ${color}40` }}
             >
-              {getPlayerEmoji(character.instrument)}
+              <Avatar appearance={character.appearance} size={40} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -495,14 +522,4 @@ function getEnemyEmoji(id: string): string {
     interval_imp: '😈',
   };
   return map[id] ?? '👾';
-}
-
-function getPlayerEmoji(instrument: string): string {
-  const map: Record<string, string> = {
-    flute: '🪈', clarinet: '🎵', alto_sax: '🎷',
-    trumpet: '🎺', trombone: '📯', euphonium: '🎶',
-    percussion: '🥁', french_horn: '📯', tuba: '🎺',
-    oboe: '🪘', bassoon: '🎵',
-  };
-  return map[instrument] ?? '🎵';
 }
