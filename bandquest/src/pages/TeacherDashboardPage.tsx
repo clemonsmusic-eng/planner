@@ -444,24 +444,16 @@ function CreateClassroomModal({ teacherId, onCreated, onClose }: {
     const codeData = `${rand(letters, 3)}-${rand(digits, 2)}${rand(letters, 1)}`;
 
     try {
-      const { data, error: insertErr } = await supabase.from('classrooms').insert({
+      const { error: insertErr } = await supabase.from('classrooms').insert({
         teacher_id: teacherId,
         name: name.trim(),
         period: period.trim() || null,
         join_code: codeData,
         base_instruments_only: baseOnly,
-      }).select();
+      });
 
       if (insertErr) {
         const msg = `${insertErr.message}${insertErr.hint ? ' — ' + insertErr.hint : ''} (code: ${insertErr.code ?? 'none'})`;
-        setError(msg);
-        alert('Could not create classroom:\n\n' + msg);
-        setSaving(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        const msg = 'Insert returned no rows — likely a Row-Level Security policy blocked it. Make sure your profile role is "teacher".';
         setError(msg);
         alert('Could not create classroom:\n\n' + msg);
         setSaving(false);
