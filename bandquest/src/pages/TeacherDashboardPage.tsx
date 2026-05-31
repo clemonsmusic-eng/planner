@@ -435,9 +435,12 @@ function CreateClassroomModal({ teacherId, onCreated, onClose }: {
     if (!name.trim()) { setError('Class name is required.'); return; }
     setSaving(true);
 
-    // Generate join code
-    const { data: codeData, error: codeErr } = await supabase.rpc('generate_join_code');
-    if (codeErr || !codeData) { setError('Failed to generate join code.'); setSaving(false); return; }
+    // Generate join code client-side (3 letters + 3 digits, e.g. HRM-47X)
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '0123456789';
+    const rand = (chars: string, n: number) =>
+      Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const codeData = `${rand(letters, 3)}-${rand(digits, 2)}${rand(letters, 1)}`;
 
     const { error: insertErr } = await supabase.from('classrooms').insert({
       teacher_id: teacherId,
