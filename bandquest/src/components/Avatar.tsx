@@ -7,28 +7,40 @@ import {
 
 interface Props {
   appearance?: Appearance | null;
-  size?: number;          // pixel size of the square avatar
+  size?: number;
   className?: string;
-  rounded?: boolean;      // rounded-square frame (default) vs. circle
+  rounded?: boolean;
 }
 
 /**
- * A fully procedural, asset-free fantasy portrait. Everything is drawn from
- * the indexed Appearance so it renders identically anywhere (cards, hub,
- * leaderboard, teacher dashboard) with no image loading.
+ * Procedural JRPG-style portrait inspired by FFVI and Chrono Trigger character art.
+ * Anime proportions: detailed eyes with iris/highlight/lash, expressive hair with volume
+ * and highlights, shoulder armor with pauldrons, face with radial skin gradient.
  */
 export default function Avatar({ appearance, size = 64, className = '', rounded = true }: Props) {
   const a = useMemo(() => normalizeAppearance(appearance), [appearance]);
-
-  const skin = SKIN_TONES[a.skinTone];
-  const skinShade = shade(skin, -18);
-  const hair = HAIR_COLORS[a.hairColor];
-  const hairShade = shade(hair, -22);
-  const outfit = OUTFIT_COLORS[a.outfitColor];
-  const outfitShade = shade(outfit, -22);
-  const accent = ACCENT_COLORS[a.accentColor];
-  const backdrop = BACKDROPS[a.backdrop];
   const gid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
+
+  const skin  = SKIN_TONES[a.skinTone];
+  const sd    = shade(skin, -24);    // skin shadow
+  const sl    = shade(skin, 16);     // skin light
+  const hair  = HAIR_COLORS[a.hairColor];
+  const hd    = shade(hair, -32);    // hair shadow
+  const hl    = shade(hair, 30);     // hair highlight (use at low opacity)
+  const outfit  = OUTFIT_COLORS[a.outfitColor];
+  const od      = shade(outfit, -30);
+  const ol      = shade(outfit, 22);
+  const accent  = ACCENT_COLORS[a.accentColor];
+  const bd      = BACKDROPS[a.backdrop];
+  const brow    = shade(hair, -40);
+
+  // Iris colour derived from accent index — gives each character unique eyes
+  const IRIS_SET = [
+    '#5580c8','#3d9e82','#c09842','#8244c0','#c04448',
+    '#3874c8','#52b84a','#b04488','#3ab8ba','#a08248',
+  ];
+  const iris  = IRIS_SET[a.accentColor % IRIS_SET.length];
+  const irisD = shade(iris, -42);
 
   return (
     <svg
@@ -41,10 +53,18 @@ export default function Avatar({ appearance, size = 64, className = '', rounded 
       aria-label="Character avatar"
     >
       <defs>
+        {/* Sky-to-ground backdrop */}
         <linearGradient id={`bg-${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={backdrop.from} />
-          <stop offset="100%" stopColor={backdrop.to} />
+          <stop offset="0%"   stopColor={bd.from} />
+          <stop offset="100%" stopColor={bd.to}   />
         </linearGradient>
+        {/* Radial skin gradient — light upper-left, shadow lower-right */}
+        <radialGradient id={`face-${gid}`} cx="38%" cy="34%" r="65%">
+          <stop offset="0%"   stopColor={sl}   />
+          <stop offset="65%"  stopColor={skin} />
+          <stop offset="100%" stopColor={sd}   />
+        </radialGradient>
+        {/* Clip to rounded square or circle */}
         <clipPath id={`clip-${gid}`}>
           {rounded
             ? <rect x="0" y="0" width="100" height="100" rx="18" />
@@ -53,72 +73,267 @@ export default function Avatar({ appearance, size = 64, className = '', rounded 
       </defs>
 
       <g clipPath={`url(#clip-${gid})`}>
-        {/* Backdrop */}
+
+        {/* ── 1. Backdrop ─────────────────────────────────────────── */}
         <rect x="0" y="0" width="100" height="100" fill={`url(#bg-${gid})`} />
-        <circle cx="50" cy="58" r="34" fill="#ffffff" opacity="0.04" />
+        {/* Soft ambient glow behind figure */}
+        <ellipse cx="50" cy="60" rx="38" ry="28" fill="white" opacity="0.05" />
 
-        {/* Back hair (for long / ponytail styles) */}
-        {renderBackHair(a.hairStyle, hair, hairShade)}
+        {/* ── 2. Back hair (behind head) ───────────────────────────── */}
+        {backHair(a.hairStyle, hair, hd, hl)}
 
-        {/* Shoulders / armor */}
-        <path d="M18 100 V86 Q50 66 82 86 V100 Z" fill={outfit} />
-        <path d="M18 100 V86 Q50 66 82 86 V100 Z" fill="#000" opacity="0.0" />
-        {/* armor shading */}
-        <path d="M18 100 V86 Q34 74 50 73 V100 Z" fill={outfitShade} opacity="0.45" />
-        {/* collar / accent trim */}
-        <path d="M38 78 Q50 70 62 78 L58 88 Q50 83 42 88 Z" fill={accent} />
-        <circle cx="50" cy="86" r="2.4" fill={outfitShade} />
+        {/* ── 3. Shoulder armor ────────────────────────────────────── */}
+        {armor(outfit, od, ol, accent)}
 
-        {/* Neck */}
-        <rect x="44" y="60" width="12" height="14" rx="5" fill={skin} />
-        <rect x="44" y="60" width="12" height="6" rx="3" fill={skinShade} opacity="0.5" />
+        {/* ── 4. Neck ─────────────────────────────────────────────── */}
+        <rect x="44" y="63" width="12" height="14" rx="4" fill={`url(#face-${gid})`} />
+        <rect x="44" y="63" width="12" height="6"  rx="3" fill={sd} opacity="0.35" />
 
-        {/* Head */}
-        <ellipse cx="50" cy="44" rx="20" ry="22" fill={skin} />
-        {/* cheek/jaw shading */}
-        <path d="M30 44 Q30 64 50 66 Q44 60 42 44 Z" fill={skinShade} opacity="0.30" />
-        {/* ears */}
-        <ellipse cx="30.5" cy="46" rx="3.2" ry="4.6" fill={skin} />
-        <ellipse cx="69.5" cy="46" rx="3.2" ry="4.6" fill={skin} />
+        {/* ── 5. Head — anime proportions: wide brow, pointed chin ─── */}
+        <path
+          d="M32 42 Q31 18 50 17 Q69 18 68 42 Q70 52 64 62 Q57 67 50 67 Q43 67 36 62 Q30 52 32 42 Z"
+          fill={`url(#face-${gid})`}
+        />
+        {/* Cheek blush */}
+        <ellipse cx="36" cy="53" rx="6" ry="3.5" fill={shade(skin,-2)}  opacity="0.18" />
+        <ellipse cx="64" cy="53" rx="6" ry="3.5" fill={shade(skin,-2)}  opacity="0.18" />
 
-        {/* Eyes + brows */}
-        {renderEyes(a.eyes)}
+        {/* ── 6. Ears ──────────────────────────────────────────────── */}
+        <path d="M32 42 Q27 45 28 52 Q30 56 33 53 Q33 47 32 42 Z" fill={skin} />
+        <path d="M29 50 Q30 52 32 51" fill="none" stroke={sd} strokeWidth="0.7" opacity="0.45" />
+        <path d="M68 42 Q73 45 72 52 Q70 56 67 53 Q67 47 68 42 Z" fill={skin} />
+        <path d="M71 50 Q70 52 68 51" fill="none" stroke={sd} strokeWidth="0.7" opacity="0.45" />
 
-        {/* Nose + mouth */}
-        <path d="M49 46 Q48 50 50.5 51" fill="none" stroke={skinShade} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-        <path d="M45 55 Q50 58 55 55" fill="none" stroke={shade(skin, -38)} strokeWidth="1.6" strokeLinecap="round" />
+        {/* ── 7. Eyes + brows ──────────────────────────────────────── */}
+        {eyes(a.eyes, iris, irisD, brow)}
 
-        {/* Front hair */}
-        {renderFrontHair(a.hairStyle, hair, hairShade)}
+        {/* ── 8. Nose ─────────────────────────────────────────────── */}
+        <path
+          d="M47 51 Q48 55 50 56 Q52 55 53 51"
+          fill="none" stroke={sd} strokeWidth="1.1" strokeLinecap="round" opacity="0.5"
+        />
+        <circle cx="48.2" cy="55.5" r="0.9" fill={sd} opacity="0.28" />
+        <circle cx="51.8" cy="55.5" r="0.9" fill={sd} opacity="0.28" />
 
-        {/* Accessory (drawn last, on top) */}
-        {renderAccessory(a.accessory, accent, hair)}
+        {/* ── 9. Mouth ─────────────────────────────────────────────── */}
+        <path
+          d="M43 60 Q50 64 57 60"
+          fill="none" stroke={shade(skin, -50)} strokeWidth="1.8" strokeLinecap="round"
+        />
+        <path d="M44 62 Q50 65 56 62" fill={shade(skin, -16)} opacity="0.32" />
+
+        {/* ── 10. Front hair (in front of head) ───────────────────── */}
+        {frontHair(a.hairStyle, hair, hd, hl)}
+
+        {/* ── 11. Accessory ────────────────────────────────────────── */}
+        {accessory(a.accessory, accent, iris)}
+
       </g>
 
-      {/* Frame */}
+      {/* Frame border */}
       {rounded
-        ? <rect x="0.75" y="0.75" width="98.5" height="98.5" rx="17.5" fill="none" stroke={accent} strokeOpacity="0.35" strokeWidth="1.5" />
-        : <circle cx="50" cy="50" r="49" fill="none" stroke={accent} strokeOpacity="0.35" strokeWidth="1.5" />}
+        ? <rect x="0.75" y="0.75" width="98.5" height="98.5" rx="17.5"
+            fill="none" stroke={accent} strokeOpacity="0.38" strokeWidth="1.5" />
+        : <circle cx="50" cy="50" r="49"
+            fill="none" stroke={accent} strokeOpacity="0.38" strokeWidth="1.5" />}
     </svg>
   );
 }
 
-// ── Hair ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Shoulder armor
+// ─────────────────────────────────────────────────────────────────────────────
 
-function renderBackHair(style: number, hair: string, hairShade: string) {
+function armor(outfit: string, od: string, ol: string, accent: string) {
+  return (
+    <g>
+      {/* Torso base */}
+      <path d="M8 100 L8 83 Q22 72 38 70 L50 68 L62 70 Q78 72 92 83 L92 100 Z" fill={outfit} />
+      {/* Left pauldron */}
+      <ellipse cx="20" cy="78" rx="16" ry="10" fill={outfit} />
+      <ellipse cx="20" cy="76" rx="13" ry="8"  fill={ol} />
+      <ellipse cx="20" cy="76" rx="13" ry="8"  fill="none" stroke={accent} strokeWidth="1.2" opacity="0.65" />
+      <path    d="M10 78 Q20 70 30 78"          fill="none" stroke={accent} strokeWidth="0.8"  opacity="0.45" />
+      {/* Right pauldron */}
+      <ellipse cx="80" cy="78" rx="16" ry="10" fill={outfit} />
+      <ellipse cx="80" cy="76" rx="13" ry="8"  fill={ol} />
+      <ellipse cx="80" cy="76" rx="13" ry="8"  fill="none" stroke={accent} strokeWidth="1.2" opacity="0.65" />
+      <path    d="M70 78 Q80 70 90 78"          fill="none" stroke={accent} strokeWidth="0.8"  opacity="0.45" />
+      {/* Chest plate */}
+      <path d="M36 76 Q50 70 64 76 L62 92 Q50 88 38 92 Z" fill={ol} />
+      <path d="M36 76 Q50 70 64 76"             fill="none" stroke={accent} strokeWidth="1.5" opacity="0.75" />
+      {/* Chest gem / medallion */}
+      <circle cx="50" cy="84" r="4.5" fill={accent} opacity="0.72" />
+      <circle cx="50" cy="84" r="2.8" fill={ol}     opacity="0.6"  />
+      <circle cx="49" cy="83" r="1"   fill="white"  opacity="0.4"  />
+      {/* Body shadow — left half */}
+      <path d="M8 100 L8 83 Q22 72 38 70 L50 68 V100 Z" fill={od} opacity="0.28" />
+      {/* Collar */}
+      <path d="M40 72 Q50 67 60 72 Q56 77 50 77 Q44 77 40 72 Z" fill={od} opacity="0.45" />
+    </g>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Eyes — anime style with iris, pupil, catch-light, lashes
+// ─────────────────────────────────────────────────────────────────────────────
+
+function eyes(style: number, iris: string, irisD: string, brow: string) {
+  // Eye socket whites
+  const leftWhite  = 'M35 43 Q41 38 47 43 L46 49 Q41 51 36 49 Z';
+  const rightWhite = 'M53 43 Q59 38 65 43 L64 49 Q59 51 54 49 Z';
+  // Upper lash line
+  const leftLash   = 'M35 43 Q41 38 47 43';
+  const rightLash  = 'M53 43 Q59 38 65 43';
+
+  // Shared eye builder
+  function eyePair(
+    lcx: number, lcy: number, rcx: number, rcy: number,
+    rx: number, ry: number, lashW: number,
+  ) {
+    return (
+      <>
+        {/* Whites */}
+        <path d={leftWhite}  fill="white" />
+        <path d={rightWhite} fill="white" />
+        {/* Iris */}
+        <ellipse cx={lcx} cy={lcy} rx={rx} ry={ry} fill={iris} />
+        <ellipse cx={rcx} cy={rcy} rx={rx} ry={ry} fill={iris} />
+        {/* Iris ring */}
+        <ellipse cx={lcx} cy={lcy} rx={rx} ry={ry} fill="none" stroke={irisD} strokeWidth="0.8" />
+        <ellipse cx={rcx} cy={rcy} rx={rx} ry={ry} fill="none" stroke={irisD} strokeWidth="0.8" />
+        {/* Pupil */}
+        <ellipse cx={lcx}     cy={lcy + 0.5} rx={rx * 0.52} ry={ry * 0.56} fill="#090808" />
+        <ellipse cx={rcx}     cy={rcy + 0.5} rx={rx * 0.52} ry={ry * 0.56} fill="#090808" />
+        {/* Main catch-light */}
+        <ellipse cx={lcx + 1.5} cy={lcy - 1.8} rx={rx * 0.38} ry={ry * 0.42} fill="white" opacity="0.92" />
+        <ellipse cx={rcx + 1.5} cy={rcy - 1.8} rx={rx * 0.38} ry={ry * 0.42} fill="white" opacity="0.92" />
+        {/* Secondary small highlight */}
+        <circle  cx={lcx - 1.4} cy={lcy + 1.6} r={rx * 0.17} fill="white" opacity="0.52" />
+        <circle  cx={rcx - 1.4} cy={rcy + 1.6} r={rx * 0.17} fill="white" opacity="0.52" />
+        {/* Upper lash line */}
+        <path d={leftLash}  stroke="#130e0d" strokeWidth={lashW} fill="none" strokeLinecap="round" />
+        <path d={rightLash} stroke="#130e0d" strokeWidth={lashW} fill="none" strokeLinecap="round" />
+        {/* Lower lash hint */}
+        <path d="M36 49 Q41 51 46 49" stroke="#130e0d" strokeWidth="0.85" fill="none" strokeLinecap="round" opacity="0.6" />
+        <path d="M54 49 Q59 51 64 49" stroke="#130e0d" strokeWidth="0.85" fill="none" strokeLinecap="round" opacity="0.6" />
+        {/* Outer lash strokes */}
+        <path d="M35 43 L32 41"  stroke="#130e0d" strokeWidth="1.1" strokeLinecap="round" />
+        <path d="M65 43 L68 41"  stroke="#130e0d" strokeWidth="1.1" strokeLinecap="round" />
+      </>
+    );
+  }
+
   switch (style) {
-    case 3: // long — panels falling behind the shoulders
+    case 0: // Wide / innocent — large round iris
       return (
         <g>
-          <path d="M26 40 Q22 78 32 92 L40 90 Q34 64 34 44 Z" fill={hairShade} />
-          <path d="M74 40 Q78 78 68 92 L60 90 Q66 64 66 44 Z" fill={hairShade} />
+          {eyePair(41, 45, 59, 45, 4.0, 4.6, 2.2)}
+          {/* Brows — gently arched */}
+          <path d="M33 37 Q41 34 47 36" stroke={brow} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <path d="M53 36 Q59 34 67 37" stroke={brow} strokeWidth="2.2" fill="none" strokeLinecap="round" />
         </g>
       );
-    case 4: // ponytail behind head
+
+    case 1: // Calm / confident — almond shape, slightly narrower
       return (
         <g>
-          <path d="M64 34 Q86 40 80 64 Q78 74 70 76 Q78 60 70 44 Z" fill={hairShade} />
-          <ellipse cx="67" cy="34" rx="6" ry="6" fill={hair} />
+          {eyePair(41, 45.5, 59, 45.5, 3.7, 4.0, 2.0)}
+          {/* Brows — level, mature */}
+          <path d="M33 38 Q41 35 47 37" stroke={brow} strokeWidth="2.0" fill="none" strokeLinecap="round" />
+          <path d="M53 37 Q59 35 67 38" stroke={brow} strokeWidth="2.0" fill="none" strokeLinecap="round" />
+        </g>
+      );
+
+    case 2: // Sharp / determined — angled lash line
+      return (
+        <g>
+          <path d={leftWhite}  fill="white" />
+          <path d={rightWhite} fill="white" />
+          {/* Iris */}
+          <ellipse cx="41" cy="45" rx="3.6" ry="3.8" fill={iris} />
+          <ellipse cx="59" cy="45" rx="3.6" ry="3.8" fill={iris} />
+          <ellipse cx="41" cy="45" rx="3.6" ry="3.8" fill="none" stroke={irisD} strokeWidth="0.8" />
+          <ellipse cx="59" cy="45" rx="3.6" ry="3.8" fill="none" stroke={irisD} strokeWidth="0.8" />
+          <ellipse cx="41"   cy="45.5" rx="1.9" ry="2.1" fill="#090808" />
+          <ellipse cx="59"   cy="45.5" rx="1.9" ry="2.1" fill="#090808" />
+          <ellipse cx="42.5" cy="43.2" rx="1.4" ry="1.6" fill="white" opacity="0.9" />
+          <ellipse cx="60.5" cy="43.2" rx="1.4" ry="1.6" fill="white" opacity="0.9" />
+          {/* Angular upper lash — droops at outer corners */}
+          <path d="M35 43 Q41 38 47 44" stroke="#130e0d" strokeWidth="2.3" fill="none" strokeLinecap="round" />
+          <path d="M53 44 Q59 38 65 43" stroke="#130e0d" strokeWidth="2.3" fill="none" strokeLinecap="round" />
+          <path d="M35 43 L32 42" stroke="#130e0d" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M65 43 L68 42" stroke="#130e0d" strokeWidth="1.3" strokeLinecap="round" />
+          {/* Angled brows — fierce */}
+          <path d="M33 36 L47 39"  stroke={brow} strokeWidth="2.3" fill="none" strokeLinecap="round" />
+          <path d="M53 39 L67 36"  stroke={brow} strokeWidth="2.3" fill="none" strokeLinecap="round" />
+        </g>
+      );
+
+    case 3: // Wink — left eye closed
+      return (
+        <g>
+          {/* Left — closed with crinkle */}
+          <path d="M35 45 Q41 49 47 45" stroke="#130e0d" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <path d="M36 43 Q41 46 46 43" stroke="#130e0d" strokeWidth="0.9" fill="none" strokeLinecap="round" opacity="0.5" />
+          <path d="M35 44 L33 42"  stroke="#130e0d" strokeWidth="1"   strokeLinecap="round" opacity="0.7" />
+          <path d="M47 44 L49 43"  stroke="#130e0d" strokeWidth="1"   strokeLinecap="round" opacity="0.7" />
+          {/* Right — open */}
+          <path d={rightWhite} fill="white" />
+          <ellipse cx="59" cy="45" rx="4.0" ry="4.6" fill={iris} />
+          <ellipse cx="59" cy="45" rx="4.0" ry="4.6" fill="none" stroke={irisD} strokeWidth="0.8" />
+          <ellipse cx="59"   cy="45.5" rx="2.1" ry="2.4" fill="#090808" />
+          <ellipse cx="60.5" cy="42.5" rx="1.5" ry="1.8" fill="white" opacity="0.92" />
+          <path d={rightLash} stroke="#130e0d" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <path d="M54 49 Q59 51 64 49" stroke="#130e0d" strokeWidth="0.85" fill="none" strokeLinecap="round" opacity="0.6" />
+          <path d="M65 43 L68 41" stroke="#130e0d" strokeWidth="1.1" strokeLinecap="round" />
+          {/* Brows */}
+          <path d="M33 37 Q41 36 47 38" stroke={brow} strokeWidth="2.0" fill="none" strokeLinecap="round" />
+          <path d="M53 36 Q59 34 67 37" stroke={brow} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        </g>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Back hair  (drawn before head so it appears behind it)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function backHair(style: number, hair: string, hd: string, _hl: string) {
+  switch (style) {
+    case 0: // Spiky — small back crown base
+      return (
+        <g>
+          <path d="M34 36 Q33 20 50 18 Q67 20 66 36 L60 26 L56 33 L50 22 L44 33 L40 26 Z" fill={hd} />
+        </g>
+      );
+    case 1: // Long flowing — wide back panels
+      return (
+        <g>
+          <path d="M26 44 Q20 70 28 92 L36 90 Q30 66 32 44 Z" fill={hd}   />
+          <path d="M28 44 Q22 72 30 92 L36 90 Q28 68 30 44 Z" fill={hair} opacity="0.5" />
+          <path d="M74 44 Q80 70 72 92 L64 90 Q70 66 68 44 Z" fill={hd}   />
+          <path d="M72 44 Q78 72 70 92 L64 90 Q72 68 70 44 Z" fill={hair} opacity="0.5" />
+        </g>
+      );
+    case 4: // Ponytail — thick tail sweeping right
+      return (
+        <g>
+          <path d="M66 32 Q92 40 86 70 Q84 80 76 82 Q84 64 76 44 Z"    fill={hd}   />
+          <path d="M66 32 Q90 42 84 70 Q82 78 74 80 Q82 62 74 44 Z"    fill={hair} opacity="0.7" />
+          <path d="M66 32 Q86 44 80 68 Q80 68 76 70 Q78 60 72 44 Z"    fill="white" opacity="0.15" />
+        </g>
+      );
+    case 5: // Dramatic — wide side volumes
+      return (
+        <g>
+          <circle cx="24" cy="52" r="17" fill={hd}   />
+          <circle cx="76" cy="52" r="17" fill={hd}   />
+          <circle cx="24" cy="52" r="13" fill={hair} opacity="0.5" />
+          <circle cx="76" cy="52" r="13" fill={hair} opacity="0.5" />
         </g>
       );
     default:
@@ -126,165 +341,211 @@ function renderBackHair(style: number, hair: string, hairShade: string) {
   }
 }
 
-function renderFrontHair(style: number, hair: string, hairShade: string) {
+// ─────────────────────────────────────────────────────────────────────────────
+//  Front hair  (drawn after head so it overlaps the forehead)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function frontHair(style: number, hair: string, hd: string, _hl: string) {
   switch (style) {
-    case 0: // buzz — close cropped cap
+    case 0: { // Wild spiky — Crono (CT) inspired
       return (
         <g>
-          <path d="M31 40 Q33 23 50 22 Q67 23 69 40 Q60 31 50 31 Q40 31 31 40 Z" fill={hair} />
+          {/* Cap base */}
+          <path d="M32 42 Q32 18 50 17 Q68 18 68 42 L62 28 L56 34 L50 22 L44 34 L38 28 Z" fill={hair} />
+          {/* Upward spike cluster */}
+          <path d="M36 30 L32 12 L38 24 Z"  fill={hair} />
+          <path d="M42 24 L38  6 L46 22 Z"  fill={hair} />
+          <path d="M50 22 L48  4 L54 20 Z"  fill={hair} />
+          <path d="M58 24 L62  6 L54 22 Z"  fill={hair} />
+          <path d="M64 30 L68 12 L62 24 Z"  fill={hair} />
+          {/* Spike highlights */}
+          <path d="M42 24 L40 10 L44 22 Z" fill="white" opacity="0.2" />
+          <path d="M50 22 L49  6 L52 20 Z" fill="white" opacity="0.2" />
+          <path d="M58 24 L60 10 L56 22 Z" fill="white" opacity="0.18" />
+          {/* Side pieces */}
+          <path d="M32 42 Q28 50 30 58 L33 56 Q31 48 33 42 Z" fill={hair} />
+          <path d="M68 42 Q72 50 70 58 L67 56 Q69 48 67 42 Z" fill={hair} />
+          {/* Shadow in spike roots */}
+          <path d="M38 28 Q42 24 50 22 Q58 24 62 28 Q56 32 50 33 Q44 32 38 28 Z" fill={hd} opacity="0.4" />
         </g>
       );
-    case 1: // short — rounded with slight fringe
+    }
+    case 1: { // Long flowing — Terra (FFVI) inspired
       return (
         <g>
-          <path d="M29 44 Q28 21 50 20 Q72 21 71 44 Q70 34 64 31 Q60 36 52 35 Q44 35 39 31 Q33 35 29 44 Z" fill={hair} />
-          <path d="M50 20 Q60 21 64 31 Q58 27 50 28 Z" fill={hairShade} opacity="0.5" />
+          <path d="M30 44 Q29 18 50 17 Q71 18 70 44 Q66 30 58 28 Q52 32 50 32 Q48 32 42 28 Q34 30 30 44 Z" fill={hair} />
+          {/* Side locks falling forward */}
+          <path d="M30 44 Q28 58 30 74 L35 72 Q33 56 34 44 Z" fill={hair} />
+          <path d="M70 44 Q72 58 70 74 L65 72 Q67 56 66 44 Z" fill={hair} />
+          {/* Crown highlight */}
+          <path d="M50 17 Q62 18 66 28 Q58 22 50 23 Z"        fill="white" opacity="0.22" />
+          <path d="M50 17 Q38 18 34 28 Q42 22 50 23 Z"        fill="white" opacity="0.15" />
+          {/* Bang wisps */}
+          <path d="M38 28 Q36 22 38 18 Q42 26 44 30 Z" fill={hd} opacity="0.55" />
         </g>
       );
-    case 2: // swept — diagonal sweep across the brow
+    }
+    case 2: { // Swept layered — Locke (FFVI) inspired
       return (
         <g>
-          <path d="M28 44 Q27 22 50 20 Q73 21 72 42 Q66 30 48 30 Q40 30 34 38 Q31 40 28 44 Z" fill={hair} />
-          <path d="M50 20 Q70 22 72 42 Q66 30 50 29 Z" fill={hairShade} opacity="0.45" />
+          <path d="M30 44 Q29 20 50 18 Q71 19 70 44 Q68 30 56 28 Q48 26 40 32 Q34 36 30 44 Z" fill={hair} />
+          {/* Forelock piece falling left */}
+          <path d="M40 30 Q34 24 34 18 Q38 24 42 28 Q44 30 42 34 Z" fill={hair} />
+          <path d="M37 26 Q33 18 35 13 Q37 20 40 26 Z"              fill={hd}   />
+          {/* Right side */}
+          <path d="M68 42 Q70 52 68 62 L65 60 Q67 50 66 42 Z" fill={hair} />
+          {/* Crown highlight */}
+          <path d="M50 18 Q65 20 68 32 Q60 24 50 24 Z" fill="white" opacity="0.22" />
         </g>
       );
-    case 3: // long — front cap with side bangs
+    }
+    case 3: { // Short structured
       return (
         <g>
-          <path d="M28 46 Q26 20 50 19 Q74 20 72 46 Q70 33 62 31 Q57 35 50 35 Q43 35 38 31 Q30 33 28 46 Z" fill={hair} />
-          <path d="M30 44 Q31 60 33 70 L38 68 Q35 54 36 42 Z" fill={hair} />
-          <path d="M70 44 Q69 60 67 70 L62 68 Q65 54 64 42 Z" fill={hair} />
+          <path d="M31 42 Q30 18 50 17 Q70 18 69 42 Q66 26 58 24 Q54 28 50 29 Q46 28 42 24 Q34 26 31 42 Z" fill={hair} />
+          <path d="M31 42 Q32 36 34 32 L36 34 Q33 38 33 42 Z" fill={hd} opacity="0.45" />
+          <path d="M69 42 Q68 36 66 32 L64 34 Q67 38 67 42 Z" fill={hd} opacity="0.45" />
+          {/* Crown highlight */}
+          <path d="M50 17 Q63 18 67 28 Q60 22 50 22 Z" fill="white" opacity="0.24" />
+          <path d="M50 17 Q37 18 33 28 Q40 22 50 22 Z" fill="white" opacity="0.16" />
         </g>
       );
-    case 4: // ponytail — clean swept front
+    }
+    case 4: { // Ponytail — Celes (FFVI) inspired
       return (
         <g>
-          <path d="M30 43 Q30 22 50 21 Q70 22 70 43 Q66 32 50 32 Q38 32 30 43 Z" fill={hair} />
+          {/* Swept back crown */}
+          <path d="M31 42 Q30 18 50 17 Q70 18 69 42 Q66 28 54 26 Q44 26 36 30 Q32 36 31 42 Z" fill={hair} />
+          {/* Hair tie/band at right side */}
+          <ellipse cx="68" cy="32" rx="5"   ry="5.5" fill={hair} />
+          <ellipse cx="68" cy="32" rx="3.5" ry="4"   fill={hd}   />
+          {/* Side wisps */}
+          <path d="M31 42 Q30 54 32 62 L35 60 Q32 50 32 42 Z" fill={hair} opacity="0.75" />
+          {/* Crown highlight */}
+          <path d="M50 17 Q63 18 67 28 Q58 22 50 22 Z" fill="white" opacity="0.24" />
         </g>
       );
-    case 5: // curly — voluminous rounded crown
+    }
+    case 5: { // Dramatic voluminous — big fantasy hair
       return (
         <g>
-          <circle cx="36" cy="30" r="9" fill={hair} />
-          <circle cx="50" cy="25" r="10" fill={hair} />
-          <circle cx="64" cy="30" r="9" fill={hair} />
-          <circle cx="30" cy="40" r="7" fill={hair} />
-          <circle cx="70" cy="40" r="7" fill={hair} />
-          <path d="M30 42 Q33 32 50 31 Q67 32 70 42 Q60 35 50 35 Q40 35 30 42 Z" fill={hairShade} opacity="0.4" />
+          {/* Large puffball clusters */}
+          <circle cx="32" cy="28" r="13" fill={hair} />
+          <circle cx="50" cy="22" r="14" fill={hair} />
+          <circle cx="68" cy="28" r="13" fill={hair} />
+          <circle cx="26" cy="40" r="11" fill={hair} />
+          <circle cx="74" cy="40" r="11" fill={hair} />
+          {/* Base */}
+          <path d="M29 44 Q30 28 50 24 Q70 28 71 44 Q60 34 50 36 Q40 34 29 44 Z" fill={hd} opacity="0.48" />
+          {/* Highlights on clusters */}
+          <circle cx="50" cy="22" r="5"   fill="white" opacity="0.18" />
+          <circle cx="32" cy="26" r="4.5" fill="white" opacity="0.15" />
+          <circle cx="68" cy="26" r="4.5" fill="white" opacity="0.15" />
         </g>
       );
+    }
     default:
       return null;
   }
 }
 
-// ── Eyes ─────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Accessories
+// ─────────────────────────────────────────────────────────────────────────────
 
-function renderEyes(style: number) {
-  const browColor = '#3a2c22';
+function accessory(style: number, accent: string, iris: string) {
+  const ad = shade(accent, -42);
+  const al = shade(accent, 32);
+
   switch (style) {
-    case 0: // round, wide
+    case 1: { // Stylish glasses (tinted lenses)
       return (
         <g>
-          <circle cx="42" cy="45" r="3" fill="#2a2018" />
-          <circle cx="58" cy="45" r="3" fill="#2a2018" />
-          <circle cx="43" cy="44" r="1" fill="#fff" opacity="0.8" />
-          <circle cx="59" cy="44" r="1" fill="#fff" opacity="0.8" />
-          <path d="M38 39 Q42 37 46 39" stroke={browColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          <path d="M54 39 Q58 37 62 39" stroke={browColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M35 43 Q41 40 47 43 L47 49 Q41 51 35 49 Z" fill={iris}    opacity="0.18" />
+          <path d="M53 43 Q59 40 65 43 L65 49 Q59 51 53 49 Z" fill={iris}    opacity="0.18" />
+          <path d="M35 43 Q41 40 47 43 L47 49 Q41 51 35 49 Z" fill="none" stroke="#1a1a1a" strokeWidth="1.4" />
+          <path d="M53 43 Q59 40 65 43 L65 49 Q59 51 53 49 Z" fill="none" stroke="#1a1a1a" strokeWidth="1.4" />
+          <path d="M47 45.5 H53" stroke="#1a1a1a" strokeWidth="1.1" strokeLinecap="round" />
+          <path d="M35 45 L31 44" stroke="#1a1a1a" strokeWidth="1.1" strokeLinecap="round" />
+          <path d="M65 45 L69 44" stroke="#1a1a1a" strokeWidth="1.1" strokeLinecap="round" />
         </g>
       );
-    case 1: // calm almond
+    }
+    case 2: { // Headband / bandana — Chrono Trigger style
       return (
         <g>
-          <path d="M38 45 Q42 41 46 45 Q42 47 38 45 Z" fill="#2a2018" />
-          <path d="M54 45 Q58 41 62 45 Q58 47 54 45 Z" fill="#2a2018" />
-          <path d="M38 39 Q42 38 46 39" stroke={browColor} strokeWidth="1.3" fill="none" strokeLinecap="round" />
-          <path d="M54 39 Q58 38 62 39" stroke={browColor} strokeWidth="1.3" fill="none" strokeLinecap="round" />
+          <path d="M30 36 Q50 29 70 36 L70 41 Q50 34 30 41 Z"    fill={accent} />
+          <path d="M30 36 Q50 30 70 36 L70 37 Q50 31 30 37 Z"    fill={al}     opacity="0.45" />
+          <path d="M30 38 Q50 32 70 38"  fill="none" stroke={ad} strokeWidth="0.8" opacity="0.5" />
+          {/* Knot/tail on right */}
+          <path d="M70 36 Q79 38 80 46 L76 48 Q74 42 70 41 Z"   fill={accent} />
+          <path d="M70 41 Q76 43 76 48 L74 47 Q73 43 70 41 Z"   fill={ad}     opacity="0.6"  />
         </g>
       );
-    case 2: // sharp / determined
+    }
+    case 3: { // Crown — FFVI / fantasy style
       return (
         <g>
-          <path d="M38 44 L46 46 L38 47 Z" fill="#2a2018" />
-          <path d="M62 44 L54 46 L62 47 Z" fill="#2a2018" />
-          <path d="M37 39 L46 41" stroke={browColor} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-          <path d="M63 39 L54 41" stroke={browColor} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+          {/* Band base */}
+          <path d="M33 31 Q50 27 67 31 L67 36 Q50 32 33 36 Z"
+            fill="#d8aa22" stroke={shade('#d8aa22',-26)} strokeWidth="0.8" />
+          {/* Points */}
+          <path d="M33 31 L36 22 L41 30 L45 21 L50 30 L55 21 L59 30 L64 22 L67 31 Q50 27 33 31 Z"
+            fill="#ecc84e" stroke={shade('#ecc84e',-26)} strokeWidth="0.6" />
+          {/* Gems */}
+          <ellipse cx="50" cy="26" rx="2.6" ry="2.6" fill="#c83050" />
+          <ellipse cx="41" cy="28" rx="1.8" ry="1.8" fill="#4068cc" />
+          <ellipse cx="59" cy="28" rx="1.8" ry="1.8" fill="#4068cc" />
+          {/* Sheen */}
+          <path d="M33 31 Q50 28 67 31" fill="none" stroke="white" strokeWidth="0.5" opacity="0.4" />
         </g>
       );
-    case 3: // wink (left closed)
+    }
+    case 4: { // Feather plume
       return (
         <g>
-          <path d="M38 45 Q42 46 46 45" stroke="#2a2018" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <circle cx="58" cy="45" r="3" fill="#2a2018" />
-          <circle cx="59" cy="44" r="1" fill="#fff" opacity="0.8" />
-          <path d="M38 39 Q42 37 46 39" stroke={browColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          <path d="M54 39 Q58 37 62 39" stroke={browColor} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M36 28 Q30 18 33  9 Q37 18 38 24 Z" fill={accent}  />
+          <path d="M36 28 Q27 20 29 11"  fill="none" stroke={al}  strokeWidth="1.3" opacity="0.8" />
+          <path d="M36 24 Q26 17 28 11"  fill="none" stroke={al}  strokeWidth="1.1" opacity="0.6" />
+          <path d="M37 20 Q28 15 29  9"  fill="none" stroke={al}  strokeWidth="0.9" opacity="0.45" />
+          <path d="M36 28 Q34 22 34 16 Q35 20 37 25 Z" fill={ad} opacity="0.5" />
+          <rect x="33" y="28" width="6" height="4" rx="2" fill={ad} opacity="0.65" />
         </g>
       );
+    }
+    case 5: { // Dangling gem earrings
+      return (
+        <g>
+          {/* Left */}
+          <circle cx="29"   cy="50"   r="2.8"  fill={accent} stroke={ad} strokeWidth="0.8" />
+          <line   x1="29"   y1="53"   x2="29"   y2="60"      stroke={accent} strokeWidth="1.3" />
+          <ellipse cx="29"  cy="62"   rx="2.6"  ry="3.2"     fill={accent} />
+          <ellipse cx="29"  cy="62"   rx="2.6"  ry="3.2"     fill="none" stroke={ad} strokeWidth="0.7" />
+          <ellipse cx="29.9" cy="60.8" rx="1"   ry="1.2"     fill="white" opacity="0.48" />
+          {/* Right */}
+          <circle cx="71"   cy="50"   r="2.8"  fill={accent} stroke={ad} strokeWidth="0.8" />
+          <line   x1="71"   y1="53"   x2="71"   y2="60"      stroke={accent} strokeWidth="1.3" />
+          <ellipse cx="71"  cy="62"   rx="2.6"  ry="3.2"     fill={accent} />
+          <ellipse cx="71"  cy="62"   rx="2.6"  ry="3.2"     fill="none" stroke={ad} strokeWidth="0.7" />
+          <ellipse cx="71.9" cy="60.8" rx="1"   ry="1.2"     fill="white" opacity="0.48" />
+        </g>
+      );
+    }
     default:
+      void iris;
       return null;
   }
 }
 
-// ── Accessories ──────────────────────────────────────────────────────────────
-
-function renderAccessory(style: number, accent: string, hair: string) {
-  switch (style) {
-    case 1: // glasses
-      return (
-        <g fill="none" stroke="#1a1a1a" strokeWidth="1.6">
-          <circle cx="42" cy="45" r="5" />
-          <circle cx="58" cy="45" r="5" />
-          <path d="M47 45 H53" strokeLinecap="round" />
-          <path d="M37 44 L33 43" strokeLinecap="round" />
-          <path d="M63 44 L67 43" strokeLinecap="round" />
-        </g>
-      );
-    case 2: // headband
-      return (
-        <g>
-          <path d="M29 35 Q50 28 71 35 L71 40 Q50 33 29 40 Z" fill={accent} />
-          <circle cx="50" cy="35" r="2" fill={shade(accent, -40)} />
-        </g>
-      );
-    case 3: // circlet / crown
-      return (
-        <g>
-          <path d="M33 32 L37 25 L43 31 L50 23 L57 31 L63 25 L67 32 Q50 28 33 32 Z" fill="#E8C254" stroke={shade('#E8C254', -30)} strokeWidth="0.8" />
-          <circle cx="50" cy="27" r="1.6" fill="#B5544A" />
-        </g>
-      );
-    case 4: // eyepatch (right eye)
-      return (
-        <g>
-          <path d="M34 41 L66 38" stroke="#1a1a1a" strokeWidth="1.6" strokeLinecap="round" />
-          <ellipse cx="58" cy="45" rx="6" ry="5.5" fill="#1a1a1a" />
-        </g>
-      );
-    case 5: // earrings
-      return (
-        <g>
-          <circle cx="30.5" cy="52" r="1.8" fill={accent} stroke={shade(accent, -40)} strokeWidth="0.6" />
-          <circle cx="69.5" cy="52" r="1.8" fill={accent} stroke={shade(accent, -40)} strokeWidth="0.6" />
-        </g>
-      );
-    default:
-      void hair;
-      return null;
-  }
-}
-
-// ── Color util ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Colour util
+// ─────────────────────────────────────────────────────────────────────────────
 
 function shade(hex: string, amount: number): string {
   const c = hex.replace('#', '');
   const num = parseInt(c.length === 3 ? c.split('').map((x) => x + x).join('') : c, 16);
-  let r = (num >> 16) & 0xff;
-  let g = (num >> 8) & 0xff;
-  let b = num & 0xff;
-  r = Math.max(0, Math.min(255, r + amount));
-  g = Math.max(0, Math.min(255, g + amount));
-  b = Math.max(0, Math.min(255, b + amount));
+  const r = Math.max(0, Math.min(255, ((num >> 16) & 0xff) + amount));
+  const g = Math.max(0, Math.min(255, ((num >> 8)  & 0xff) + amount));
+  const b = Math.max(0, Math.min(255, ( num        & 0xff) + amount));
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
