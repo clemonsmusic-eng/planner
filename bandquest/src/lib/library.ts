@@ -1,3 +1,5 @@
+import type { DiagramSpec } from '../types/diagrams';
+
 // ── Hall of Fame ──────────────────────────────────────────────────────────────
 
 export interface HallOfFameEntry {
@@ -189,6 +191,7 @@ export interface TheoryEntry {
   section: 'key_signatures' | 'intervals' | 'chords' | 'rhythm' | 'scales' | 'notation';
   title: string;
   content: string;
+  diagrams?: DiagramSpec[];
   unlockedByZone: number;
 }
 
@@ -213,6 +216,11 @@ export const THEORY_REFERENCE: TheoryEntry[] = [
 
 **Tip:** The last sharp is always one half-step below the key name.
 **Order of sharps:** F C G D A E B  (Father Charles Goes Down And Ends Battle)`,
+    diagrams: [
+      { type: 'keysig', count: 1, keyName: 'G major', label: '1 sharp — G major' },
+      { type: 'keysig', count: 2, keyName: 'D major', label: '2 sharps — D major' },
+      { type: 'keysig', count: 4, keyName: 'E major', label: '4 sharps — E major' },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -234,6 +242,11 @@ export const THEORY_REFERENCE: TheoryEntry[] = [
 
 **Tip:** The second-to-last flat names the key (for keys with 2+ flats).
 **Order of flats:** B E A D G C F  (Battle Ends And Down Goes Charles's Father)`,
+    diagrams: [
+      { type: 'keysig', count: -1, keyName: 'F major', label: '1 flat — F major' },
+      { type: 'keysig', count: -2, keyName: 'Bb major', label: '2 flats — B♭ major' },
+      { type: 'keysig', count: -4, keyName: 'Ab major', label: '4 flats — A♭ major' },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -257,6 +270,23 @@ Every major key shares its key signature with a natural minor key. The relative 
 | Ab major  | F minor        |
 
 **Rule:** Count down 3 half-steps from the major tonic to find the relative minor tonic.`,
+    diagrams: [
+      { type: 'circle', label: 'Circle of Fifths — outer: major keys, inner: relative minors' },
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'A4', dur: 'q', label: '1' },
+          { pitch: 'B4', dur: 'q', label: '2' },
+          { pitch: 'C5', dur: 'q', label: '3' },
+          { pitch: 'D5', dur: 'q', label: '4' },
+          { pitch: 'E5', dur: 'q', label: '5' },
+          { pitch: 'F5', dur: 'q', label: '6' },
+          { pitch: 'G5', dur: 'q', label: '7' },
+          { pitch: 'A5', dur: 'h', label: '8' },
+        ],
+        label: 'A natural minor — same key signature as C major (no sharps/flats)',
+      },
+    ],
     unlockedByZone: 1,
   },
 
@@ -283,6 +313,28 @@ Every major key shares its key signature with a natural minor key. The relative 
 | Octave    | P8    | 12        | C – C (up)      | Perfect unison  |
 
 **Memory Aid for Perfect intervals:** Perfect 4th = "Here Comes the Bride," Perfect 5th = "Star Wars theme."`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C4', dur: 'h', label: 'C' },
+          { pitch: 'Db4', dur: 'h', forceAcc: 'flat', label: 'm2' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'D4', dur: 'h', label: 'M2' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'Eb4', dur: 'h', forceAcc: 'flat', label: 'm3' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'E4', dur: 'h', label: 'M3' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'F4', dur: 'h', label: 'P4' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'Gb4', dur: 'h', forceAcc: 'flat', label: 'TT' },
+          { pitch: 'C4', dur: 'h' },
+          { pitch: 'G4', dur: 'h', label: 'P5' },
+        ],
+        label: 'Intervals from C — each pair shows the interval above C',
+      },
+    ],
     unlockedByZone: 2,
   },
   {
@@ -309,6 +361,20 @@ To invert an interval, subtract the interval number from 9:
 **Examples:**
 - M3 (C – E) inverted = m6 (E – C)
 - P5 (C – G) inverted = P4 (G – C)`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C4', dur: 'h', label: 'C4' },
+          { pitch: 'D5', dur: 'h', label: '9th' },
+          { pitch: 'C4', dur: 'h', label: 'C4' },
+          { pitch: 'E5', dur: 'h', label: '10th' },
+          { pitch: 'C4', dur: 'h', label: 'C4' },
+          { pitch: 'G5', dur: 'h', label: '12th' },
+        ],
+        label: 'Compound intervals — note how they span more than an octave',
+      },
+    ],
     unlockedByZone: 4,
   },
 
@@ -331,6 +397,23 @@ To invert an interval, subtract the interval number from 9:
 **Building a G Dominant 7th:** G + B + D + F
 
 **Tip:** The dominant 7th chord (built on scale degree 5) creates the strongest pull back to the tonic — this tension-and-resolution is the engine of tonal music.`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C4', dur: 'h', label: 'Cmaj' },
+          { pitch: 'E4', dur: 'h', chord: true },
+          { pitch: 'G4', dur: 'h', chord: true },
+          { pitch: 'C4', dur: 'h', label: 'Cmin' },
+          { pitch: 'Eb4', dur: 'h', chord: true, forceAcc: 'flat' },
+          { pitch: 'G4', dur: 'h', chord: true },
+          { pitch: 'G3', dur: 'h', label: 'Gdim' },
+          { pitch: 'Bb3', dur: 'h', chord: true, forceAcc: 'flat' },
+          { pitch: 'Db4', dur: 'h', chord: true, forceAcc: 'flat' },
+        ],
+        label: 'Major, minor, and diminished triads on treble clef',
+      },
+    ],
     unlockedByZone: 3,
   },
   {
@@ -353,6 +436,26 @@ To invert an interval, subtract the interval number from 9:
 - IV = Subdominant (stable departure)
 - V or V7 = Dominant (tension, wants to resolve to I)
 - vi = Relative minor (substitutes for I)`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          // Root position: C-E-G
+          { pitch: 'C4', dur: 'h', label: 'Root' },
+          { pitch: 'E4', dur: 'h', chord: true },
+          { pitch: 'G4', dur: 'h', chord: true },
+          // 1st inversion: E-G-C
+          { pitch: 'E4', dur: 'h', label: '1st inv' },
+          { pitch: 'G4', dur: 'h', chord: true },
+          { pitch: 'C5', dur: 'h', chord: true },
+          // 2nd inversion: G-C-E
+          { pitch: 'G4', dur: 'h', label: '2nd inv' },
+          { pitch: 'C5', dur: 'h', chord: true },
+          { pitch: 'E5', dur: 'h', chord: true },
+        ],
+        label: 'C major — root position, 1st inversion, 2nd inversion',
+      },
+    ],
     unlockedByZone: 5,
   },
 
@@ -378,6 +481,9 @@ To invert an interval, subtract the interval number from 9:
 
 **Subdivision counting (4/4):**
 Beat 1: "1  e  and  a" = four sixteenth notes per beat`,
+    diagrams: [
+      { type: 'durations', label: 'Note values and their equivalent rests' },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -401,6 +507,42 @@ Beat 1: "1  e  and  a" = four sixteenth notes per beat`,
 - Compound time: each beat divides into 3 equal parts (6/8, 9/8, 12/8)
 
 **Common symbol:** C = 4/4 time; ₵ (cut time) = 2/2 time`,
+    diagrams: [
+      {
+        type: 'staff',
+        timeSig: [4, 4],
+        notes: [
+          { pitch: 'C5', dur: 'q', label: '1' },
+          { pitch: 'C5', dur: 'q', label: '2' },
+          { pitch: 'C5', dur: 'q', label: '3' },
+          { pitch: 'C5', dur: 'q', label: '4' },
+        ],
+        label: '4/4 — four quarter-note beats per measure',
+      },
+      {
+        type: 'staff',
+        timeSig: [3, 4],
+        notes: [
+          { pitch: 'C5', dur: 'q', label: '1' },
+          { pitch: 'C5', dur: 'q', label: '2' },
+          { pitch: 'C5', dur: 'q', label: '3' },
+        ],
+        label: '3/4 — three quarter-note beats (waltz feel)',
+      },
+      {
+        type: 'staff',
+        timeSig: [6, 8],
+        notes: [
+          { pitch: 'C5', dur: 'e', label: '1' },
+          { pitch: 'C5', dur: 'e', label: '2' },
+          { pitch: 'C5', dur: 'e', label: '3' },
+          { pitch: 'C5', dur: 'e', label: '4' },
+          { pitch: 'C5', dur: 'e', label: '5' },
+          { pitch: 'C5', dur: 'e', label: '6' },
+        ],
+        label: '6/8 — six eighth-note beats (compound duple)',
+      },
+    ],
     unlockedByZone: 1,
   },
 
@@ -431,6 +573,42 @@ Half steps occur between scale degrees 3–4 and 7–8 (E–F and B–C in C maj
 | 8      | Octave       | Return to tonic         |
 
 **Tip:** The pattern W-W-H-W-W-W-H works from ANY starting note to build a major scale.`,
+    diagrams: [
+      {
+        type: 'scale_pattern',
+        steps: ['W', 'W', 'H', 'W', 'W', 'W', 'H'],
+        noteNames: ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'],
+        label: 'Major scale pattern: W W H W W W H',
+      },
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C4', dur: 'q', label: '1' },
+          { pitch: 'D4', dur: 'q', label: '2' },
+          { pitch: 'E4', dur: 'q', label: '3' },
+          { pitch: 'F4', dur: 'q', label: '4' },
+          { pitch: 'G4', dur: 'q', label: '5' },
+          { pitch: 'A4', dur: 'q', label: '6' },
+          { pitch: 'B4', dur: 'q', label: '7' },
+          { pitch: 'C5', dur: 'h', label: '8' },
+        ],
+        label: 'C major scale on treble clef',
+      },
+      {
+        type: 'keyboard',
+        highlights: [
+          { pitch: 'C4', color: '#D4A017', label: '1' },
+          { pitch: 'D4', color: '#D4A017', label: '2' },
+          { pitch: 'E4', color: '#D4A017', label: '3' },
+          { pitch: 'F4', color: '#D4A017', label: '4' },
+          { pitch: 'G4', color: '#D4A017', label: '5' },
+          { pitch: 'A4', color: '#D4A017', label: '6' },
+          { pitch: 'B4', color: '#D4A017', label: '7' },
+          { pitch: 'C5', color: '#D4A017', label: '8' },
+        ],
+        label: 'C major — all white keys',
+      },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -458,6 +636,48 @@ The ascending alterations smooth out the awkward augmented 2nd from harmonic min
 - Natural minor: folk music, modal passages
 - Harmonic minor: chords, especially the dominant V chord in minor keys
 - Melodic minor: lyrical, stepwise melodies`,
+    diagrams: [
+      {
+        type: 'scale_pattern',
+        steps: ['W', 'H', 'W', 'W', 'H', 'W', 'W'],
+        noteNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'A'],
+        label: 'Natural minor pattern: W H W W H W W',
+      },
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'A4', dur: 'q', label: '1' },
+          { pitch: 'B4', dur: 'q', label: '2' },
+          { pitch: 'C5', dur: 'q', label: '3' },
+          { pitch: 'D5', dur: 'q', label: '4' },
+          { pitch: 'E5', dur: 'q', label: '5' },
+          { pitch: 'F5', dur: 'q', label: '6' },
+          { pitch: 'G5', dur: 'q', label: '7' },
+          { pitch: 'A5', dur: 'h', label: '8' },
+        ],
+        label: 'A natural minor',
+      },
+      {
+        type: 'scale_pattern',
+        steps: ['W', 'H', 'W', 'W', 'H', 'A2', 'H'],
+        noteNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G#', 'A'],
+        label: 'Harmonic minor — raised 7th creates A2 gap',
+      },
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'A4', dur: 'q', label: '1' },
+          { pitch: 'B4', dur: 'q', label: '2' },
+          { pitch: 'C5', dur: 'q', label: '3' },
+          { pitch: 'D5', dur: 'q', label: '4' },
+          { pitch: 'E5', dur: 'q', label: '5' },
+          { pitch: 'F5', dur: 'q', label: '6' },
+          { pitch: 'G5', dur: 'q', forceAcc: 'sharp', label: '7' },
+          { pitch: 'A5', dur: 'h', label: '8' },
+        ],
+        label: 'A harmonic minor — G# raised leading tone',
+      },
+    ],
     unlockedByZone: 5,
   },
   {
@@ -480,6 +700,37 @@ Found in folk music worldwide and easy to improvise with because no "wrong" note
 Scale degrees 1, b3, 4, 5, b7 of the natural minor scale.
 A minor pentatonic: A – C – D – E – G
 The foundation of blues and rock improvisation.`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C4', dur: 'q', label: 'C' },
+          { pitch: 'Db4', dur: 'q', forceAcc: 'sharp', label: 'C#' },
+          { pitch: 'D4', dur: 'q', label: 'D' },
+          { pitch: 'Eb4', dur: 'q', forceAcc: 'sharp', label: 'D#' },
+          { pitch: 'E4', dur: 'q', label: 'E' },
+          { pitch: 'F4', dur: 'q', label: 'F' },
+          { pitch: 'Gb4', dur: 'q', forceAcc: 'sharp', label: 'F#' },
+          { pitch: 'G4', dur: 'q', label: 'G' },
+          { pitch: 'Ab4', dur: 'q', forceAcc: 'sharp', label: 'G#' },
+          { pitch: 'A4', dur: 'q', label: 'A' },
+          { pitch: 'Bb4', dur: 'q', forceAcc: 'sharp', label: 'A#' },
+          { pitch: 'B4', dur: 'q', label: 'B' },
+        ],
+        label: 'Chromatic scale — all 12 pitches, each a half step apart',
+      },
+      {
+        type: 'keyboard',
+        highlights: [
+          { pitch: 'C4', color: '#D4A017', label: '1' },
+          { pitch: 'D4', color: '#D4A017', label: '2' },
+          { pitch: 'E4', color: '#D4A017', label: '3' },
+          { pitch: 'G4', color: '#D4A017', label: '5' },
+          { pitch: 'A4', color: '#D4A017', label: '6' },
+        ],
+        label: 'C major pentatonic — 5 notes, no half steps',
+      },
+    ],
     unlockedByZone: 6,
   },
 
@@ -508,6 +759,47 @@ Middle C sits on a ledger line below the treble staff and above the bass staff.
 - b (flat): lower pitch one half step
 - ♮ (natural): cancel a previous sharp or flat
 An accidental applies for the rest of the measure unless cancelled.`,
+    diagrams: [
+      {
+        type: 'staff',
+        clef: 'treble',
+        notes: [
+          { pitch: 'C4', dur: 'h', label: 'C4' },
+          { pitch: 'E4', dur: 'h', label: 'E4' },
+          { pitch: 'G4', dur: 'h', label: 'G4' },
+          { pitch: 'B4', dur: 'h', label: 'B4' },
+          { pitch: 'D5', dur: 'h', label: 'D5' },
+          { pitch: 'F5', dur: 'h', label: 'F5' },
+        ],
+        label: 'Treble clef — C4 (ledger below) through F5 (top line)',
+      },
+      {
+        type: 'staff',
+        clef: 'bass',
+        notes: [
+          { pitch: 'G2', dur: 'h', label: 'G2' },
+          { pitch: 'B2', dur: 'h', label: 'B2' },
+          { pitch: 'D3', dur: 'h', label: 'D3' },
+          { pitch: 'F3', dur: 'h', label: 'F3' },
+          { pitch: 'A3', dur: 'h', label: 'A3' },
+          { pitch: 'C4', dur: 'h', label: 'C4' },
+        ],
+        label: 'Bass clef — G2 (bottom line) through C4 (ledger above)',
+      },
+      {
+        type: 'staff',
+        clef: 'treble',
+        notes: [
+          { pitch: 'B4', dur: 'h', label: 'B' },
+          { pitch: 'Bb4', dur: 'h', forceAcc: 'flat', label: 'B♭' },
+          { pitch: 'B4', dur: 'h', forceAcc: 'natural', label: 'B♮' },
+          { pitch: 'Db4', dur: 'h', forceAcc: 'flat', label: 'D♭' },
+          { pitch: 'D4', dur: 'h', forceAcc: 'natural', label: 'D♮' },
+          { pitch: 'D4', dur: 'h', forceAcc: 'sharp', label: 'D#' },
+        ],
+        label: 'Accidentals — flat, natural, and sharp in context',
+      },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -540,6 +832,19 @@ An accidental applies for the rest of the measure unless cancelled.`,
 | Allegro    | 120–168       | Fast, lively      |
 | Vivace     | 168–176       | Lively, brisk     |
 | Presto     | 168–200       | Very fast         |`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'G4', dur: 'w', label: 'ppp' },
+          { pitch: 'G4', dur: 'w', label: 'p' },
+          { pitch: 'G4', dur: 'w', label: 'mf' },
+          { pitch: 'G4', dur: 'w', label: 'f' },
+          { pitch: 'G4', dur: 'w', label: 'fff' },
+        ],
+        label: 'Same note — five dynamic levels from softest to loudest',
+      },
+    ],
     unlockedByZone: 1,
   },
   {
@@ -571,6 +876,19 @@ An accidental applies for the rest of the measure unless cancelled.`,
 | pesante      | Heavily                          |
 
 **Repeat Signs:** :| means repeat from the nearest |: (or from the beginning if none is present). First and second endings (1. and 2.) indicate different endings on each repeat.`,
+    diagrams: [
+      {
+        type: 'staff',
+        notes: [
+          { pitch: 'C5', dur: 'q', label: 'stacc.' },
+          { pitch: 'D5', dur: 'q', label: 'tenuto' },
+          { pitch: 'E5', dur: 'q', label: 'accent' },
+          { pitch: 'F5', dur: 'h', label: 'legato' },
+          { pitch: 'E5', dur: 'q', label: 'marcato' },
+        ],
+        label: 'Articulation marks — each note shows a different touch',
+      },
+    ],
     unlockedByZone: 2,
   },
 ];

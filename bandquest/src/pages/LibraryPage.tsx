@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { HALL_OF_FAME, THEORY_REFERENCE } from '../lib/library';
 import type { HallOfFameEntry, TheoryEntry } from '../lib/library';
+import MusicDiagram from '../components/MusicDiagram';
 
 type MainTab = 'hall_of_fame' | 'theory';
 type HofCategory = 'faculty' | 'sacred_score' | 'instrument';
@@ -240,6 +241,13 @@ function TheoryCard({
   return (
     <div className="card-panel">
       <h3 className="fantasy-title text-base text-academy-gold mb-3">{entry.title}</h3>
+      {entry.diagrams && entry.diagrams.length > 0 && (
+        <div className="flex flex-wrap gap-4 mb-4">
+          {entry.diagrams.map((d, i) => (
+            <MusicDiagram key={i} spec={d} />
+          ))}
+        </div>
+      )}
       <pre className="text-academy-cream/80 text-xs leading-relaxed whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-4 overflow-x-auto">
         {entry.content}
       </pre>
