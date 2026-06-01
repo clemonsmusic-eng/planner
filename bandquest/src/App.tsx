@@ -21,6 +21,7 @@ import SimulatorPage from './pages/SimulatorPage';
 import GearPage from './pages/GearPage';
 import WorldMapPage from './pages/WorldMapPage';
 import CustomizePage from './pages/CustomizePage';
+import FingeringChartPage from './pages/FingeringChartPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -150,6 +151,11 @@ export default function App() {
       {/* World Map */}
       <Route path="/world" element={
         <RequireCharacter><WorldMapPage /></RequireCharacter>
+      } />
+
+      {/* Fingering Charts */}
+      <Route path="/fingering" element={
+        <RequireCharacter><FingeringChartPage /></RequireCharacter>
       } />
 
       {/* Avatar customization — available to both teachers and students */}

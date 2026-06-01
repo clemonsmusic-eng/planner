@@ -105,6 +105,19 @@ export default function LibraryPage() {
         {/* Theory Reference */}
         {mainTab === 'theory' && (
           <div>
+            {/* Fingering Charts shortcut */}
+            <button
+              onClick={() => navigate('/fingering')}
+              className="w-full mb-5 card-panel flex items-center gap-3 hover:border-academy-gold/40 transition-all"
+            >
+              <span className="text-2xl">🎵</span>
+              <div className="text-left">
+                <div className="text-academy-cream/90 text-sm font-fantasy">Fingering Charts</div>
+                <div className="text-academy-cream/40 text-xs">All instruments · chromatic · All-State scales</div>
+              </div>
+              <span className="ml-auto text-academy-gold/60 text-xs">→</span>
+            </button>
+
             {/* Section filter buttons */}
             <div className="flex flex-wrap gap-2 mb-5">
               {(Object.keys(THEORY_SECTION_LABELS) as TheorySection[]).map((sec) => (
