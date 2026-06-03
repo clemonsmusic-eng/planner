@@ -6,15 +6,15 @@ import type { AllyId } from '../types/game';
 // The 10 standard ally IDs (excludes grand_symphony)
 const STANDARD_ALLY_IDS: AllyId[] = [
   'percival',
-  'flaura',
-  'buccina',
-  'claribel',
+  'syrinx',
+  'clarion',
+  'chalumeau',
   'hautbois',
   'waldhorn',
-  'sackbut',
-  'euphonia',
-  'fagotto',
-  'adolpha',
+  'posaune',
+  'cantora',
+  'dulcian',
+  'vela',
 ];
 
 export default function AlliesPage() {

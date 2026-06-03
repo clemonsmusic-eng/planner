@@ -4,7 +4,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   flute: {
     id: 'flute',
     name: 'Flute',
-    className: 'Wind Dancer',
+    className: 'Sylph',
     family: 'woodwind',
     archetype: 'Elf Ranger / Healer — only class capable of reviving fallen allies',
     baseStats: { power: 8, accuracy: 18, technique: 14, endurance: 8 },
@@ -15,7 +15,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   clarinet: {
     id: 'clarinet',
     name: 'Clarinet',
-    className: 'Chromatic Monk',
+    className: 'Chromancer',
     family: 'woodwind',
     archetype: 'Martial Arts Master — speed, range, fingering precision',
     baseStats: { power: 14, accuracy: 16, technique: 16, endurance: 12 },
@@ -26,7 +26,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   alto_sax: {
     id: 'alto_sax',
     name: 'Alto Saxophone',
-    className: 'Shadow Shifter',
+    className: 'Spectre',
     family: 'woodwind',
     archetype: 'Shapeshifter / Mimic Mage — can clone any player on the field',
     baseStats: { power: 14, accuracy: 12, technique: 16, endurance: 12 },
@@ -70,7 +70,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   percussion: {
     id: 'percussion',
     name: 'Percussion',
-    className: 'Stryker Artificer',
+    className: 'Rhythm Forger',
     family: 'percussion',
     archetype: 'Mechanic / Gadget-Maker — most versatile stat spread',
     baseStats: { power: 12, accuracy: 12, technique: 16, endurance: 12 },
@@ -114,7 +114,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   bassoon: {
     id: 'bassoon',
     name: 'Bassoon',
-    className: 'Sage',
+    className: 'Lorekeeper',
     family: 'woodwind',
     archetype: 'Scientist / Disruptor — status effects, debuffs, analysis',
     baseStats: { power: 8, accuracy: 16, technique: 12, endurance: 16 },

@@ -12,9 +12,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 8,
   },
-  flaura: {
-    id: 'flaura',
-    trueName: 'Flaura',
+  syrinx: {
+    id: 'syrinx',
+    trueName: 'Syrinx',
     instrument: 'Flute',
     corruptedName: 'The Aria Wraith',
     summonAbility: 'Ethereal Aria',
@@ -23,9 +23,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 9,
   },
-  buccina: {
-    id: 'buccina',
-    trueName: 'Buccina',
+  clarion: {
+    id: 'clarion',
+    trueName: 'Clarion',
     instrument: 'Trumpet',
     corruptedName: 'The War Horn Berserker',
     summonAbility: 'Fanfare of Light',
@@ -34,9 +34,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 10,
   },
-  claribel: {
-    id: 'claribel',
-    trueName: 'Claribel',
+  chalumeau: {
+    id: 'chalumeau',
+    trueName: 'Chalumeau',
     instrument: 'Clarinet',
     corruptedName: 'The Register Phantom',
     summonAbility: 'Crystalline Cascade',
@@ -67,9 +67,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 9,
   },
-  sackbut: {
-    id: 'sackbut',
-    trueName: 'Sackbut',
+  posaune: {
+    id: 'posaune',
+    trueName: 'Posaune',
     instrument: 'Trombone',
     corruptedName: 'The Sliding Chaos Knight',
     summonAbility: 'Slide into Shadow',
@@ -78,9 +78,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 10,
   },
-  euphonia: {
-    id: 'euphonia',
-    trueName: 'Euphonia',
+  cantora: {
+    id: 'cantora',
+    trueName: 'Cantora',
     instrument: 'Euphonium / Tuba',
     corruptedName: 'The Stone Colossus',
     summonAbility: 'Pedal Tone Quake',
@@ -89,9 +89,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 11,
   },
-  fagotto: {
-    id: 'fagotto',
-    trueName: 'Fagotto',
+  dulcian: {
+    id: 'dulcian',
+    trueName: 'Dulcian',
     instrument: 'Bassoon',
     corruptedName: 'The Ancient Revenant',
     summonAbility: 'Cantus Antiquus',
@@ -100,9 +100,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 11,
   },
-  adolpha: {
-    id: 'adolpha',
-    trueName: 'Adolpha',
+  vela: {
+    id: 'vela',
+    trueName: 'Vela',
     instrument: 'Alto Saxophone',
     corruptedName: 'The Sultry Shadow',
     summonAbility: 'Cool Jazz Improv',

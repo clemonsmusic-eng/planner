@@ -151,15 +151,15 @@ export interface Enemy {
 
 export type AllyId =
   | 'percival'
-  | 'flaura'
-  | 'buccina'
-  | 'claribel'
+  | 'syrinx'
+  | 'clarion'
+  | 'chalumeau'
   | 'hautbois'
   | 'waldhorn'
-  | 'sackbut'
-  | 'euphonia'
-  | 'fagotto'
-  | 'adolpha'
+  | 'posaune'
+  | 'cantora'
+  | 'dulcian'
+  | 'vela'
   | 'grand_symphony';
 
 export interface SymphonyAlly {
