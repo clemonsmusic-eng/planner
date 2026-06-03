@@ -23,9 +23,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 9,
   },
-  carnyx: {
-    id: 'carnyx',
-    trueName: 'Carnyx',
+  salpinx: {
+    id: 'salpinx',
+    trueName: 'Salpinx',
     instrument: 'Trumpet',
     corruptedName: 'The War Horn Berserker',
     summonAbility: 'Fanfare of Light',
@@ -89,9 +89,9 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     freed: false,
     zone: 11,
   },
-  rackett: {
-    id: 'rackett',
-    trueName: 'Rackett',
+  bassanello: {
+    id: 'bassanello',
+    trueName: 'Bassanello',
     instrument: 'Bassoon',
     corruptedName: 'The Ancient Revenant',
     summonAbility: 'Cantus Antiquus',

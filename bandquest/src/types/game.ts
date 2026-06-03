@@ -152,13 +152,13 @@ export interface Enemy {
 export type AllyId =
   | 'percival'
   | 'syrinx'
-  | 'carnyx'
+  | 'salpinx'
   | 'chalumeau'
   | 'hautbois'
   | 'waldhorn'
   | 'posaune'
   | 'cantora'
-  | 'rackett'
+  | 'bassanello'
   | 'vela'
   | 'grand_symphony';
 
