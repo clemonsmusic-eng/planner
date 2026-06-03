@@ -15,7 +15,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   clarinet: {
     id: 'clarinet',
     name: 'Clarinet',
-    className: 'Chromancer',
+    className: 'Cadenza',
     family: 'woodwind',
     archetype: 'Martial Arts Master — speed, range, fingering precision',
     baseStats: { power: 14, accuracy: 16, technique: 16, endurance: 12 },
@@ -114,7 +114,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   bassoon: {
     id: 'bassoon',
     name: 'Bassoon',
-    className: 'Lorekeeper',
+    className: 'Tactician',
     family: 'woodwind',
     archetype: 'Scientist / Disruptor — status effects, debuffs, analysis',
     baseStats: { power: 8, accuracy: 16, technique: 12, endurance: 16 },

@@ -7,13 +7,13 @@ import type { AllyId } from '../types/game';
 const STANDARD_ALLY_IDS: AllyId[] = [
   'percival',
   'syrinx',
-  'clarion',
+  'carnyx',
   'chalumeau',
   'hautbois',
   'waldhorn',
   'posaune',
   'cantora',
-  'dulcian',
+  'rackett',
   'vela',
 ];
 
