@@ -86,32 +86,45 @@ Then append ONE of the per-class blocks below.
 ---
 
 ## 5. Trombone — **Slide Knight** (attack-focused Paladin)
+**Reference: Metal Knight (Bofoi) from One-Punch Man.**
 
-> A bold armored warrior with a broad confident stance, knightly attack-paladin. Strong jaw,
-> spirited grin, short practical hair. Heavy burnished **bronze-and-steel armor** with a single
-> oversized pauldron, a tabard in deep blue. He hefts a **gold trombone**, slide extended like a
-> lance. Warm brass palette with cobalt accents. Powerful, brash, frontline energy.
+> A towering mechanical warrior in fully enclosed **heavy combat armor**, **strongly inspired by
+> Metal Knight from One-Punch Man**: no visible human skin — the entire form is a suit of
+> thick plated armor, dark gunmetal-grey with red sensor lenses glowing in the helmet's eye
+> slots, chunky angular pauldrons, layered chest and arm plates, heavy armored gauntlets.
+> The armor suggests immense destructive capability held in perfect cold control. A **gold
+> trombone** is built into one forearm like a weapon port, slide extending mechanically outward.
+> Dark steel and deep red palette with glowing accent lines. Imposing, mechanical, zero
+> humanity visible — the weapon wears the warrior.
 
 ---
 
 ## 6. Euphonium — **Resonant** (Cleric-Knight)
+**Reference: Metal Knight (Bofoi) from One-Punch Man — heavier support-suit variant.**
 
-> A warm, reassuring cleric-knight, protective and steady. Gentle strong features, kind eyes,
-> calm half-smile. **Rounded silver-trimmed armor over white-and-gold clerical robes**, a glowing
-> protective sigil at the chest. Soft golden healing light around the hands. Holds a **compact
-> gold euphonium** cradled like a sacred relic. Warm gold-and-cream palette, soft halo lighting.
-> Stalwart guardian-healer presence.
+> A massive fully-armored support combat suit, **strongly inspired by Metal Knight from
+> One-Punch Man** but in a heavier, more fortified configuration: completely enclosed
+> gunmetal-dark armor plating, red sensor lenses, enormous rounded pauldrons, a broad
+> reinforced chest with a single glowing warm-gold sigil panel (the healing array). Chunky
+> armored hands cradle a **compact gold euphonium** like a power source / sacred core.
+> Where the Trombone Slide Knight reads as a weapons platform, this reads as a **fortress**:
+> the same mechanical identity but built for endurance and protection. Dark iron and deep gold
+> palette, protective energy aura around the instrument. Immovable, fortified, shielding.
 
 ---
 
 ## 7. Percussion — **Rhythm Forger** (Mechanic / Gadget-Maker)
+**Reference: Lucca Ashtear from Chrono Trigger.**
 
-> An inventive tinkerer-percussionist with a rugged practical look. Goggles pushed up on the
-> forehead, smudge of grease, clever confident smirk, tied-back or messy hair. A **leather
-> work-coat with drumhead panels, buckles, and stick-holsters** across the chest, mixed-metal
-> bracers. Holds a pair of **drumsticks/mallets** crossed, with a small mallet rig at the belt.
-> Mixed-metal palette — brass, iron, copper, worn leather, with a spark of accent color.
-> Energetic, scrappy, mechanical.
+> A brilliant young inventor-warrior, **strongly inspired by Lucca from Chrono Trigger**:
+> large round spectacles / goggles (either worn or pushed up on the forehead), vivid
+> **purple hair** in a high tied bun with flyaway strands, warm olive-tan skin, sharp
+> clever eyes, a wide confident grin. She wears a **layered inventor's coat with drumhead
+> panels on the chest, buckles and gadget pouches at the belt, and reinforced bracers**,
+> in purple and dark metal tones echoing Lucca's colors. Holds a pair of **drumsticks**
+> crossed in front like weapons, a compact mallet rig at her hip. Around her, faint
+> heat-shimmer sparks of orange and red — a fire-element inventor's energy. Purple, dark
+> metal, and warm fire-orange accent palette. Smart, scrappy, dangerous, delighted to be here.
 
 ---
 
@@ -126,32 +139,46 @@ Then append ONE of the per-class blocks below.
 ---
 
 ## 9. Tuba — **Brass Bastion** (Heavy Armored Tank)
+**Reference: Brick from The Incredibles 2.**
 
-> A massive immovable armored juggernaut. Broad heavy features, stoic immovable expression,
-> heavy brow. **Enormous layered iron-and-brass plate armor**, a fortress-like silhouette,
-> huge pauldrons and a heavy gorget. Stands like a living wall. Hefts a gigantic **gold tuba**,
-> its great bell over one shoulder like a siege weapon. Heavy warm-metal palette — deep brass,
-> dark iron, with a dim inner glow. Slow, devastating, unbreakable.
+> A powerfully built superhero-tank, **strongly inspired by Brick from The Incredibles 2**:
+> a large, broad-shouldered, muscular young woman with a wide flat face, a friendly-but-
+> immovable expression, small calm eyes, and short blunt hair. She wears **enormous layered
+> brass-and-iron plate armor** scaled to her frame — massive pauldrons, a deep gorget, heavy
+> gauntlets — but with a superhero-suit undercurrent: the armor is functional, purposeful,
+> built around her body rather than constraining it. A gigantic **gold tuba** rests over one
+> shoulder like a siege cannon, its great bell flared toward the viewer. Deep brass and dark
+> iron palette with dim inner glow. Unshakeable, immovable, completely unfazed.
 
 ---
 
 ## 10. Oboe — **Crystal Mystic** (Attack Mage)
+**Reference: Whis from Dragon Ball Super.**
 
-> An elegant precise arcane mage of crystalline focus. Refined sharp features, piercing keen
-> eyes, composed cool expression. **Slender robes of crystal-blue and white with faceted gem
-> ornaments** and a crystalline circlet; shards of light orbit the hands. Holds a slim
-> blackwood **oboe** with silver keys, poised with exacting precision. Cool jewel palette —
-> crystal blue, white, silver, with sharp prismatic light. Precise, powerful, exacting.
+> An ethereal angel-like arcane mage of perfect poise, **strongly inspired by Whis from Dragon
+> Ball Super**: extremely slender graceful build, very tall and elegant, **pale lavender-white
+> skin**, **long silver-white hair** draped around the shoulders, calm half-lidded eyes with
+> a thin knowing smile, an air of effortless superiority and ancient wisdom. He wears
+> **layered long robes of crystal-blue and white with a high decorated neckpiece**, a pale
+> blue marking on the forehead, and holds a slender **blackwood oboe with silver keys** as
+> though it were his ornate staff — poised vertically, perfectly still. Faint crystalline
+> shards and precise light-refractions orbit him. Cool jewel palette: crystal blue, white,
+> silver, lavender, with pinpoint prismatic highlights. Serene, ageless, effortlessly
+> overwhelming.
 
 ---
 
 ## 11. Bassoon — **Augur** (Scientist / Disruptor)
+**Reference: Melchior (Guru of Life) from Chrono Trigger.**
 
-> A scholarly arcane scientist-disruptor. Intelligent analytical features, half-glasses or a
-> single lens, knowing measured expression, neat hair. **Dark scholar's robes layered with
-> belts, vials, and arcane instruments**, a worn research satchel, faint floating runic
-> diagrams. Holds a long dark **bassoon** like a staff of inquiry. Muted earthen-and-violet
-> palette — charcoal, oxblood, brass, deep teal. Calm, calculating, sees-through-everything.
+> An ancient white-bearded sage-craftsman, **strongly inspired by Melchior from Chrono
+> Trigger**: deeply wrinkled kind face, long flowing **white hair and beard**, warm wise eyes
+> behind small half-glasses, a gentle knowing expression that conceals profound knowledge of
+> acoustic science and harmonic theory. He wears **layered dark scholar's robes** with arcane
+> instruments, vials of resonant material, and a battered research satchel; faint floating
+> runic diagrams and harmonic-frequency rings drift around him. He holds a long dark **bassoon**
+> as a staff — its bell on the ground, both hands resting on the body. Muted earthy palette:
+> charcoal, oxblood, aged brass, deep teal. Patient, ancient, devastatingly precise.
 
 ---
 
