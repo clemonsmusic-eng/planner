@@ -325,7 +325,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                   transition: 'transform 220ms ease-out',
                 }}
               >
-                <Avatar appearance={character.appearance} size={76} />
+                <Avatar appearance={character.appearance} instrument={character.instrument} size={76} />
               </div>
               <div className="mt-1.5 w-14 h-1.5 rounded-full bg-black/50 blur-[1px]" />
             </div>
@@ -357,7 +357,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               className="rounded-lg overflow-hidden flex-shrink-0"
               style={{ border: `1px solid ${color}40` }}
             >
-              <Avatar appearance={character.appearance} size={40} />
+              <Avatar appearance={character.appearance} instrument={character.instrument} size={40} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

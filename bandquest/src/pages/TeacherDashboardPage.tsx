@@ -365,7 +365,7 @@ function RosterTab({ students, onSelectStudent }: { students: StudentRow[]; onSe
               className="rounded-lg overflow-hidden flex-shrink-0"
               style={{ border: `1px solid ${color}40` }}
             >
-              <Avatar appearance={normalizeAppearance(s.appearance)} size={40} />
+              <Avatar appearance={normalizeAppearance(s.appearance)} instrument={s.instrument} size={40} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -741,7 +741,7 @@ function StudentDetailModal({ student, teacherId, onClose, onChanged }: {
             className="rounded-lg overflow-hidden flex-shrink-0"
             style={{ border: `1px solid ${color}40` }}
           >
-            <Avatar appearance={normalizeAppearance(student.appearance)} size={40} />
+            <Avatar appearance={normalizeAppearance(student.appearance)} instrument={student.instrument} size={40} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-fantasy text-base text-academy-cream truncate">{student.displayName}</div>

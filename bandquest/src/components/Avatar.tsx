@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { Appearance } from '../types/game';
+import { useMemo, useState } from 'react';
+import type { Appearance, InstrumentId } from '../types/game';
 import {
   SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, ACCENT_COLORS, BACKDROPS,
   normalizeAppearance,
@@ -7,17 +7,54 @@ import {
 
 interface Props {
   appearance?: Appearance | null;
+  /** When set, the avatar renders the hand-drawn class portrait at
+   *  `public/portraits/<instrument>.png` if one exists, falling back to the
+   *  procedural SVG when the file is missing or fails to load. */
+  instrument?: InstrumentId | null;
   size?: number;
   className?: string;
   rounded?: boolean;
 }
 
 /**
+ * Avatar entry point. Prefers a hand-drawn/AI-generated class portrait when one
+ * is available for the character's instrument; otherwise renders the procedural
+ * SVG portrait below. The portrait file simply needs to be dropped into
+ * `public/portraits/<instrument>.png` — no code change required.
+ */
+export default function Avatar({ appearance, instrument, size = 64, className = '', rounded = true }: Props) {
+  const [portraitFailed, setPortraitFailed] = useState(false);
+
+  if (instrument && !portraitFailed) {
+    return (
+      <img
+        src={`/portraits/${instrument}.png`}
+        width={size}
+        height={size}
+        alt="Character portrait"
+        className={className}
+        onError={() => setPortraitFailed(true)}
+        style={{
+          display: 'block',
+          width: size,
+          height: size,
+          objectFit: 'cover',
+          borderRadius: rounded ? size * 0.18 : '50%',
+        }}
+      />
+    );
+  }
+
+  return <ProceduralAvatar appearance={appearance} size={size} className={className} rounded={rounded} />;
+}
+
+/**
  * Procedural JRPG-style portrait inspired by FFVI and Chrono Trigger character art.
  * Anime proportions: detailed eyes with iris/highlight/lash, expressive hair with volume
  * and highlights, shoulder armor with pauldrons, face with radial skin gradient.
+ * Used as the fallback when no class portrait image is available.
  */
-export default function Avatar({ appearance, size = 64, className = '', rounded = true }: Props) {
+function ProceduralAvatar({ appearance, size = 64, className = '', rounded = true }: Omit<Props, 'instrument'>) {
   const a = useMemo(() => normalizeAppearance(appearance), [appearance]);
   const gid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
 

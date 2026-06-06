@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
                     className="rounded-lg overflow-hidden flex-shrink-0"
                     style={{ border: `1px solid ${color}40` }}
                   >
-                    <Avatar appearance={normalizeAppearance(entry.appearance)} size={36} />
+                    <Avatar appearance={normalizeAppearance(entry.appearance)} instrument={entry.instrument} size={36} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

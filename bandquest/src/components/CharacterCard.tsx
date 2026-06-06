@@ -25,7 +25,7 @@ export default function CharacterCard({ character, instrument, color, onAvatarCl
           className={`relative flex-shrink-0 rounded-xl overflow-hidden ${onAvatarClick ? 'cursor-pointer group' : ''}`}
           aria-label={onAvatarClick ? 'Customize avatar' : undefined}
         >
-          <Avatar appearance={character.appearance} size={64} />
+          <Avatar appearance={character.appearance} instrument={character.instrument} size={64} />
           {onAvatarClick && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
               <span className="text-academy-cream/0 group-hover:text-academy-cream/90 text-sm transition-colors">✎</span>
