@@ -129,12 +129,20 @@ Then append ONE of the per-class blocks below.
 ---
 
 ## 8. French Horn — **Forest Caller** (Support Mage / Druid)
+**Reference: Mirkwood Elves from The Lord of the Rings.**
 
-> A serene nature-attuned druid-mage. Soft thoughtful features, leaf or antler motifs in the
-> hair, gentle knowing eyes. Flowing **green-and-brown layered druidic robes** with vine and
-> bark textures, a cloak of leaves. Faint echoing sound-rings ripple around them. Cradles a
-> coiled **gold French horn** like a hunting horn of the deep woods. Cool forest palette —
-> mossy greens, bark browns, soft gold. Calm, mystical, far-traveling.
+> A lithe woodland elf warrior-mage, **strongly inspired by the Mirkwood elves of Lord of
+> the Rings** (Thranduil, Legolas, Tauriel): sharply pointed ears, angular aristocratic
+> bone structure, high cheekbones, very pale porcelain skin, piercing eyes — either silver-
+> grey or bright green — and long straight hair worn loose or partially braided (platinum
+> blond OR deep auburn). Cool, imperious expression with a thread of distant warmth. He/she
+> wears **fitted Mirkwood woodland armor**: dark forest-green leather pauldrons and vambraces
+> with golden leaf-etched filigree, a layered tunic in deep moss green and charcoal, no
+> heavy plate — agile and silent. A few fallen leaves caught in the hair. Cradles a coiled
+> **gold French horn**, its bell shaped like a curled hunting horn of the ancient woods,
+> as naturally as a bow. Faint echoing sound-rings ripple outward like waves through still
+> water. Cool forest palette: deep moss green, charcoal, pale gold, silver. Regal,
+> ancient, unhurried, deadly quiet.
 
 ---
 
