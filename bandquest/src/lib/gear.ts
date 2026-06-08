@@ -1,4 +1,4 @@
-import type { GearItem, GearSlot, GearTier, InstrumentId, InstrumentFamily } from '../types/game';
+import type { GearItem, GearSlot, GearTier, InstrumentId } from '../types/game';
 import type { Character, StatBlock } from '../types/game';
 import { INSTRUMENTS } from './instruments';
 
@@ -35,7 +35,7 @@ function scaleBonus(base: Partial<StatBlock>, mult: number): Partial<StatBlock> 
   ) as Partial<StatBlock>;
 }
 
-// ── Instrument display info ────────────────────────────────────────────────────
+// ── Instrument items (Slot 1) ──────────────────────────────────────────────────
 
 type InstNames = { display: string; t1Fantasy: string; t2Fantasy: string; t3Fantasy: string };
 
@@ -90,58 +90,173 @@ function makeInstItem(instrument: InstrumentId, tier: GearTier): GearItem {
   };
 }
 
-// ── Mouthpiece items ───────────────────────────────────────────────────────────
+// ── Material accessory (Slot 2) — instrument-specific, branching by material ────
+//
+// Each instrument has TWO material lines (a strategic tradeoff). Each line runs
+// across all four tiers, culminating in an impractical "legendary" material.
+// Materials grant scaling stats keyed to their archetype, plus a signature passive.
 
-const MOUTH_TIER_NAMES: Record<GearTier, string> = { 1: 'Practice', 2: 'Performance', 3: 'Professional', 4: 'Custom' };
-const MOUTH_FAMILY_SUFFIX: Record<InstrumentFamily, string> = {
-  woodwind: 'Reed / Head Joint',
-  brass: 'Mouthpiece',
-  percussion: 'Sticks & Mallets',
+type MaterialArchetype = 'precision' | 'power' | 'warmth' | 'agility';
+
+const ARCH_BASE: Record<MaterialArchetype, Partial<StatBlock>> = {
+  precision: { accuracy: 4, technique: 2 },
+  power:     { power: 4, accuracy: 1, endurance: 1 },
+  warmth:    { endurance: 4, accuracy: 2 },
+  agility:   { technique: 4, accuracy: 2 },
 };
-const MOUTH_FANTASY: Record<InstrumentFamily, Record<GearTier, string>> = {
-  woodwind:   { 1: 'Roughcut Reed',    2: 'Resonant Reed',   3: 'Crystalline Reed',  4: 'Noteshard Reed'    },
-  brass:      { 1: 'Brass Cup',        2: 'Resonance Cup',   3: 'Master Cup',        4: 'Forged Resonator'  },
-  percussion: { 1: 'Practice Sticks',  2: 'Rhythm Rods',     3: 'Resonance Rods',   4: 'Legendary Rods'    },
+
+const MAT_TIER_MULT: Record<GearTier, number> = { 1: 1.5, 2: 3, 3: 5, 4: 8 };
+
+const ARCH_TAGLINE: Record<MaterialArchetype, string> = {
+  precision: 'Crystalline Precision',
+  power:     'Dense Resonance',
+  warmth:    'Warm Sustain',
+  agility:   'Featherweight',
 };
 
-function mouthStatBonus(family: InstrumentFamily, tier: GearTier): Partial<StatBlock> {
-  if (tier === 1) return family === 'percussion' ? { technique: 5 } : { accuracy: 5 };
-  if (tier === 2) {
-    if (family === 'woodwind')  return { accuracy: 12, technique: 5 };
-    if (family === 'brass')     return { accuracy: 12, power: 5 };
-    return { technique: 12, accuracy: 5 };
-  }
-  if (family === 'woodwind')  return { accuracy: 20, technique: 12 };
-  if (family === 'brass')     return { accuracy: 20, power: 12 };
-  return { technique: 20, accuracy: 12 };
-}
+// Signature passive per archetype, escalating by tier (T1 = stats only).
+const ARCH_PASSIVE: Record<MaterialArchetype, Partial<Record<GearTier, string>>> = {
+  precision: {
+    2: 'Pitch tolerance widened by 2 cents.',
+    3: 'Pitch tolerance widened by 4 cents; the opening note is easier to land.',
+    4: 'The first pitch challenge of each battle automatically scores Excellent.',
+  },
+  power: {
+    2: 'Ability damage +5%.',
+    3: 'Attacks ignore 12% of enemy defense.',
+    4: 'Attacks ignore 25% of enemy defense; critical hits strike harder.',
+  },
+  warmth: {
+    2: 'Restore a little HP on Good-or-better ratings.',
+    3: 'Restore moderate HP on Good-or-better ratings.',
+    4: 'Restore strong HP on Good-or-better; survive one fatal blow per battle.',
+  },
+  agility: {
+    2: 'Rhythm timing window widened slightly.',
+    3: 'Multi-hit abilities land one extra hit.',
+    4: 'Multi-hit abilities land two extra hits; your first action each battle is free.',
+  },
+};
 
-function makeMouthItem(family: InstrumentFamily, tier: GearTier): GearItem {
+// The "playing surface" noun per instrument.
+const SURFACE_NOUN: Record<InstrumentId, string> = {
+  flute:       'Headjoint',
+  clarinet:    'Mouthpiece',
+  alto_sax:    'Mouthpiece',
+  trumpet:     'Mouthpiece',
+  trombone:    'Mouthpiece',
+  euphonium:   'Mouthpiece',
+  french_horn: 'Mouthpiece',
+  tuba:        'Mouthpiece',
+  oboe:        'Reed',
+  bassoon:     'Reed',
+  percussion:  'Sticks',
+};
+
+interface MatLine { arch: MaterialArchetype; mats: [string, string, string, string]; }
+
+// Two lines per instrument. mats[] are T1 → T4; T4 is the impractical legendary.
+const MATERIAL_LINES: Record<InstrumentId, [MatLine, MatLine]> = {
+  flute: [
+    { arch: 'precision', mats: ['Nickel Silver', 'Sterling Silver', '14k Gold', 'Crystal'] },
+    { arch: 'warmth',    mats: ['Nickel-Plated', 'Silver-Heavy', 'Rose Gold', 'Solid Platinum'] },
+  ],
+  clarinet: [
+    { arch: 'precision', mats: ['Hard Rubber', 'Crystal', 'Optical Glass', 'Diamond'] },
+    { arch: 'warmth',    mats: ['Ebonite', 'Cocobolo Wood', 'Grenadilla', 'Meteorite Iron'] },
+  ],
+  alto_sax: [
+    { arch: 'precision', mats: ['Hard Rubber', 'Bronze', 'Silver', 'Diamond-Coated'] },
+    { arch: 'power',     mats: ['Ebonite', 'Brass', 'Solid Bronze', 'Solid Gold'] },
+  ],
+  trumpet: [
+    { arch: 'precision', mats: ['Student Plastic', 'Silver-Plated', 'Gold-Plated', 'Diamond-Rimmed'] },
+    { arch: 'power',     mats: ['Steel', 'Heavy Brass', 'Solid Silver', 'Solid Gold'] },
+  ],
+  trombone: [
+    { arch: 'precision', mats: ['Plastic', 'Silver-Plated', 'Gold-Plated', 'Crystal'] },
+    { arch: 'power',     mats: ['Brass', 'Heavy Brass', 'Titanium', 'Tungsten'] },
+  ],
+  euphonium: [
+    { arch: 'precision', mats: ['Plastic', 'Silver-Plated', 'Gold-Plated', 'Sapphire'] },
+    { arch: 'warmth',    mats: ['Brass', 'Bronze', 'Rose Brass', 'Solid Gold'] },
+  ],
+  french_horn: [
+    { arch: 'precision', mats: ['Plastic', 'Silver-Plated', 'Gold-Plated', 'Crystal'] },
+    { arch: 'warmth',    mats: ['Brass', 'Nickel-Silver', 'Ambronze', 'Solid Silver'] },
+  ],
+  tuba: [
+    { arch: 'power',     mats: ['Plastic', 'Heavy Brass', 'Stainless Steel', 'Tungsten'] },
+    { arch: 'warmth',    mats: ['Brass', 'Bronze', 'Rose Brass', 'Solid Gold'] },
+  ],
+  oboe: [
+    { arch: 'precision', mats: ['Natural Cane', 'Aged Cane', 'Synthetic Polymer', 'Crystal Reed'] },
+    { arch: 'warmth',    mats: ['Soft Cane', 'Gonzalez Cane', 'Resin-Sealed Cane', 'Goldspun Cane'] },
+  ],
+  bassoon: [
+    { arch: 'precision', mats: ['Natural Cane', 'Aged Cane', 'Synthetic Polymer', 'Crystal Reed'] },
+    { arch: 'power',     mats: ['Heavy Cane', 'Wire-Bound Cane', 'Carbon Reed', 'Mithril-Wire Cane'] },
+  ],
+  percussion: [
+    { arch: 'agility',   mats: ['Maple', 'Hickory', 'Carbon Fiber', 'Adamantium'] },
+    { arch: 'power',     mats: ['Oak', 'Heavy Hickory', 'Aluminum-Core', 'Tungsten-Core'] },
+  ],
+};
+
+function makeMaterialItem(instrument: InstrumentId, lineIndex: 0 | 1, tier: GearTier): GearItem {
+  const line = MATERIAL_LINES[instrument][lineIndex];
+  const material = line.mats[tier - 1];
+  const surface = SURFACE_NOUN[instrument];
   return {
-    id: `mouth_${family}_t${tier}`,
+    id: `mat_${instrument}_${line.arch}_t${tier}`,
     slot: 'mouthpiece',
     tier,
-    name: `${MOUTH_TIER_NAMES[tier]} ${MOUTH_FAMILY_SUFFIX[family]}`,
-    fantasyName: MOUTH_FANTASY[family][tier],
-    statBonus: mouthStatBonus(family, tier),
+    name: `${material} ${surface}`,
+    fantasyName: ARCH_TAGLINE[line.arch],
+    statBonus: scaleBonus(ARCH_BASE[line.arch], MAT_TIER_MULT[tier]),
+    passive: ARCH_PASSIVE[line.arch][tier],
+    instrumentSpecific: instrument,
+    loreEntry: tier === 4
+      ? `A ${material.toLowerCase()} ${surface.toLowerCase()} — gloriously impractical, undeniably legendary.`
+      : undefined,
   };
 }
 
-// ── Generic accessory, attire, and case items ─────────────────────────────────
+/** Human label for the material slot, specific to the instrument. */
+export function getSurfaceLabel(instrument: InstrumentId): string {
+  return SURFACE_NOUN[instrument] === 'Sticks' ? 'Sticks & Mallets' : SURFACE_NOUN[instrument];
+}
+
+// ── General accessory (Slot 3) — metronome / tuner / stand consolidated ─────────
+
+const ACCESSORY_ITEMS: GearItem[] = [
+  {
+    id: 'acc_t1', slot: 'accessory', tier: 1,
+    name: 'Student Practice Set', fantasyName: "Apprentice's Kit",
+    statBonus: {},
+    unlocks: ['rhythm_performance', 'aural_pitch_spy', 'aural_interval_quest', 'aural_chord_oracle', 'sight_reading'],
+    passive: 'Metronome, tuner & folding stand — unlocks rhythm, aural, and sight-reading challenges.',
+  },
+  {
+    id: 'acc_t2', slot: 'accessory', tier: 2,
+    name: 'Rehearsal Set', fantasyName: 'Ensemble Kit',
+    statBonus: { technique: 10, accuracy: 10 },
+    unlocks: ['rhythm_performance', 'aural_melody_mapper', 'sight_reading'],
+    passive: 'Digital metronome & chromatic tuner — rhythm challenges show a ghost pulse.',
+  },
+  {
+    id: 'acc_t3', slot: 'accessory', tier: 3,
+    name: "Maestro's Set", fantasyName: 'Conductor Kit',
+    statBonus: { technique: 18, accuracy: 18 },
+    unlocks: ['aural_progression_master', 'sight_reading'],
+    passive: 'Pro tuner, metronome & heavy stand — pitch reference before performances; +5s sight-reading study.',
+  },
+];
+
+// ── Attire (Slot 4) & Case (Slot 5) ────────────────────────────────────────────
 
 const GENERIC_ITEMS: GearItem[] = [
-  // Metronome
-  { id: 'metro_t1', slot: 'accessory_metronome', tier: 1, name: 'Wind-Up Metronome',       fantasyName: 'Tick Keeper',        statBonus: {},                unlocks: ['rhythm_performance'] },
-  { id: 'metro_t2', slot: 'accessory_metronome', tier: 2, name: 'Digital Metronome',        fantasyName: 'Pulse Engine',        statBonus: { technique: 8 },  unlocks: ['rhythm_performance'] },
-  { id: 'metro_t3', slot: 'accessory_metronome', tier: 3, name: 'Clip-On Metronome',        fantasyName: 'Precision Pulse',     statBonus: { technique: 15 }, unlocks: ['rhythm_performance'], passive: 'Rhythm challenges display a ghost pulse.' },
-  // Tuner
-  { id: 'tuner_t1', slot: 'accessory_tuner',      tier: 1, name: 'Basic Tuner',              fantasyName: 'Pitch Stone',         statBonus: {},                unlocks: ['aural_pitch_spy', 'aural_interval_quest', 'aural_chord_oracle'] },
-  { id: 'tuner_t2', slot: 'accessory_tuner',      tier: 2, name: 'Chromatic Tuner',          fantasyName: 'Resonance Stone',     statBonus: { accuracy: 8 },   unlocks: ['aural_pitch_spy', 'aural_interval_quest', 'aural_chord_oracle', 'aural_melody_mapper'] },
-  { id: 'tuner_t3', slot: 'accessory_tuner',      tier: 3, name: 'Clip-On Chromatic Tuner', fantasyName: 'True Pitch Stone',    statBonus: { accuracy: 15 },  unlocks: ['aural_pitch_spy', 'aural_interval_quest', 'aural_chord_oracle', 'aural_melody_mapper', 'aural_progression_master'], passive: 'Shows a 3-second pitch reference before performance challenges.' },
-  // Stand
-  { id: 'stand_t1', slot: 'accessory_stand',      tier: 1, name: 'Folding Stand',            fantasyName: 'Iron Stand',          statBonus: {},                unlocks: ['sight_reading'] },
-  { id: 'stand_t2', slot: 'accessory_stand',      tier: 2, name: 'Orchestra Stand',          fantasyName: 'Carved Stand',        statBonus: { power: 5 },      unlocks: ['sight_reading'] },
-  { id: 'stand_t3', slot: 'accessory_stand',      tier: 3, name: 'Heavy Duty Stand',         fantasyName: "Maestro's Stand",     statBonus: { power: 10 },     unlocks: ['sight_reading'], passive: 'Shows sight-reading excerpt 5 extra seconds before the challenge.' },
+  ...ACCESSORY_ITEMS,
   // Attire
   { id: 'attire_t1', slot: 'attire', tier: 1, name: 'Practice Clothes',  fantasyName: 'Academy Uniform',    statBonus: { endurance: 5 } },
   { id: 'attire_t2', slot: 'attire', tier: 2, name: 'Rehearsal Uniform', fantasyName: 'Ensemble Colors',    statBonus: { endurance: 15, power: 5 },  passive: 'Ensemble Tech cooldowns reduced by 1 turn.' },
@@ -158,14 +273,15 @@ function buildGearItems(): Record<string, GearItem> {
   const all: GearItem[] = [];
 
   for (const instrument of Object.keys(INSTRUMENTS) as InstrumentId[]) {
+    // Instrument slot: tiers 1-3 (Legendary tier-4 instruments are boss-drop only)
     for (const tier of [1, 2, 3] as GearTier[]) {
       all.push(makeInstItem(instrument, tier));
     }
-  }
-
-  for (const family of ['woodwind', 'brass', 'percussion'] as InstrumentFamily[]) {
-    for (const tier of [1, 2, 3] as GearTier[]) {
-      all.push(makeMouthItem(family, tier));
+    // Material slot: both lines, tiers 1-4 (tier-4 = impractical legendary)
+    for (const lineIndex of [0, 1] as const) {
+      for (const tier of [1, 2, 3, 4] as GearTier[]) {
+        all.push(makeMaterialItem(instrument, lineIndex, tier));
+      }
     }
   }
 
@@ -178,16 +294,55 @@ export const GEAR_ITEMS: Record<string, GearItem> = buildGearItems();
 // ── Starting gear ──────────────────────────────────────────────────────────────
 
 export function getStartingGear(instrument: InstrumentId): Partial<Record<GearSlot, GearItem>> {
-  const family = INSTRUMENTS[instrument].family;
+  const startArch = MATERIAL_LINES[instrument][0].arch;
   return {
-    instrument:          GEAR_ITEMS[`inst_${instrument}_t1`],
-    mouthpiece:          GEAR_ITEMS[`mouth_${family}_t1`],
-    accessory_metronome: GEAR_ITEMS['metro_t1'],
-    accessory_tuner:     GEAR_ITEMS['tuner_t1'],
-    accessory_stand:     GEAR_ITEMS['stand_t1'],
-    attire:              GEAR_ITEMS['attire_t1'],
-    case:                GEAR_ITEMS['case_t1'],
+    instrument: GEAR_ITEMS[`inst_${instrument}_t1`],
+    mouthpiece: GEAR_ITEMS[`mat_${instrument}_${startArch}_t1`],
+    accessory:  GEAR_ITEMS['acc_t1'],
+    attire:     GEAR_ITEMS['attire_t1'],
+    case:       GEAR_ITEMS['case_t1'],
   };
+}
+
+// ── Gear migration (legacy → current slot structure) ───────────────────────────
+
+/**
+ * Bring a stored gear object up to the current slot structure:
+ *  - collapses the old metronome/tuner/stand slots into one `accessory`
+ *  - converts old family-based mouthpieces into the instrument's starting material
+ * Safe to run on already-current gear (idempotent).
+ */
+export function normalizeGear(
+  raw: Partial<Record<string, GearItem>>,
+  instrument: InstrumentId,
+): Partial<Record<GearSlot, GearItem>> {
+  const g: Partial<Record<string, GearItem>> = { ...(raw ?? {}) };
+
+  // Consolidate legacy accessory slots → single `accessory`
+  const legacyAccessories = ['accessory_metronome', 'accessory_tuner', 'accessory_stand'];
+  const legacyTiers = legacyAccessories
+    .map((k) => g[k]?.tier)
+    .filter((t): t is GearTier => typeof t === 'number');
+  if (legacyTiers.length > 0) {
+    const tier = Math.min(3, Math.max(...legacyTiers));
+    g.accessory = GEAR_ITEMS[`acc_t${tier}`];
+  }
+  legacyAccessories.forEach((k) => delete g[k]);
+  if (!g.accessory) g.accessory = GEAR_ITEMS['acc_t1'];
+
+  // Migrate legacy mouthpiece (mouth_*) → instrument material
+  const mp = g.mouthpiece;
+  if (mp && !mp.id.startsWith('mat_')) {
+    const tier = Math.min(3, mp.tier ?? 1) as GearTier;
+    const arch = MATERIAL_LINES[instrument][0].arch;
+    g.mouthpiece = GEAR_ITEMS[`mat_${instrument}_${arch}_t${tier}`];
+  }
+  if (!g.mouthpiece) {
+    const arch = MATERIAL_LINES[instrument][0].arch;
+    g.mouthpiece = GEAR_ITEMS[`mat_${instrument}_${arch}_t1`];
+  }
+
+  return g as Partial<Record<GearSlot, GearItem>>;
 }
 
 // ── Effective stats ────────────────────────────────────────────────────────────
@@ -209,10 +364,10 @@ export function getEffectiveStats(character: Character): StatBlock {
 // ── Boss gear drops ────────────────────────────────────────────────────────────
 
 export function getBossGearDrop(bossId: string, instrument: InstrumentId): GearItem | null {
-  const family = INSTRUMENTS[instrument].family;
+  const matArch = MATERIAL_LINES[instrument][0].arch;
   const drops: Record<string, string> = {
-    z1_boss_defeated:     `inst_${instrument}_t2`,
-    z2_mini_boss_defeated: `mouth_${family}_t2`,
+    z1_boss_defeated:      `inst_${instrument}_t2`,
+    z2_mini_boss_defeated: `mat_${instrument}_${matArch}_t2`,
     z3_mini_boss_defeated: 'attire_t2',
     z4_graduation:         'case_t2',
   };
@@ -220,7 +375,7 @@ export function getBossGearDrop(bossId: string, instrument: InstrumentId): GearI
   return itemId ? (GEAR_ITEMS[itemId] ?? null) : null;
 }
 
-// ── Shop prices ────────────────────────────────────────────────────────────────
+// ── Shop ───────────────────────────────────────────────────────────────────────
 
 export const SHOP_PRICES: Record<string, number> = (() => {
   const prices: Record<string, number> = {};
@@ -230,80 +385,102 @@ export const SHOP_PRICES: Record<string, number> = (() => {
     if (item.slot === 'instrument') {
       prices[id] = item.tier === 2 ? 120 : 280;
     } else if (item.slot === 'mouthpiece') {
-      prices[id] = item.tier === 2 ? 75 : 175;
+      prices[id] = item.tier === 2 ? 90 : item.tier === 3 ? 200 : 450; // T4 = luxury legendary
     } else if (item.slot === 'attire' || item.slot === 'case') {
       prices[id] = item.tier === 2 ? 80 : 180;
     } else {
-      // accessory_metronome / tuner / stand
+      // accessory
       prices[id] = item.tier === 2 ? 60 : 140;
     }
   }
   return prices;
 })();
 
-export interface ShopListing {
+export interface ShopOption {
   item: GearItem;
   price: number;
   canAfford: boolean;
-  currentItem: GearItem | undefined;
+  isSidegrade: boolean; // same tier as current (a lateral material swap)
 }
 
-export function getShopListings(character: Character): ShopListing[] {
-  const listings: ShopListing[] = [];
-  const slots: GearSlot[] = [
-    'instrument', 'mouthpiece',
-    'accessory_metronome', 'accessory_tuner', 'accessory_stand',
-    'attire', 'case',
-  ];
+export interface ShopSlotGroup {
+  slot: GearSlot;
+  label: string;
+  current: GearItem | undefined;
+  options: ShopOption[];
+}
 
-  for (const slot of slots) {
+const SIMPLE_SLOT_ORDER: GearSlot[] = ['instrument', 'accessory', 'attire', 'case'];
+
+export function getShopGroups(character: Character): ShopSlotGroup[] {
+  const groups: ShopSlotGroup[] = [];
+  const coins = character.resonanceCoins;
+
+  // ── Material slot (branching) — show current-tier sidegrades + next-tier upgrades
+  {
+    const current = character.gear.mouthpiece;
+    const curTier = (current?.tier ?? 0) as number;
+    const options: ShopOption[] = [];
+    for (const lineIndex of [0, 1] as const) {
+      for (const tier of [curTier, curTier + 1] as GearTier[]) {
+        if (tier < 2 || tier > 4) continue;
+        const id = `mat_${character.instrument}_${MATERIAL_LINES[character.instrument][lineIndex].arch}_t${tier}`;
+        const item = GEAR_ITEMS[id];
+        if (!item || item.id === current?.id) continue;
+        const price = SHOP_PRICES[id] ?? 0;
+        options.push({ item, price, canAfford: coins >= price, isSidegrade: tier === curTier });
+      }
+    }
+    if (options.length > 0) {
+      groups.push({
+        slot: 'mouthpiece',
+        label: getSurfaceLabel(character.instrument),
+        current,
+        options: options.sort((a, b) => a.item.tier - b.item.tier),
+      });
+    }
+  }
+
+  // ── Simple linear slots (one next-tier option each, capped at T3)
+  for (const slot of SIMPLE_SLOT_ORDER) {
     const equipped = character.gear[slot];
-    const currentTier: GearTier = (equipped?.tier ?? 0) as GearTier;
+    const currentTier = (equipped?.tier ?? 0) as number;
     const nextTier = (currentTier + 1) as GearTier;
-    if (nextTier > 3) continue; // already at max purchasable tier
+    if (nextTier > 3) continue;
 
-    // Find the next-tier item for this slot
     let candidateId: string | undefined;
     if (slot === 'instrument') {
       candidateId = `inst_${character.instrument}_t${nextTier}`;
-    } else if (slot === 'mouthpiece') {
-      const family = INSTRUMENTS[character.instrument].family;
-      candidateId = `mouth_${family}_t${nextTier}`;
+    } else if (slot === 'accessory') {
+      candidateId = `acc_t${nextTier}`;
     } else {
-      // accessories, attire, case — generic ids
-      const prefix = slot === 'attire' ? 'attire'
-        : slot === 'case' ? 'case'
-        : slot === 'accessory_metronome' ? 'metro'
-        : slot === 'accessory_tuner' ? 'tuner'
-        : 'stand';
-      candidateId = `${prefix}_t${nextTier}`;
+      candidateId = `${slot}_t${nextTier}`; // attire_t2, case_t2, ...
     }
 
     const item = candidateId ? GEAR_ITEMS[candidateId] : undefined;
     if (!item) continue;
-
     const price = SHOP_PRICES[item.id] ?? 0;
-    listings.push({
-      item,
-      price,
-      canAfford: character.resonanceCoins >= price,
-      currentItem: equipped,
+    groups.push({
+      slot,
+      label: SLOT_INFO[slot].label,
+      current: equipped,
+      options: [{ item, price, canAfford: coins >= price, isSidegrade: false }],
     });
   }
 
-  return listings;
+  // Order: instrument, material, accessory, attire, case
+  const order: GearSlot[] = ['instrument', 'mouthpiece', 'accessory', 'attire', 'case'];
+  return groups.sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
 }
 
 // ── Slot display info ──────────────────────────────────────────────────────────
 
 export const SLOT_INFO: Record<GearSlot, { label: string; icon: string }> = {
-  instrument:          { label: 'Instrument',       icon: '🎵' },
-  mouthpiece:          { label: 'Reed / Mouthpiece', icon: '🎙️' },
-  accessory_metronome: { label: 'Metronome',         icon: '⏱️' },
-  accessory_tuner:     { label: 'Tuner',             icon: '🎯' },
-  accessory_stand:     { label: 'Music Stand',       icon: '🎼' },
-  attire:              { label: 'Attire',            icon: '👔' },
-  case:                { label: 'Case',              icon: '🧳' },
+  instrument: { label: 'Instrument',        icon: '🎵' },
+  mouthpiece: { label: 'Mouthpiece / Reed', icon: '🎙️' },
+  accessory:  { label: 'Accessory',         icon: '🎼' },
+  attire:     { label: 'Attire',            icon: '👔' },
+  case:       { label: 'Case',              icon: '🧳' },
 };
 
 export const TIER_COLORS: Record<GearTier, string> = {

@@ -110,10 +110,8 @@ export interface Zone {
 export type GearTier = 1 | 2 | 3 | 4;
 export type GearSlot =
   | 'instrument'
-  | 'mouthpiece'
-  | 'accessory_metronome'
-  | 'accessory_tuner'
-  | 'accessory_stand'
+  | 'mouthpiece'   // instrument-specific material accessory (mouthpiece / reed / headjoint / sticks)
+  | 'accessory'    // general accessory: metronome, tuner, music stand, instrument stand
   | 'attire'
   | 'case';
 

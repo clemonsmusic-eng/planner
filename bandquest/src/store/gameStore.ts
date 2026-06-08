@@ -5,7 +5,7 @@ import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
 import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
 import { normalizeAppearance } from '../lib/appearance';
-import { getBossGearDrop } from '../lib/gear';
+import { getBossGearDrop, normalizeGear } from '../lib/gear';
 
 interface GameState {
   character: Character | null;
@@ -326,7 +326,7 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     maxHp: row.max_hp as number,
     resonancePoints: row.resonance_points as number,
     resonanceCoins: (row.resonance_coins as number) ?? 0,
-    gear: (row.gear as Character['gear']) ?? {},
+    gear: normalizeGear((row.gear as Partial<Record<string, GearItem>>) ?? {}, row.instrument as Character['instrument']),
     freedAllies: ((row.freed_allies as string[]) ?? []) as AllyId[],
     completedChallenges: (row.completed_challenges as string[]) ?? [],
     completedQuests: (row.completed_quests as string[]) ?? [],

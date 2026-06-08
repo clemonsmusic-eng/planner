@@ -1,16 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 
 import { useGameStore } from '../store/gameStore';
-import { getEffectiveStats, SLOT_INFO, TIER_COLORS, TIER_LABELS } from '../lib/gear';
+import { getEffectiveStats, SLOT_INFO, TIER_COLORS, TIER_LABELS, getSurfaceLabel } from '../lib/gear';
 import { getInstrumentColor } from '../lib/instruments';
 import type { GearSlot, GearTier } from '../types/game';
 
 const SLOT_ORDER: GearSlot[] = [
   'instrument',
   'mouthpiece',
-  'accessory_metronome',
-  'accessory_tuner',
-  'accessory_stand',
+  'accessory',
   'attire',
   'case',
 ];
@@ -87,7 +85,7 @@ export default function GearPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy mb-0.5">
-                      {info.label}
+                      {slot === 'mouthpiece' ? getSurfaceLabel(character.instrument) : info.label}
                     </div>
 
                     {item ? (

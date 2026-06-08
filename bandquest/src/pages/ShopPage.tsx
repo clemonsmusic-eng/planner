@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { getShopListings, SLOT_INFO, TIER_COLORS, TIER_LABELS } from '../lib/gear';
+import { getShopGroups, TIER_COLORS, TIER_LABELS, SLOT_INFO } from '../lib/gear';
 import { getInstrumentColor } from '../lib/instruments';
-import type { ShopListing } from '../lib/gear';
+import type { ShopOption, ShopSlotGroup } from '../lib/gear';
 
 export default function ShopPage() {
   const { character, equipGear, spendCoins } = useGameStore();
@@ -15,15 +15,15 @@ export default function ShopPage() {
 
   const color = getInstrumentColor(character.instrument);
   const locked = character.currentZone < 3;
-  const listings = locked ? [] : getShopListings(character);
+  const groups = locked ? [] : getShopGroups(character);
 
-  async function handleBuy(listing: ShopListing) {
+  async function handleBuy(option: ShopOption) {
     if (!character) return;
-    const ok = await spendCoins(listing.price);
+    const ok = await spendCoins(option.price);
     if (!ok) return;
-    await equipGear(listing.item);
+    await equipGear(option.item);
     setConfirming(null);
-    setJustBought(listing.item.id);
+    setJustBought(option.item.id);
     setTimeout(() => setJustBought(null), 2000);
   }
 
@@ -60,151 +60,165 @@ export default function ShopPage() {
               Complete Zone 2 to unlock the shop.
             </div>
           </div>
-        ) : listings.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="card-panel text-center py-12">
             <div className="text-4xl mb-4">✦</div>
             <div className="fantasy-title text-base text-academy-gold mb-2">Fully Equipped</div>
             <div className="text-academy-cream/50 text-sm">
               All gear slots are at maximum purchasable tier.
             </div>
-            <div className="text-academy-cream/30 text-xs mt-2">
-              Legendary gear drops from Zone 11–12 bosses.
-            </div>
           </div>
         ) : (
           <>
             <p className="text-academy-cream/40 text-xs mb-4">
-              Upgrade each gear slot to improve your stats. Earn coins by completing challenges.
+              Upgrade your gear to improve your stats. Your <span className="text-academy-cream/60">{SLOT_INFO.mouthpiece.label.toLowerCase()}</span> comes
+              in different materials — each with its own qualities. Earn coins by completing challenges.
             </p>
-            <div className="space-y-3">
-              {listings.map((listing) => {
-                const slotInfo = SLOT_INFO[listing.item.slot];
-                const isConfirming = confirming === listing.item.id;
-                const wasBought = justBought === listing.item.id;
 
-                return (
-                  <div
-                    key={listing.item.id}
-                    className="card-panel"
-                    style={wasBought ? { borderColor: `${color}60` } : undefined}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Slot icon */}
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}
-                      >
-                        {slotInfo.icon}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy mb-0.5">
-                          {slotInfo.label}
-                        </div>
-
-                        {/* Current → Next */}
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          {listing.currentItem ? (
-                            <span className="text-academy-cream/40 text-xs line-through">
-                              {listing.currentItem.name}
-                            </span>
-                          ) : (
-                            <span className="text-academy-cream/25 text-xs italic">Empty</span>
-                          )}
-                          <span className="text-academy-cream/30 text-xs">→</span>
-                          <span className="text-academy-cream/90 text-sm font-semibold">
-                            {listing.item.name}
-                          </span>
-                          <span className={`text-[9px] font-fantasy uppercase tracking-widest ${TIER_COLORS[listing.item.tier]}`}>
-                            {TIER_LABELS[listing.item.tier]}
-                          </span>
-                        </div>
-
-                        <div className="text-academy-cream/40 text-xs italic mb-1.5">
-                          {listing.item.fantasyName}
-                        </div>
-
-                        {/* Stat bonuses */}
-                        {Object.keys(listing.item.statBonus).length > 0 && (
-                          <div className="text-rating-good text-[10px] font-fantasy mb-1">
-                            {(['power', 'accuracy', 'technique', 'endurance'] as const)
-                              .filter((s) => (listing.item.statBonus[s] ?? 0) > 0)
-                              .map((s) => `+${listing.item.statBonus[s]} ${s.slice(0, 3).toUpperCase()}`)
-                              .join('  ·  ')}
-                          </div>
-                        )}
-                        {listing.item.passive && (
-                          <div className="text-academy-gold/50 text-[10px] italic mb-1.5">
-                            ✦ {listing.item.passive}
-                          </div>
-                        )}
-                        {listing.item.unlocks && listing.item.unlocks.length > 0 && (
-                          <div className="text-academy-cream/30 text-[10px] mb-1.5">
-                            Unlocks: {listing.item.unlocks.join(', ')}
-                          </div>
-                        )}
-
-                        {/* Buy / Confirm row */}
-                        {wasBought ? (
-                          <div className="text-rating-superior text-xs font-fantasy mt-1">
-                            ✓ Equipped!
-                          </div>
-                        ) : isConfirming ? (
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="text-academy-cream/60 text-xs">
-                              Spend {listing.price} 🪙?
-                            </span>
-                            <button
-                              onClick={() => handleBuy(listing)}
-                              className="text-xs font-fantasy px-3 py-1 rounded-lg transition-colors"
-                              style={{ background: `${color}25`, color, border: `1px solid ${color}50` }}
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setConfirming(null)}
-                              className="text-academy-cream/40 hover:text-academy-cream/70 text-xs transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => listing.canAfford && setConfirming(listing.item.id)}
-                            disabled={!listing.canAfford}
-                            className="mt-2 text-xs font-fantasy px-4 py-1.5 rounded-lg transition-all"
-                            style={listing.canAfford ? {
-                              background: `${color}20`,
-                              color,
-                              border: `1px solid ${color}40`,
-                            } : {
-                              background: 'rgba(255,255,255,0.04)',
-                              color: 'rgba(255,255,255,0.25)',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              cursor: 'not-allowed',
-                            }}
-                          >
-                            {listing.canAfford
-                              ? `Buy — 🪙 ${listing.price}`
-                              : `🪙 ${listing.price} (need ${listing.price - character.resonanceCoins} more)`}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-5">
+              {groups.map((group) => (
+                <ShopGroup
+                  key={group.slot}
+                  group={group}
+                  color={color}
+                  confirming={confirming}
+                  justBought={justBought}
+                  onWantBuy={(id) => setConfirming(id)}
+                  onCancel={() => setConfirming(null)}
+                  onConfirm={handleBuy}
+                  coins={character.resonanceCoins}
+                />
+              ))}
             </div>
 
-            {/* Legendary gear note */}
             <div className="card-panel mt-6 border-academy-gold/10">
               <div className="text-academy-cream/30 text-xs text-center">
-                ✦ Legendary gear (Tier 4) drops from Zone 11–12 boss battles only.
+                ✦ Legendary instruments (Tier 4) drop from Zone 11–12 boss battles. Legendary
+                <span className="text-academy-cream/45"> materials</span> can be splurged on here — at a price.
               </div>
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ShopGroup({
+  group, color, confirming, justBought, onWantBuy, onCancel, onConfirm, coins,
+}: {
+  group: ShopSlotGroup;
+  color: string;
+  confirming: string | null;
+  justBought: string | null;
+  onWantBuy: (id: string) => void;
+  onCancel: () => void;
+  onConfirm: (o: ShopOption) => void;
+  coins: number;
+}) {
+  const icon = SLOT_INFO[group.slot].icon;
+  const isBranching = group.options.length > 1 || group.slot === 'mouthpiece';
+
+  return (
+    <div>
+      {/* Group heading */}
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <span className="text-base">{icon}</span>
+        <span className="fantasy-title text-xs text-academy-gold/70 uppercase tracking-widest">{group.label}</span>
+        {isBranching && (
+          <span className="text-academy-cream/30 text-[10px] italic">— choose your material</span>
+        )}
+        {group.current && (
+          <span className="text-academy-cream/30 text-[10px] ml-auto">
+            Equipped: {group.current.name}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {group.options.map((option) => {
+          const isConfirming = confirming === option.item.id;
+          const wasBought = justBought === option.item.id;
+          return (
+            <div
+              key={option.item.id}
+              className="card-panel"
+              style={wasBought ? { borderColor: `${color}60` } : undefined}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 mt-0.5"
+                  style={{ backgroundColor: `${color}12`, border: `1px solid ${color}20` }}
+                >
+                  {icon}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span className="text-academy-cream/90 text-sm font-semibold">{option.item.name}</span>
+                    <span className={`text-[9px] font-fantasy uppercase tracking-widest ${TIER_COLORS[option.item.tier]}`}>
+                      {TIER_LABELS[option.item.tier]}
+                    </span>
+                    {option.isSidegrade && (
+                      <span className="text-academy-cream/30 text-[9px] uppercase tracking-wide">sidegrade</span>
+                    )}
+                  </div>
+                  <div className="text-academy-cream/40 text-xs italic mb-1.5">{option.item.fantasyName}</div>
+
+                  {Object.keys(option.item.statBonus).length > 0 && (
+                    <div className="text-rating-good text-[10px] font-fantasy mb-1">
+                      {(['power', 'accuracy', 'technique', 'endurance'] as const)
+                        .filter((s) => (option.item.statBonus[s] ?? 0) > 0)
+                        .map((s) => `+${option.item.statBonus[s]} ${s.slice(0, 3).toUpperCase()}`)
+                        .join('  ·  ')}
+                    </div>
+                  )}
+                  {option.item.passive && (
+                    <div className="text-academy-gold/50 text-[10px] italic mb-1.5">✦ {option.item.passive}</div>
+                  )}
+
+                  {/* Buy / Confirm */}
+                  {wasBought ? (
+                    <div className="text-rating-superior text-xs font-fantasy mt-1">✓ Equipped!</div>
+                  ) : isConfirming ? (
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-academy-cream/60 text-xs">Spend {option.price} 🪙?</span>
+                      <button
+                        onClick={() => onConfirm(option)}
+                        className="text-xs font-fantasy px-3 py-1 rounded-lg transition-colors"
+                        style={{ background: `${color}25`, color, border: `1px solid ${color}50` }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={onCancel}
+                        className="text-academy-cream/40 hover:text-academy-cream/70 text-xs transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => option.canAfford && onWantBuy(option.item.id)}
+                      disabled={!option.canAfford}
+                      className="mt-2 text-xs font-fantasy px-4 py-1.5 rounded-lg transition-all"
+                      style={option.canAfford ? {
+                        background: `${color}20`, color, border: `1px solid ${color}40`,
+                      } : {
+                        background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)',
+                        border: '1px solid rgba(255,255,255,0.08)', cursor: 'not-allowed',
+                      }}
+                    >
+                      {option.canAfford
+                        ? `Buy — 🪙 ${option.price}`
+                        : `🪙 ${option.price} (need ${option.price - coins} more)`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
