@@ -220,6 +220,80 @@ export function getBossGearDrop(bossId: string, instrument: InstrumentId): GearI
   return itemId ? (GEAR_ITEMS[itemId] ?? null) : null;
 }
 
+// ── Shop prices ────────────────────────────────────────────────────────────────
+
+export const SHOP_PRICES: Record<string, number> = (() => {
+  const prices: Record<string, number> = {};
+  for (const id of Object.keys(GEAR_ITEMS)) {
+    const item = GEAR_ITEMS[id];
+    if (item.tier === 1) continue; // T1 is starter gear, not sold
+    if (item.slot === 'instrument') {
+      prices[id] = item.tier === 2 ? 120 : 280;
+    } else if (item.slot === 'mouthpiece') {
+      prices[id] = item.tier === 2 ? 75 : 175;
+    } else if (item.slot === 'attire' || item.slot === 'case') {
+      prices[id] = item.tier === 2 ? 80 : 180;
+    } else {
+      // accessory_metronome / tuner / stand
+      prices[id] = item.tier === 2 ? 60 : 140;
+    }
+  }
+  return prices;
+})();
+
+export interface ShopListing {
+  item: GearItem;
+  price: number;
+  canAfford: boolean;
+  currentItem: GearItem | undefined;
+}
+
+export function getShopListings(character: Character): ShopListing[] {
+  const listings: ShopListing[] = [];
+  const slots: GearSlot[] = [
+    'instrument', 'mouthpiece',
+    'accessory_metronome', 'accessory_tuner', 'accessory_stand',
+    'attire', 'case',
+  ];
+
+  for (const slot of slots) {
+    const equipped = character.gear[slot];
+    const currentTier: GearTier = (equipped?.tier ?? 0) as GearTier;
+    const nextTier = (currentTier + 1) as GearTier;
+    if (nextTier > 3) continue; // already at max purchasable tier
+
+    // Find the next-tier item for this slot
+    let candidateId: string | undefined;
+    if (slot === 'instrument') {
+      candidateId = `inst_${character.instrument}_t${nextTier}`;
+    } else if (slot === 'mouthpiece') {
+      const family = INSTRUMENTS[character.instrument].family;
+      candidateId = `mouth_${family}_t${nextTier}`;
+    } else {
+      // accessories, attire, case — generic ids
+      const prefix = slot === 'attire' ? 'attire'
+        : slot === 'case' ? 'case'
+        : slot === 'accessory_metronome' ? 'metro'
+        : slot === 'accessory_tuner' ? 'tuner'
+        : 'stand';
+      candidateId = `${prefix}_t${nextTier}`;
+    }
+
+    const item = candidateId ? GEAR_ITEMS[candidateId] : undefined;
+    if (!item) continue;
+
+    const price = SHOP_PRICES[item.id] ?? 0;
+    listings.push({
+      item,
+      price,
+      canAfford: character.resonanceCoins >= price,
+      currentItem: equipped,
+    });
+  }
+
+  return listings;
+}
+
 // ── Slot display info ──────────────────────────────────────────────────────────
 
 export const SLOT_INFO: Record<GearSlot, { label: string; icon: string }> = {

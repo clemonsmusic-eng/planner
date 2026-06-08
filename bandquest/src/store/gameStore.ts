@@ -5,6 +5,7 @@ import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
 import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
 import { normalizeAppearance } from '../lib/appearance';
+import { getBossGearDrop } from '../lib/gear';
 
 interface GameState {
   character: Character | null;
@@ -19,6 +20,8 @@ interface GameState {
   equipGear: (item: GearItem) => Promise<void>;
   freeAlly: (allyId: AllyId) => Promise<void>;
   spendResonancePoints: (amount: number) => void;
+  spendCoins: (amount: number) => Promise<boolean>;
+  awardBossGear: (bossId: string) => Promise<GearItem | null>;
   completeBootCampStep: (stepId: string) => Promise<void>;
   saveAppearance: (appearance: Appearance) => Promise<void>;
   setCharacter: (character: Character | null) => void;
@@ -31,6 +34,14 @@ const BASE_XP: Record<string, number> = {
   zone_boss: 1500,
   side_quest_short: 500,
   side_quest_long: 1000,
+};
+
+const COIN_PER_RATING: Record<Rating, number> = {
+  superior: 5, excellent: 4, good: 3, fair: 2, poor: 1,
+};
+const COIN_BOSS_BONUS: Record<string, number> = {
+  mini_boss: 15,
+  zone_boss: 40,
 };
 
 // Compute stats for a given level using base stats + growth per level
@@ -106,6 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const baseXp = BASE_XP[challengeType] ?? 150;
     const xpAwarded = Math.round(baseXp * RATING_XP_MULTIPLIERS[rating] * xpMult);
     const rpAwarded = RATING_RP_AWARD[rating];
+    const coinsAwarded = COIN_PER_RATING[rating] + (COIN_BOSS_BONUS[challengeType] ?? 0);
 
     // Insert challenge result
     await supabase.from('challenge_results').insert({
@@ -122,6 +134,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Compute new level from total XP
     const newXp = character.xp + xpAwarded;
     const newRp = character.resonancePoints + rpAwarded;
+    const newCoins = character.resonanceCoins + coinsAwarded;
     let newLevel = character.level;
     let remainingXp = newXp;
 
@@ -154,6 +167,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       xpToNextLevel: xpToNextLevel(newLevel),
       level: newLevel,
       resonancePoints: newRp,
+      resonanceCoins: newCoins,
       stats: newStats,
       hp: newHp,
       maxHp: newMaxHp,
@@ -169,6 +183,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         xp: remainingXp,
         level: newLevel,
         resonance_points: newRp,
+        resonance_coins: newCoins,
         completed_challenges: completedChallenges,
         total_attempts: character.totalAttempts + 1,
         weekly_xp: character.weeklyXp + xpAwarded,
@@ -246,6 +261,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       .eq('id', character.id);
   },
 
+  spendCoins: async (amount) => {
+    const { character } = get();
+    if (!character || character.resonanceCoins < amount) return false;
+    const newCoins = character.resonanceCoins - amount;
+    set({ character: { ...character, resonanceCoins: newCoins } });
+    await supabase
+      .from('characters')
+      .update({ resonance_coins: newCoins })
+      .eq('id', character.id);
+    return true;
+  },
+
+  awardBossGear: async (bossId) => {
+    const { character, equipGear } = get();
+    if (!character) return null;
+    const item = getBossGearDrop(bossId, character.instrument);
+    if (!item) return null;
+    await equipGear(item);
+    return item;
+  },
+
   completeBootCampStep: async (stepId) => {
     const { character } = get();
     if (!character) return;
@@ -289,6 +325,7 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     hp: row.hp as number,
     maxHp: row.max_hp as number,
     resonancePoints: row.resonance_points as number,
+    resonanceCoins: (row.resonance_coins as number) ?? 0,
     gear: (row.gear as Character['gear']) ?? {},
     freedAllies: ((row.freed_allies as string[]) ?? []) as AllyId[],
     completedChallenges: (row.completed_challenges as string[]) ?? [],

@@ -205,6 +205,7 @@ export interface Character {
   hp: number;
   maxHp: number;
   resonancePoints: number;
+  resonanceCoins: number;
   gear: Partial<Record<GearSlot, GearItem>>;
   freedAllies: AllyId[];
   completedChallenges: string[];

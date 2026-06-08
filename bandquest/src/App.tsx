@@ -19,6 +19,7 @@ import LibraryPage from './pages/LibraryPage';
 import AlliesPage from './pages/AlliesPage';
 import SimulatorPage from './pages/SimulatorPage';
 import GearPage from './pages/GearPage';
+import ShopPage from './pages/ShopPage';
 import WorldMapPage from './pages/WorldMapPage';
 import CustomizePage from './pages/CustomizePage';
 import FingeringChartPage from './pages/FingeringChartPage';
@@ -146,6 +147,11 @@ export default function App() {
       {/* Equipment / Gear */}
       <Route path="/gear" element={
         <RequireCharacter><GearPage /></RequireCharacter>
+      } />
+
+      {/* Gear Shop */}
+      <Route path="/shop" element={
+        <RequireCharacter><ShopPage /></RequireCharacter>
       } />
 
       {/* World Map */}

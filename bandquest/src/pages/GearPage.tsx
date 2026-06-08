@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+
 import { useGameStore } from '../store/gameStore';
 import { getEffectiveStats, SLOT_INFO, TIER_COLORS, TIER_LABELS } from '../lib/gear';
 import { getInstrumentColor } from '../lib/instruments';
@@ -137,9 +138,18 @@ export default function GearPage() {
           </div>
         )}
 
-        <p className="text-academy-cream/30 text-xs text-center mt-6 mb-2">
-          Gear is earned from boss victories and quest rewards.
-        </p>
+        <div className="mt-6 flex flex-col items-center gap-2 mb-2">
+          <button
+            onClick={() => navigate('/shop')}
+            className="text-sm font-fantasy px-5 py-2 rounded-xl transition-all hover:scale-[1.02]"
+            style={{ background: `${color}18`, color, border: `1px solid ${color}35` }}
+          >
+            🪙 Visit Gear Shop →
+          </button>
+          <p className="text-academy-cream/30 text-xs text-center">
+            Tier 4 Legendary gear drops from Zone 11–12 boss battles.
+          </p>
+        </div>
       </div>
     </div>
   );
