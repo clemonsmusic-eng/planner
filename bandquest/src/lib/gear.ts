@@ -410,7 +410,7 @@ export interface ShopSlotGroup {
   options: ShopOption[];
 }
 
-const SIMPLE_SLOT_ORDER: GearSlot[] = ['instrument', 'accessory', 'attire', 'case'];
+const SIMPLE_SLOT_ORDER: GearSlot[] = ['instrument', 'accessory', 'case', 'attire'];
 
 export function getShopGroups(character: Character): ShopSlotGroup[] {
   const groups: ShopSlotGroup[] = [];
@@ -468,8 +468,8 @@ export function getShopGroups(character: Character): ShopSlotGroup[] {
     });
   }
 
-  // Order: instrument, material, accessory, attire, case
-  const order: GearSlot[] = ['instrument', 'mouthpiece', 'accessory', 'attire', 'case'];
+  // Order: instrument, material, accessory, case, attire
+  const order: GearSlot[] = ['instrument', 'mouthpiece', 'accessory', 'case', 'attire'];
   return groups.sort((a, b) => order.indexOf(a.slot) - order.indexOf(b.slot));
 }
 

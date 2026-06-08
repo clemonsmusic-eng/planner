@@ -9,8 +9,8 @@ const SLOT_ORDER: GearSlot[] = [
   'instrument',
   'mouthpiece',
   'accessory',
-  'attire',
   'case',
+  'attire',
 ];
 
 export default function GearPage() {
