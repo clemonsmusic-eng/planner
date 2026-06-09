@@ -9,7 +9,7 @@ const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES  = new Set(['phase-6']);
 
 function experienceMultiplier(level: ExperienceLevel): string {
-  return level === 'High' ? '0.85×' : level === 'Low' ? '1.25×' : '1.00×';
+  return level === 'High' ? '0.85×' : level === 'Low' ? '1.15×' : '1.00×';
 }
 
 function experienceBadgeClass(level: ExperienceLevel): string {

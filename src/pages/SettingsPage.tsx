@@ -1207,7 +1207,7 @@ export function SettingsPage() {
               {[
                 { level: 'High', color: 'bg-green-100 text-green-800', mult: '0.85×' },
                 { level: 'Average', color: 'bg-ios-gray-100 text-ios-gray-700', mult: '1.00×' },
-                { level: 'Low', color: 'bg-amber-100 text-amber-800', mult: '1.25×' },
+                { level: 'Low', color: 'bg-amber-100 text-amber-800', mult: '1.15×' },
               ].map(({ level, color, mult }) => (
                 <span key={level} className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`}>
                   {level} · {mult}

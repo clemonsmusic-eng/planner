@@ -178,7 +178,7 @@ function JobCard({
                       <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
                         expLevel === 'High' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {expLevel === 'High' ? '0.85×' : '1.25×'}
+                        {expLevel === 'High' ? '0.85×' : '1.15×'}
                       </span>
                     )}
                   </div>
