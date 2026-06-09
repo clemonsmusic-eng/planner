@@ -41,6 +41,7 @@ export interface TeamMember {
   minHoursPerWeek: number;
   maxHoursPerWeek: number;
   isPriority: boolean;
+  experience?: TeamMemberExperience;
 }
 
 // ─── Phase Templates ──────────────────────────────────────────────────────────
@@ -91,8 +92,21 @@ export interface CleanoutOptions {
   startDate: string; // ISO date string
 }
 
+export type ExperienceLevel = 'High' | 'Average' | 'Low';
+
+export interface TeamMemberExperience {
+  packAndSort: ExperienceLevel;
+  cleanout: ExperienceLevel;
+}
+
 export interface AuctionOptions {
   enabled: boolean;
+  lotCount?: number;
+}
+
+export interface AuctionAppSettings {
+  hourlyRate: number;
+  performanceLevel: ExperienceLevel;
 }
 
 export interface DateOverride {
@@ -206,4 +220,5 @@ export interface AppState {
   communities: string[];
   lists: ListCategory[];
   phaseTemplates: PhaseTemplate[];
+  auctionSettings: AuctionAppSettings;
 }

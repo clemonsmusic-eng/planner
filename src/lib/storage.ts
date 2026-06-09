@@ -1,4 +1,4 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
@@ -6,11 +6,12 @@ import {
   DEFAULT_LISTS,
 } from './data';
 
-const STORAGE_KEY_PROJECTS        = 'st-planner-projects';
-const STORAGE_KEY_TEAM            = 'st-planner-team';
-const STORAGE_KEY_COMMUNITIES     = 'st-planner-communities';
-const STORAGE_KEY_LISTS           = 'st-planner-lists';
-const STORAGE_KEY_PHASE_TEMPLATES = 'st-planner-phase-templates';
+const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
+const STORAGE_KEY_TEAM             = 'st-planner-team';
+const STORAGE_KEY_COMMUNITIES      = 'st-planner-communities';
+const STORAGE_KEY_LISTS            = 'st-planner-lists';
+const STORAGE_KEY_PHASE_TEMPLATES  = 'st-planner-phase-templates';
+const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export function loadProjects(): Project[] {
         status: p.inputs.status ?? 'active',
         isLocked: p.inputs.isLocked ?? false,
         phaseDateMoves: p.inputs.phaseDateMoves ?? [],
+        auction: { ...p.inputs.auction, lotCount: p.inputs.auction?.lotCount ?? 0 },
       },
     }));
   } catch {
@@ -59,8 +61,12 @@ export function loadTeamMembers(): TeamMember[] {
 
     const parsed = JSON.parse(raw) as AnyMember[];
     return parsed.map((m) => {
-      // Backfill minHoursPerWeek for records saved before this field existed
-      let member: AnyMember = { ...m, minHoursPerWeek: m.minHoursPerWeek ?? 0 };
+      // Backfill minHoursPerWeek and experience for records saved before these fields existed
+      let member: AnyMember = {
+        ...m,
+        minHoursPerWeek: m.minHoursPerWeek ?? 0,
+        experience: m.experience ?? { packAndSort: 'Average', cleanout: 'Average' },
+      };
       // Migrate to phaseRoles if missing (from shiftRoles or old roles[])
       if (!member.phaseRoles) {
         let primary: RoleType = 'Specialist';
@@ -171,5 +177,25 @@ export function savePhaseTemplates(templates: PhaseTemplate[]): void {
     localStorage.setItem(STORAGE_KEY_PHASE_TEMPLATES, JSON.stringify(templates));
   } catch (e) {
     console.error('Failed to save phase templates', e);
+  }
+}
+
+// ─── Auction Settings ─────────────────────────────────────────────────────────
+
+const DEFAULT_AUCTION_SETTINGS: AuctionAppSettings = { hourlyRate: 95, performanceLevel: 'Average' };
+
+export function loadAuctionSettings(): AuctionAppSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_AUCTION_SETTINGS);
+    if (raw) return { ...DEFAULT_AUCTION_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_AUCTION_SETTINGS };
+}
+
+export function saveAuctionSettings(settings: AuctionAppSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_AUCTION_SETTINGS, JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save auction settings', e);
   }
 }

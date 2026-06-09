@@ -475,11 +475,48 @@ export function InputFormPage() {
                     placeholder="Select type…"
                   />
                 </FormField>
-                {inputs.cleanout.type === 'Full - Auction' && (
-                  <p className="text-xs text-teal-600 font-medium">
-                    Auction scheduling will be automatically added.
-                  </p>
-                )}
+                {inputs.cleanout.type === 'Full - Auction' && (() => {
+                  const { hourlyRate, performanceLevel } = state.auctionSettings;
+                  const minPerLot = { High: 13, Average: 18, Low: 25 }[performanceLevel];
+                  const lotCount = inputs.auction.lotCount ?? 0;
+                  const estHours = lotCount > 0 ? Math.round(lotCount * minPerLot / 60 * 10) / 10 : null;
+                  const estCost = estHours !== null ? Math.round(estHours * hourlyRate) : null;
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-xs text-teal-600 font-medium">
+                        Auction scheduling will be automatically added.
+                      </p>
+                      <FormField label="Lot Count" hint="Number of auction lots">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          value={inputs.auction.lotCount || ''}
+                          onChange={(e) => update('auction', { ...inputs.auction, lotCount: parseInt(e.target.value) || 0 })}
+                          placeholder="e.g. 150"
+                          className={inputClass()}
+                        />
+                      </FormField>
+                      {estHours !== null && (
+                        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-1.5">
+                          <p className="text-[11px] font-bold text-teal-600 uppercase tracking-wide">Labor Estimate</p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-ios-gray-600">Performance</span>
+                            <span className="text-xs font-semibold text-teal-900">{performanceLevel} · {minPerLot} min/lot</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-ios-gray-600">Est. Hours</span>
+                            <span className="text-xs font-bold text-teal-900">{estHours} hrs</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-teal-200 pt-1.5 mt-1">
+                            <span className="text-xs text-ios-gray-600">Labor Value</span>
+                            <span className="text-sm font-bold text-teal-700">${estCost?.toLocaleString()} <span className="text-xs font-normal text-ios-gray-500">@ ${hourlyRate}/hr</span></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <FormField label="Start Date" hint="Leave blank to auto-calculate (2 workdays after move)">
                   <input
                     type="date"

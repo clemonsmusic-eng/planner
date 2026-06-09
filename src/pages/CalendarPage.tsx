@@ -14,7 +14,10 @@ import {
 } from 'date-fns';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { Project } from '../types';
+import type { Project, TeamMember, ExperienceLevel } from '../types';
+
+const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
+const CLEANOUT_PHASES_CAL  = new Set(['phase-6']);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +33,8 @@ interface CalendarJob {
   shift: 'AM' | 'PM' | 'Full Day';
   memberIds: string[];
   memberNames: string[];
+  memberExperiences: Array<ExperienceLevel | null>;
+  experienceCategory: 'packAndSort' | 'cleanout' | null;
   hours: number;
   isArchived: boolean;
 }
@@ -58,7 +63,7 @@ function buildColorMap(projects: Project[]): Map<string, number> {
 }
 
 /** Aggregate schedule entries into one job per (project, phase, shift, date). */
-function buildJobs(projects: Project[]): CalendarJob[] {
+function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>): CalendarJob[] {
   const jobs: CalendarJob[] = [];
 
   for (const project of projects) {
@@ -70,6 +75,11 @@ function buildJobs(projects: Project[]): CalendarJob[] {
 
       for (const entry of day.entries) {
         const key = `${entry.phaseId}:${entry.shift}`;
+        const expCat: CalendarJob['experienceCategory'] = PACK_SORT_PHASES_CAL.has(entry.phaseId)
+          ? 'packAndSort'
+          : CLEANOUT_PHASES_CAL.has(entry.phaseId)
+          ? 'cleanout'
+          : null;
         if (!groups.has(key)) {
           groups.set(key, {
             date: day.date,
@@ -80,6 +90,8 @@ function buildJobs(projects: Project[]): CalendarJob[] {
             shift: entry.shift,
             memberIds: [],
             memberNames: [],
+            memberExperiences: [],
+            experienceCategory: expCat,
             hours: entry.hours,
             isArchived,
           });
@@ -88,6 +100,9 @@ function buildJobs(projects: Project[]): CalendarJob[] {
         if (entry.assignedMember && !job.memberIds.includes(entry.assignedMember)) {
           job.memberIds.push(entry.assignedMember);
           if (entry.assignedMemberName) job.memberNames.push(entry.assignedMemberName);
+          const member = teamMemberMap.get(entry.assignedMember);
+          const expLevel = expCat && member?.experience ? member.experience[expCat] : null;
+          job.memberExperiences.push(expLevel);
         }
       }
 
@@ -152,9 +167,24 @@ function JobCard({
           <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
           <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-teal-700'}`}>{job.projectName}</p>
           {job.memberNames.length > 0 && (
-            <p className={`text-[11px] truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>
-              {job.memberNames.join(', ')}
-            </p>
+            <div className="mt-0.5 space-y-0.5">
+              {job.memberNames.map((name, idx) => {
+                const expLevel = job.memberExperiences[idx];
+                const hasExp = expLevel && expLevel !== 'Average';
+                return (
+                  <div key={idx} className="flex items-center gap-1">
+                    <span className={`text-[11px] truncate ${job.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>{name}</span>
+                    {hasExp && !job.isArchived && (
+                      <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
+                        expLevel === 'High' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {expLevel === 'High' ? '0.85×' : '1.25×'}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
         <div className="flex-shrink-0 text-right">
@@ -610,7 +640,8 @@ export function CalendarPage() {
   const [conflictInfo, setConflictInfo] = useState<{ job: CalendarJob; newDate: string; issues: string[] } | null>(null);
 
   const colorMap = useMemo(() => buildColorMap(state.projects), [state.projects]);
-  const allJobs   = useMemo(() => buildJobs(state.projects), [state.projects]);
+  const teamMemberMap = useMemo(() => new Map(state.teamMembers.map((m) => [m.id, m])), [state.teamMembers]);
+  const allJobs   = useMemo(() => buildJobs(state.projects, teamMemberMap), [state.projects, teamMemberMap]);
   const filteredJobs = useMemo(
     () => applyFilters(allJobs, memberFilter, projectFilter, shiftFilter),
     [allJobs, memberFilter, projectFilter, shiftFilter]

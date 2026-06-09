@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
-import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory } from '../types';
+import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -804,7 +804,7 @@ function ListCategoryCard({
 
 // ─── Settings Page ─────────────────────────────────────────────────────────────
 
-type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'communities';
+type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'communities' | 'auctionDefaults' | 'teamExperience';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -817,6 +817,7 @@ export function SettingsPage() {
   const [phaseTemplates, setPhaseTemplates] = useState<PhaseTemplate[]>(
     state.phaseTemplates.map((t) => ({ ...t }))
   );
+  const [auctionSettings, setAuctionSettings] = useState<AuctionAppSettings>({ ...state.auctionSettings });
   const [newCommunity, setNewCommunity] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
@@ -891,6 +892,7 @@ export function SettingsPage() {
     dispatch({ type: 'UPDATE_COMMUNITIES', communities });
     dispatch({ type: 'UPDATE_LISTS', lists });
     dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
+    dispatch({ type: 'UPDATE_AUCTION_SETTINGS', settings: auctionSettings });
     setIsDirty(false);
   }
 
@@ -1072,6 +1074,145 @@ export function SettingsPage() {
               >
                 Add
               </button>
+            </div>
+          </div>
+        </AccordionSection>
+
+        {/* ── Auction Defaults ──────────────────────────────────────────── */}
+        <AccordionSection
+          title="Auction Defaults"
+          subtitle="Hourly rate and performance level for estimates"
+          open={openSections.has('auctionDefaults')}
+          onToggle={() => toggleSection('auctionDefaults')}
+        >
+          <div className="px-4 py-4 space-y-4">
+            <p className="text-xs text-ios-gray-500">
+              These defaults drive the labor estimate on the Inputs tab when a Full – Auction cleanout is selected.
+            </p>
+
+            {/* Hourly Rate */}
+            <div>
+              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Hourly Rate ($)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={auctionSettings.hourlyRate || ''}
+                onChange={(e) => {
+                  setAuctionSettings((prev) => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }));
+                  setIsDirty(true);
+                }}
+                placeholder="e.g. 95"
+                className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+              />
+            </div>
+
+            {/* Performance Level */}
+            <div>
+              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Performance Level</label>
+              <div className="space-y-2">
+                {([
+                  { level: 'High' as ExperienceLevel, minPerLot: 13, desc: 'Experienced team, organized home, easy access' },
+                  { level: 'Average' as ExperienceLevel, minPerLot: 18, desc: 'Typical auction, mixed items, normal sorting' },
+                  { level: 'Low' as ExperienceLevel, minPerLot: 25, desc: 'Dense home, heavy sorting, stairs or complex pickup' },
+                ]).map(({ level, minPerLot, desc }) => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setAuctionSettings((prev) => ({ ...prev, performanceLevel: level }));
+                      setIsDirty(true);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors border ${
+                      auctionSettings.performanceLevel === level
+                        ? 'bg-teal-50 border-teal-300'
+                        : 'bg-ios-gray-50 border-ios-gray-200'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full flex-shrink-0 border-2 flex items-center justify-center ${
+                      auctionSettings.performanceLevel === level ? 'border-teal-600' : 'border-ios-gray-300'
+                    }`}>
+                      {auctionSettings.performanceLevel === level && (
+                        <div className="w-2 h-2 rounded-full bg-teal-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${auctionSettings.performanceLevel === level ? 'text-teal-900' : 'text-teal-800'}`}>{level}</span>
+                        <span className="text-xs text-ios-gray-500">{minPerLot} min/lot</span>
+                      </div>
+                      <p className="text-xs text-ios-gray-500 truncate">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </AccordionSection>
+
+        {/* ── Team Experience ───────────────────────────────────────────── */}
+        <AccordionSection
+          title="Team Experience"
+          subtitle="Pack & Sort and Cleanout competency per member"
+          open={openSections.has('teamExperience')}
+          onToggle={() => toggleSection('teamExperience')}
+        >
+          <div className="px-4 py-4 space-y-3">
+            <p className="text-xs text-ios-gray-500">
+              Annotation only — shown as a multiplier on Schedule and Calendar. Does not affect scheduling or hours.
+            </p>
+            <div className="space-y-1">
+              {/* Header row */}
+              <div className="grid grid-cols-[1fr_120px_120px] gap-2 px-1 pb-1">
+                <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wide">Member</span>
+                <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wide text-center">Pack & Sort</span>
+                <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wide text-center">Cleanout</span>
+              </div>
+              {members.map((member, i) => {
+                const exp = member.experience ?? { packAndSort: 'Average', cleanout: 'Average' };
+                return (
+                  <div key={member.id} className="grid grid-cols-[1fr_120px_120px] gap-2 items-center bg-ios-gray-50 rounded-xl px-3 py-2 border border-ios-gray-200">
+                    <span className="text-sm font-medium text-teal-900 truncate">{member.name}</span>
+                    {(['packAndSort', 'cleanout'] as const).map((cat) => (
+                      <select
+                        key={cat}
+                        value={exp[cat]}
+                        onChange={(e) => {
+                          const updated: TeamMember = {
+                            ...member,
+                            experience: { ...exp, [cat]: e.target.value as ExperienceLevel },
+                          };
+                          updateMember(i, updated);
+                        }}
+                        className={`min-h-[36px] rounded-lg border px-2 py-1 text-sm font-semibold text-center appearance-none cursor-pointer transition-colors ${
+                          exp[cat] === 'High'
+                            ? 'bg-green-100 border-green-300 text-green-800'
+                            : exp[cat] === 'Low'
+                            ? 'bg-amber-100 border-amber-300 text-amber-800'
+                            : 'bg-ios-gray-100 border-ios-gray-300 text-ios-gray-700'
+                        }`}
+                      >
+                        <option value="High">High</option>
+                        <option value="Average">Average</option>
+                        <option value="Low">Low</option>
+                      </select>
+                    ))}
+                  </div>
+                );
+              })}
+              {members.length === 0 && (
+                <p className="text-sm text-ios-gray-400 text-center py-4">Add team members in the Team section first.</p>
+              )}
+            </div>
+            <div className="flex gap-4 pt-1">
+              {[
+                { level: 'High', color: 'bg-green-100 text-green-800', mult: '0.85×' },
+                { level: 'Average', color: 'bg-ios-gray-100 text-ios-gray-700', mult: '1.00×' },
+                { level: 'Low', color: 'bg-amber-100 text-amber-800', mult: '1.25×' },
+              ].map(({ level, color, mult }) => (
+                <span key={level} className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`}>
+                  {level} · {mult}
+                </span>
+              ))}
             </div>
           </div>
         </AccordionSection>

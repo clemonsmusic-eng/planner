@@ -3,7 +3,22 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
-import type { ScheduleEntry, ScheduleDay } from '../types';
+import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel } from '../types';
+
+const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
+const CLEANOUT_PHASES  = new Set(['phase-6']);
+
+function experienceMultiplier(level: ExperienceLevel): string {
+  return level === 'High' ? '0.85×' : level === 'Low' ? '1.25×' : '1.00×';
+}
+
+function experienceBadgeClass(level: ExperienceLevel): string {
+  return level === 'High'
+    ? 'bg-green-100 text-green-800'
+    : level === 'Low'
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-ios-gray-100 text-ios-gray-600';
+}
 
 function ChevronDownIcon() {
   return (
@@ -59,6 +74,8 @@ export function SchedulePage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
+
+  const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
   if (!activeProject) {
     return (
@@ -276,6 +293,7 @@ export function SchedulePage() {
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
                   onOverride={() => setOverrideDate(day.date)}
                   onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
+                  memberMap={memberMap}
                 />
               ))}
             </div>
@@ -334,6 +352,7 @@ function DaySection({
   hasOverride,
   onOverride,
   onDateChange,
+  memberMap,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -341,6 +360,7 @@ function DaySection({
   hasOverride: boolean;
   onOverride: () => void;
   onDateChange: () => void;
+  memberMap: Map<string, TeamMember>;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -406,7 +426,7 @@ function DaySection({
               </div>
               <div className="divide-y divide-ios-gray-100">
                 {phaseEntries.map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} />
+                  <EntryRow key={entry.id} entry={entry} memberMap={memberMap} />
                 ))}
               </div>
             </Card>
@@ -429,9 +449,19 @@ function groupEntriesByPhase(entries: ScheduleEntry[]) {
   }));
 }
 
-function EntryRow({ entry }: { entry: ScheduleEntry }) {
+function EntryRow({ entry, memberMap }: { entry: ScheduleEntry; memberMap: Map<string, TeamMember> }) {
   const isConflict = entry.status === 'needs-assignment' || entry.status === 'conflict';
   const isOverMax = entry.status === 'over-max';
+
+  const member = entry.assignedMember ? memberMap.get(entry.assignedMember) : undefined;
+  const expCategory = PACK_SORT_PHASES.has(entry.phaseId)
+    ? 'packAndSort'
+    : CLEANOUT_PHASES.has(entry.phaseId)
+    ? 'cleanout'
+    : null;
+  const expLevel: ExperienceLevel | null = expCategory && member?.experience
+    ? member.experience[expCategory]
+    : null;
 
   return (
     <div className={`px-3 py-2.5 flex items-start gap-2 ${isConflict ? 'bg-red-50' : isOverMax ? 'bg-yellow-50' : ''}`}>
@@ -443,12 +473,17 @@ function EntryRow({ entry }: { entry: ScheduleEntry }) {
         {entry.role}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {entry.status === 'needs-assignment' ? (
             <span className="text-sm font-semibold text-red-600">NEEDS ASSIGNMENT</span>
           ) : (
             <span className="text-sm font-medium text-teal-900 truncate">
               {entry.assignedMemberName}
+            </span>
+          )}
+          {expLevel && expLevel !== 'Average' && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${experienceBadgeClass(expLevel)}`}>
+              {expLevel} · {experienceMultiplier(expLevel)}
             </span>
           )}
           {(isConflict || isOverMax) && (

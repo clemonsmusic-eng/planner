@@ -5,13 +5,14 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
   loadCommunities, saveCommunities,
   loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
+  loadAuctionSettings, saveAuctionSettings,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
@@ -66,6 +67,7 @@ type Action =
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
+  | { type: 'UPDATE_AUCTION_SETTINGS'; settings: AuctionAppSettings }
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
   | { type: 'TOGGLE_LOCK'; id: string }
   | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string };
@@ -144,6 +146,11 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, phaseTemplates: action.phaseTemplates };
     }
 
+    case 'UPDATE_AUCTION_SETTINGS': {
+      saveAuctionSettings(action.settings);
+      return { ...state, auctionSettings: action.settings };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -190,6 +197,7 @@ const initialState: AppState = {
   communities: [],
   lists: [],
   phaseTemplates: [],
+  auctionSettings: { hourlyRate: 95, performanceLevel: 'Average' },
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -214,6 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const communities = loadCommunities();
     const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
+    const auctionSettings = loadAuctionSettings();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers, lists);
       projects = [example];
@@ -227,6 +236,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         communities,
         lists,
         phaseTemplates,
+        auctionSettings,
         activeProjectId: projects[0]?.id ?? null,
       },
     });
