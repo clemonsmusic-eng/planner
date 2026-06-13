@@ -132,7 +132,7 @@ export default function Zone3Page() {
   async function handleBattleVictory() {
     await awardChallenge('z3_mini_boss_defeated', 'mini_boss', 100, 'superior');
     if (completedRequired === required.length) await advanceZone(4);
-    const drop = getBossGearDrop('z3_mini_boss_defeated', char.instrument);
+    const drop = getBossGearDrop('z3_mini_boss_defeated', char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
     setActiveBattle(false);
   }

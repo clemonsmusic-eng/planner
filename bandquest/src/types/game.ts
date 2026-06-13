@@ -107,11 +107,11 @@ export interface Zone {
 
 // ── Gear ─────────────────────────────────────────────────────────────────────
 
-export type GearTier = 1 | 2 | 3 | 4;
+export type GearTier = 1 | 2 | 3 | 4 | 5;
 export type GearSlot =
   | 'instrument'
   | 'mouthpiece'   // instrument-specific material accessory (mouthpiece / reed / headjoint / sticks)
-  | 'accessory'    // general accessory: metronome, tuner, music stand, instrument stand
+  | 'accessory'    // general accessory: metronome, tuner, stand (winds/brass) OR accessory instrument (percussion)
   | 'attire'
   | 'case';
 
@@ -126,6 +126,7 @@ export interface GearItem {
   passive?: string;        // Description of passive effect
   instrumentSpecific?: InstrumentId;
   loreEntry?: string;      // Real-world reference text
+  tierLabel?: string;      // Overrides the default tier label (e.g. instrument rarity, percussion family)
 }
 
 // ── Enemy ─────────────────────────────────────────────────────────────────────

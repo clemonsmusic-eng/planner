@@ -138,7 +138,7 @@ export default function Zone1Page() {
     await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
     if (battleId === 'boss') {
       await advanceZone(2);
-      const drop = getBossGearDrop(challengeId, char.instrument);
+      const drop = getBossGearDrop(challengeId, char);
       if (drop) { await equipGear(drop); setGearDrop(drop); }
     }
     void rpEarned;

@@ -276,7 +276,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   awardBossGear: async (bossId) => {
     const { character, equipGear } = get();
     if (!character) return null;
-    const item = getBossGearDrop(bossId, character.instrument);
+    const item = getBossGearDrop(bossId, character);
     if (!item) return null;
     await equipGear(item);
     return item;

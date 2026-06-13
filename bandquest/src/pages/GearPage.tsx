@@ -85,14 +85,14 @@ export default function GearPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy mb-0.5">
-                      {slot === 'mouthpiece' ? getSurfaceLabel(character.instrument) : info.label}
+                      {slot === 'mouthpiece' ? getSurfaceLabel(character) : info.label}
                     </div>
 
                     {item ? (
                       <>
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-academy-cream/90 text-sm font-semibold">{item.name}</span>
-                          <TierBadge tier={item.tier} />
+                          <TierBadge tier={item.tier} label={item.tierLabel} />
                         </div>
                         <div className="text-academy-cream/40 text-xs italic mb-1">{item.fantasyName}</div>
                         <StatBonusLine bonus={item.statBonus} />
@@ -153,10 +153,10 @@ export default function GearPage() {
   );
 }
 
-function TierBadge({ tier }: { tier: GearTier }) {
+function TierBadge({ tier, label }: { tier: GearTier; label?: string }) {
   return (
     <span className={`text-[9px] font-fantasy uppercase tracking-widest ${TIER_COLORS[tier]}`}>
-      {TIER_LABELS[tier]}
+      {label ?? TIER_LABELS[tier]}
     </span>
   );
 }

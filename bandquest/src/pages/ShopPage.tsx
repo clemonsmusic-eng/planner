@@ -71,8 +71,8 @@ export default function ShopPage() {
         ) : (
           <>
             <p className="text-academy-cream/40 text-xs mb-4">
-              Upgrade your gear to improve your stats. Your <span className="text-academy-cream/60">{SLOT_INFO.mouthpiece.label.toLowerCase()}</span> comes
-              in different materials — each with its own qualities. Earn coins by completing challenges.
+              Upgrade your gear to improve your stats. Your instrument-specific gear comes
+              in different materials — each branch its own tradeoff. Earn coins by completing challenges.
             </p>
 
             <div className="space-y-5">
@@ -157,7 +157,7 @@ function ShopGroup({
                   <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span className="text-academy-cream/90 text-sm font-semibold">{option.item.name}</span>
                     <span className={`text-[9px] font-fantasy uppercase tracking-widest ${TIER_COLORS[option.item.tier]}`}>
-                      {TIER_LABELS[option.item.tier]}
+                      {option.item.tierLabel ?? TIER_LABELS[option.item.tier]}
                     </span>
                     {option.isSidegrade && (
                       <span className="text-academy-cream/30 text-[9px] uppercase tracking-wide">sidegrade</span>

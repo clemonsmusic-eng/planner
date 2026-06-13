@@ -120,7 +120,7 @@ export default function Zone4Page() {
   async function handleGraduation(rating: Rating) {
     await awardChallenge('z4_graduation', 'zone_boss', 100, rating);
     await advanceZone(5);
-    const drop = getBossGearDrop('z4_graduation', char.instrument);
+    const drop = getBossGearDrop('z4_graduation', char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
     setShowGraduation(false);
   }
