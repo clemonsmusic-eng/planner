@@ -166,6 +166,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   const [isEnemyTurnAnimating, setIsEnemyTurnAnimating] = useState(false);
   const [playerActing, setPlayerActing] = useState(false);
   const [lastRating, setLastRating] = useState<Rating | null>(null);
+  const [perfectFlash, setPerfectFlash] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
 
@@ -182,12 +183,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setActiveAbility(ab);
   }
 
-  // score is 0–100 continuous pitch accuracy; scales effect proportionally so
-  // stronger abilities have higher absolute swings from accuracy differences.
+  // score is 0–100 continuous pitch accuracy. score=0 is a miss (handled before
+  // this is called). score=100 triggers the perfect bonus (2×).
   function computeDamage(ability: Ability, score: number): number {
+    const perfectMult = score === 100 ? 2 : 1;
+    const weakpointMult = state.weakpointExposed ? 2 : 1;
     const base = effectiveStats.power * ability.damageMultiplier * (score / 100);
-    const multiplier = state.weakpointExposed ? 2 : 1;
-    return Math.max(1, Math.round(base * multiplier));
+    return Math.max(1, Math.round(base * perfectMult * weakpointMult));
   }
 
   async function handleAbilityComplete(rating: Rating, score: number) {
@@ -195,7 +197,6 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setActiveAbility(null);
     setLastRating(rating);
 
-    // Brief lunge — the player steps in to perform their action.
     setPlayerActing(true);
     setTimeout(() => setPlayerActing(false), 450);
 
@@ -219,10 +220,24 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
       return;
     }
 
+    // Miss — no pitch detected during the performance window
+    if (score === 0) {
+      addLog(`${activeAbility.name} — MISSED! No sound detected.`);
+      dispatch({ type: 'END_PLAYER_TURN' });
+      runEnemyTurn();
+      return;
+    }
+
+    const isPerfect = score === 100;
+    if (isPerfect) {
+      setPerfectFlash(true);
+      setTimeout(() => setPerfectFlash(false), 2000);
+    }
+
     if (activeAbility.isHealing && !activeAbility.isRevive) {
-      const healAmount = Math.round(effectiveStats.endurance * 3 * (score / 100));
+      const healAmount = Math.round(effectiveStats.endurance * 3 * (score / 100) * (isPerfect ? 2 : 1));
       dispatch({ type: 'HEAL_PLAYER', amount: healAmount });
-      addLog(`${activeAbility.name} — restored ${healAmount} HP (${score}%)`);
+      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${activeAbility.name} — restored ${healAmount} HP (${score}%${isPerfect ? ' ×2' : ''})`);
       dispatch({ type: 'END_PLAYER_TURN' });
       runEnemyTurn();
       return;
@@ -230,7 +245,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
     const dmg = computeDamage(activeAbility, score);
     dispatch({ type: 'APPLY_DAMAGE_TO_ENEMY', amount: dmg });
-    addLog(`${activeAbility.name} — ${dmg} dmg to ${enemy.name} (${score}%)`);
+    addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${activeAbility.name} — ${dmg} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''})`);
 
     if (state.enemy.hp - dmg <= 0) return; // victory handled by reducer
 
@@ -301,6 +316,14 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
       {/* Battle arena */}
       <div className="flex-1 relative px-4 pt-4 pb-2">
+        {perfectFlash && (
+          <div className="absolute inset-x-0 top-1/3 flex items-center justify-center pointer-events-none z-10">
+            <div className="font-fantasy text-2xl text-academy-gold animate-pulse tracking-widest"
+              style={{ textShadow: '0 0 20px #FFD70099, 0 0 40px #FFD70055' }}>
+              ✨ PERFECT! ✨
+            </div>
+          </div>
+        )}
         {/* Enemy section */}
         <div className="mb-4">
           <div className="flex items-start justify-between mb-1">
