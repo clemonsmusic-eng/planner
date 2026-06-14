@@ -238,7 +238,9 @@ function PerformanceChallenge({
     if (beatIntervalRef.current) clearInterval(beatIntervalRef.current);
     if (scores.length === 0) { onRating('poor', 0); return; }
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    onRating(scoreToRating(avg), Math.round(avg));
+    // Floor at 25 when sound was detected — reserve 0 for a true miss (no sound).
+    const score = Math.max(25, Math.round(avg));
+    onRating(scoreToRating(score), score);
   }
 
   const avgScore = pitchScores.length > 0
