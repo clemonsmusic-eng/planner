@@ -39,15 +39,19 @@ export function battleBeatCount(tier: AbilityTier, zone: number): number {
 }
 
 // Tempo: every zone starts at a 60 BPM floor; the ceiling climbs with
-// progression, reaching 160 BPM by the final zone. Each battle action rolls
-// a tempo somewhere in the zone's [floor, ceiling] range.
+// progression using a two-segment curve:
+//   Zones 1–4:  60 → 112 BPM  (steeper early climb)
+//   Zones 4–12: 112 → 160 BPM (shallower late climb)
 const BPM_FLOOR = 60;
-const BPM_CEILING = 160;
 
 export function battleBpmRange(zone: number): [number, number] {
-  const progress = Math.max(0, Math.min(1, (zone - 1) / 11)); // zone 1 → 0, zone 12 → 1
-  const ceiling = Math.round(BPM_FLOOR + (BPM_CEILING - BPM_FLOOR) * progress);
-  return [BPM_FLOOR, Math.max(BPM_FLOOR, ceiling)];
+  let ceiling: number;
+  if (zone <= 4) {
+    ceiling = Math.round(60 + (112 - 60) * (zone - 1) / 3);
+  } else {
+    ceiling = Math.round(112 + (160 - 112) * (zone - 4) / 8);
+  }
+  return [BPM_FLOOR, ceiling];
 }
 
 export function battleBpm(zone: number): number {
