@@ -2,7 +2,8 @@ import { useState, useReducer, useRef, useCallback } from 'react';
 import type { Character, Rating } from '../types/game';
 import type { EnemyDef } from '../lib/enemies';
 import type { Ability } from '../lib/abilities';
-import { getAbilitiesForInstrument } from '../lib/abilities';
+import { getAbilitiesForInstrument, battleBeatCount, battleBpm } from '../lib/abilities';
+import type { AbilityTier } from '../lib/abilities';
 import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
 import ChallengeModal from './ChallengeModal';
@@ -140,6 +141,12 @@ const RP_AWARDS: Record<Rating, number> = {
   good: 10,
   fair: 5,
   poor: 0,
+};
+
+const TIER_TEXT: Record<AbilityTier, string> = {
+  basic:  'text-academy-cream/50',
+  medium: 'text-rating-good',
+  strong: 'text-academy-gold',
 };
 
 const RATING_COLORS: Record<Rating, string> = {
@@ -407,19 +414,26 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               Choose Action
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
-              {abilities.map((ab) => (
-                <button
-                  key={ab.id}
-                  onClick={() => setActiveAbility(ab)}
-                  className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
-                  style={{ borderColor: `${color}20` }}
-                >
-                  <div className="text-xs font-fantasy" style={{ color }}>{ab.name}</div>
-                  <div className="text-[10px] text-academy-cream/40 mt-0.5 capitalize">
-                    {ab.challengeType.replace('aural_', '').replace('_', ' ')}
-                  </div>
-                </button>
-              ))}
+              {abilities.map((ab) => {
+                const beats = battleBeatCount(ab.tier, character.currentZone);
+                return (
+                  <button
+                    key={ab.id}
+                    onClick={() => setActiveAbility(ab)}
+                    className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
+                    style={{ borderColor: `${color}20` }}
+                  >
+                    <div className="text-xs font-fantasy" style={{ color }}>{ab.name}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`text-[9px] font-fantasy uppercase tracking-wide ${TIER_TEXT[ab.tier]}`}>
+                        {ab.tier}
+                      </span>
+                      <span className="text-[9px] text-academy-cream/25">·</span>
+                      <span className="text-[9px] text-academy-cream/35">{beats}♩</span>
+                    </div>
+                  </button>
+                );
+              })}
               <button
                 onClick={() => {
                   dispatch({ type: 'SET_DEFENDING', value: true });
@@ -430,7 +444,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                 className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
               >
                 <div className="text-xs font-fantasy text-academy-gold">Defend</div>
-                <div className="text-[10px] text-academy-cream/40 mt-0.5">Halve next hit</div>
+                <div className="text-[9px] text-academy-cream/40 mt-0.5">instant · no challenge</div>
               </button>
             </div>
             {hasAccuracyDebuff && (
@@ -448,9 +462,11 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           challenge={{
             id: `battle_${activeAbility.id}`,
             title: activeAbility.name,
-            type: activeAbility.challengeType,
+            type: 'prepared_performance',
             description: activeAbility.description,
             xpBase: 0,
+            beatCount: battleBeatCount(activeAbility.tier, character.currentZone),
+            bpm: battleBpm(character.currentZone),
           }}
           character={character}
           pitchToleranceOverride={effectivePitchTolerance}

@@ -10,18 +10,39 @@ export type ChallengeType =
   | 'aural_interval_quest'
   | 'aural_chord_oracle';
 
+export type AbilityTier = 'basic' | 'medium' | 'strong';
+
 export interface Ability {
   id: string;
   name: string;
   description: string;
   levelGate: number;
-  challengeType: ChallengeType;
+  challengeType: ChallengeType; // used for zone challenges; battle always uses prepared_performance
+  tier: AbilityTier;
   damageMultiplier: number;     // applied to character power
   isHealing: boolean;
   isRevive: boolean;
   isAoE: boolean;
   generatesCooldown?: number;   // turns before reuse
   flavorText?: string;
+}
+
+// Beat counts scale by act (zones 1-4, 5-8, 9-12)
+export function battleBeatCount(tier: AbilityTier, zone: number): number {
+  const act = zone <= 4 ? 0 : zone <= 8 ? 1 : 2;
+  const BEATS: Record<AbilityTier, [number, number, number]> = {
+    basic:  [4,  8,  16],
+    medium: [8,  16, 32],
+    strong: [16, 32, 48],
+  };
+  return BEATS[tier][act];
+}
+
+// BPM scales gently across acts
+export function battleBpm(zone: number): number {
+  if (zone <= 4) return 60;
+  if (zone <= 8) return 72;
+  return 84;
 }
 
 const ABILITIES: Record<string, Ability> = {
@@ -32,6 +53,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Basic pitch attack; damage scales with pitch accuracy.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -43,6 +65,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Hits 3× at reduced damage; generates bonus Resonance Points.',
     levelGate: 5,
     challengeType: 'technique_scale',
+    tier: 'medium',
     damageMultiplier: 0.6,
     isHealing: false,
     isRevive: false,
@@ -55,6 +78,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Revive a fallen ally. Rating determines HP restored.',
     levelGate: 20,
     challengeType: 'prepared_performance',
+    tier: 'strong',
     damageMultiplier: 0,
     isHealing: true,
     isRevive: true,
@@ -69,6 +93,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Basic melee attack; deals damage based on register clarity.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -80,6 +105,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Rapid scale-passage strike; hits equal to notes played correctly.',
     levelGate: 5,
     challengeType: 'technique_scale',
+    tier: 'medium',
     damageMultiplier: 1.4,
     isHealing: false,
     isRevive: false,
@@ -92,6 +118,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Full chromatic scale at speed. Max 24 hits.',
     levelGate: 20,
     challengeType: 'technique_scale',
+    tier: 'strong',
     damageMultiplier: 2.4,
     isHealing: false,
     isRevive: false,
@@ -106,6 +133,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Basic warm-tone attack.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -117,6 +145,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Hits twice; second hit always applies a debuff.',
     levelGate: 5,
     challengeType: 'technique_scale',
+    tier: 'medium',
     damageMultiplier: 1.3,
     isHealing: false,
     isRevive: false,
@@ -130,6 +159,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Basic attack; wakes stunned/charmed allies as secondary effect.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -141,6 +171,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Low damage per hit, many hits.',
     levelGate: 5,
     challengeType: 'rhythm_performance',
+    tier: 'medium',
     damageMultiplier: 1.2,
     isHealing: false,
     isRevive: false,
@@ -153,6 +184,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Summons three legendary trumpet players for a four-trumpet assault.',
     levelGate: 20,
     challengeType: 'prepared_performance',
+    tier: 'strong',
     damageMultiplier: 3.0,
     isHealing: false,
     isRevive: false,
@@ -167,6 +199,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Deals damage over 2 turns.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -178,6 +211,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Sweeping AoE attack hitting all enemies.',
     levelGate: 5,
     challengeType: 'prepared_performance',
+    tier: 'medium',
     damageMultiplier: 1.2,
     isHealing: false,
     isRevive: false,
@@ -191,6 +225,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Deals damage over 2 turns.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -202,6 +237,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Restores HP to one party member.',
     levelGate: 5,
     challengeType: 'prepared_performance',
+    tier: 'medium',
     damageMultiplier: 0,
     isHealing: true,
     isRevive: false,
@@ -215,6 +251,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Basic pitched attack; note accuracy determines damage.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -226,6 +263,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Party-wide Technique buff for 3 turns.',
     levelGate: 5,
     challengeType: 'rhythm_performance',
+    tier: 'medium',
     damageMultiplier: 0.5,
     isHealing: false,
     isRevive: false,
@@ -237,6 +275,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'AoE damage + shakes all debuffs off the party.',
     levelGate: 20,
     challengeType: 'rhythm_performance',
+    tier: 'strong',
     damageMultiplier: 2.0,
     isHealing: false,
     isRevive: false,
@@ -251,6 +290,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Long-range attack targeting back-row enemies.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -264,6 +304,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Sustained damage-over-time; holds for up to 4 turns.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.0,
     isHealing: false,
     isRevive: false,
@@ -277,6 +318,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'High-damage single hit; scales steeply with pitch accuracy.',
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 1.5,
     isHealing: false,
     isRevive: false,
@@ -290,6 +332,7 @@ const ABILITIES: Record<string, Ability> = {
     description: "Applies Resonance Lock — target's Endurance is reduced for 3 turns.",
     levelGate: 1,
     challengeType: 'prepared_performance',
+    tier: 'basic',
     damageMultiplier: 0.8,
     isHealing: false,
     isRevive: false,
@@ -301,6 +344,7 @@ const ABILITIES: Record<string, Ability> = {
     description: "Exposes the target's weak point — next hit deals double damage.",
     levelGate: 5,
     challengeType: 'aural_interval_quest',
+    tier: 'medium',
     damageMultiplier: 0.5,
     isHealing: false,
     isRevive: false,
@@ -314,6 +358,7 @@ const ABILITIES: Record<string, Ability> = {
     description: 'Brace for impact — incoming damage halved next turn.',
     levelGate: 1,
     challengeType: 'aural_pitch_spy',
+    tier: 'basic',
     damageMultiplier: 0,
     isHealing: false,
     isRevive: false,

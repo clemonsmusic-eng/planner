@@ -9,6 +9,8 @@ interface Challenge {
   type: string;
   description: string;
   xpBase: number;
+  beatCount?: number;  // battle performance: how many beats to perform
+  bpm?: number;        // battle performance: tempo
 }
 
 interface Props {
@@ -97,16 +99,33 @@ function IntroPhase({ challenge, onStart, onClose }: {
         {challenge.description}
       </p>
 
-      <div className="bg-black/30 border border-academy-gold/20 rounded-lg p-4 mb-6">
-        <div className="text-academy-gold/60 text-xs uppercase tracking-widest font-fantasy mb-2">Rating Scale</div>
-        <div className="space-y-1 text-xs text-academy-cream/60">
-          <div><span className="text-rating-superior font-fantasy">SUPERIOR</span> — 100% XP</div>
-          <div><span className="text-rating-excellent font-fantasy">EXCELLENT</span> — 80% XP</div>
-          <div><span className="text-rating-good font-fantasy">GOOD</span> — 60% XP</div>
-          <div><span className="text-rating-fair font-fantasy">FAIR</span> — 30% XP</div>
-          <div><span className="text-rating-poor font-fantasy">POOR</span> — 10% XP</div>
+      {challenge.beatCount ? (
+        <div className="bg-black/30 border border-academy-gold/20 rounded-lg p-4 mb-6">
+          <div className="text-academy-gold/60 text-xs uppercase tracking-widest font-fantasy mb-2">Performance</div>
+          <div className="flex items-baseline gap-2">
+            <span className="font-fantasy text-academy-gold text-xl">{challenge.beatCount}</span>
+            <span className="text-academy-cream/60 text-sm">beats</span>
+            <span className="text-academy-cream/30 text-xs ml-1">♩= {challenge.bpm ?? 72}</span>
+            <span className="text-academy-cream/30 text-xs ml-auto">
+              ~{Math.round(((challenge.beatCount ?? 8) / (challenge.bpm ?? 72)) * 60)}s
+            </span>
+          </div>
+          <p className="text-academy-cream/40 text-xs mt-2">
+            Play your best for the full phrase. Rating is based on pitch accuracy.
+          </p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-black/30 border border-academy-gold/20 rounded-lg p-4 mb-6">
+          <div className="text-academy-gold/60 text-xs uppercase tracking-widest font-fantasy mb-2">Rating Scale</div>
+          <div className="space-y-1 text-xs text-academy-cream/60">
+            <div><span className="text-rating-superior font-fantasy">SUPERIOR</span> — 100% XP</div>
+            <div><span className="text-rating-excellent font-fantasy">EXCELLENT</span> — 80% XP</div>
+            <div><span className="text-rating-good font-fantasy">GOOD</span> — 60% XP</div>
+            <div><span className="text-rating-fair font-fantasy">FAIR</span> — 30% XP</div>
+            <div><span className="text-rating-poor font-fantasy">POOR</span> — 10% XP</div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button onClick={onClose} className="btn-secondary flex-1">
@@ -156,51 +175,70 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
       onRating={onRating}
       onClose={onClose}
       pitchTolerance={pitchTolerance}
+      beatCount={challenge.beatCount}
+      bpm={challenge.bpm}
     />
   );
 }
 
 // ── Performance Challenge (microphone) ──────────────────────────────────────
 
-function PerformanceChallenge({ challenge, onRating, onClose, pitchTolerance }: {
+function PerformanceChallenge({
+  challenge, onRating, onClose, pitchTolerance,
+  beatCount = 8, bpm = 72,
+}: {
   challenge: Challenge;
   onRating: (r: Rating, s: number) => void;
   onClose: () => void;
   pitchTolerance: number;
+  beatCount?: number;
+  bpm?: number;
 }) {
-  const [timeLeft, setTimeLeft] = useState(30);
+  const beatMs = (60 / bpm) * 1000;
+  const bars = Math.ceil(beatCount / 4);
+  const durationSecs = Math.round((beatMs * beatCount) / 1000);
+  const showDots = beatCount <= 16;
+
+  const [firedBeats, setFiredBeats] = useState(0);
+  const [beatPulse, setBeatPulse] = useState(false);
   const [pitchScores, setPitchScores] = useState<number[]>([]);
   const [listening, setListening] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [done, setDone] = useState(false);
+  const pitchScoresRef = useRef<number[]>([]);
+  const beatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!listening) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current!);
-          finalize();
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current!);
+    if (!listening || done) return;
+
+    let beat = 0;
+    beatIntervalRef.current = setInterval(() => {
+      beat++;
+      setFiredBeats(beat);
+      setBeatPulse(true);
+      setTimeout(() => setBeatPulse(false), Math.min(120, beatMs * 0.25));
+      if (beat >= beatCount) {
+        clearInterval(beatIntervalRef.current!);
+        finalize(pitchScoresRef.current);
+      }
+    }, beatMs);
+
+    return () => { if (beatIntervalRef.current) clearInterval(beatIntervalRef.current); };
   }, [listening]);
 
   function handlePitch(_freq: number, cents: number, _note: string) {
+    if (done) return;
     const accuracy = Math.max(0, 100 - (Math.abs(cents) / pitchTolerance) * 100);
+    pitchScoresRef.current = [...pitchScoresRef.current, accuracy];
     setPitchScores((prev) => [...prev, accuracy]);
   }
 
-  function finalize() {
-    if (pitchScores.length === 0) {
-      onRating('poor', 0);
-      return;
-    }
-    const avg = pitchScores.reduce((a, b) => a + b, 0) / pitchScores.length;
-    const rating = scoreToRating(avg);
-    onRating(rating, Math.round(avg));
+  function finalize(scores: number[] = pitchScoresRef.current) {
+    if (done) return;
+    setDone(true);
+    if (beatIntervalRef.current) clearInterval(beatIntervalRef.current);
+    if (scores.length === 0) { onRating('poor', 0); return; }
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    onRating(scoreToRating(avg), Math.round(avg));
   }
 
   const avgScore = pitchScores.length > 0
@@ -209,49 +247,83 @@ function PerformanceChallenge({ challenge, onRating, onClose, pitchTolerance }: 
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="fantasy-title text-lg">{challenge.title}</h3>
         <button onClick={onClose} className="text-academy-cream/40 hover:text-academy-cream/80">✕</button>
       </div>
 
       {/* Notation placeholder */}
-      <div className="notation-display min-h-24 flex items-center justify-center mb-4">
+      <div className="notation-display min-h-20 flex items-center justify-center mb-3">
         <div className="text-center text-academy-cream/40">
-          <div className="text-4xl mb-2">𝄞</div>
-          <p className="text-sm">Score notation loads here</p>
-          <p className="text-xs mt-1">(Connected to ABC notation renderer in Phase 2)</p>
+          <div className="text-4xl mb-1">𝄞</div>
+          <p className="text-xs">{bars} {bars === 1 ? 'bar' : 'bars'} · ♩= {bpm} · ~{durationSecs}s</p>
         </div>
       </div>
 
       {!listening ? (
-        <button
-          onClick={() => setListening(true)}
-          className="btn-primary w-full"
-        >
-          Start Recording
+        <button onClick={() => setListening(true)} className="btn-primary w-full">
+          Start Performance
         </button>
       ) : (
         <div>
-          {/* Timer */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-academy-cream/60 text-sm">
-              Time: <span className="text-academy-gold font-fantasy">{timeLeft}s</span>
+          {/* Beat display */}
+          {showDots ? (
+            <div className="flex flex-wrap gap-2 justify-center mb-4 px-2">
+              {Array.from({ length: beatCount }, (_, i) => (
+                <div
+                  key={i}
+                  className="w-4 h-4 rounded-full transition-all duration-75"
+                  style={{
+                    background: i + 1 === firedBeats && beatPulse
+                      ? '#FFD700'
+                      : i < firedBeats
+                      ? 'rgba(255,215,0,0.55)'
+                      : 'rgba(255,255,255,0.12)',
+                    transform: i + 1 === firedBeats && beatPulse ? 'scale(1.35)' : 'scale(1)',
+                    boxShadow: i + 1 === firedBeats && beatPulse ? '0 0 8px #FFD700' : 'none',
+                  }}
+                />
+              ))}
             </div>
-            <div className="text-academy-cream/60 text-sm">
+          ) : (
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="text-academy-cream/50 font-fantasy">
+                  Beat {Math.min(firedBeats + 1, beatCount)} / {beatCount}
+                </span>
+                <div
+                  className="w-3 h-3 rounded-full transition-all duration-75"
+                  style={{
+                    background: beatPulse ? '#FFD700' : 'rgba(255,255,255,0.15)',
+                    transform: beatPulse ? 'scale(1.4)' : 'scale(1)',
+                    boxShadow: beatPulse ? '0 0 6px #FFD700' : 'none',
+                  }}
+                />
+              </div>
+              <div className="stat-bar">
+                <div
+                  className="stat-bar-fill transition-all duration-100"
+                  style={{ width: `${(firedBeats / beatCount) * 100}%`, backgroundColor: '#FFD700' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Score + mic */}
+          <div className="flex items-center justify-between mb-2 text-sm">
+            <span className="text-academy-cream/50">
               Score: <span className="text-academy-gold font-fantasy">{Math.round(avgScore)}%</span>
-            </div>
+            </span>
+            <span className="text-academy-cream/30 text-xs">{pitchScores.length} samples</span>
           </div>
 
-          {/* Pitch meter */}
-          <div className="mb-4">
-            <MicrophoneListener
-              mode="pitch"
-              onPitchDetected={handlePitch}
-              active={listening}
-            />
-          </div>
+          <MicrophoneListener
+            mode="pitch"
+            onPitchDetected={handlePitch}
+            active={listening && !done}
+          />
 
-          <button onClick={finalize} className="btn-secondary w-full">
+          <button onClick={() => finalize()} className="btn-secondary w-full mt-3">
             Submit Early
           </button>
         </div>
