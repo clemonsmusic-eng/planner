@@ -127,14 +127,6 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
 
 // ── Rating helpers ────────────────────────────────────────────────────────────
 
-const RATING_DAMAGE_MULTIPLIERS: Record<Rating, number> = {
-  superior: 1.0,
-  excellent: 0.85,
-  good: 0.7,
-  fair: 0.4,
-  poor: 0.15,
-};
-
 const RP_AWARDS: Record<Rating, number> = {
   superior: 20,
   excellent: 15,
@@ -190,13 +182,15 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setActiveAbility(ab);
   }
 
-  function computeDamage(ability: Ability, rating: Rating): number {
-    const base = effectiveStats.power * ability.damageMultiplier * RATING_DAMAGE_MULTIPLIERS[rating];
+  // score is 0–100 continuous pitch accuracy; scales effect proportionally so
+  // stronger abilities have higher absolute swings from accuracy differences.
+  function computeDamage(ability: Ability, score: number): number {
+    const base = effectiveStats.power * ability.damageMultiplier * (score / 100);
     const multiplier = state.weakpointExposed ? 2 : 1;
     return Math.max(1, Math.round(base * multiplier));
   }
 
-  async function handleAbilityComplete(rating: Rating, _score: number) {
+  async function handleAbilityComplete(rating: Rating, score: number) {
     if (!activeAbility) return;
     setActiveAbility(null);
     setLastRating(rating);
@@ -226,17 +220,17 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     }
 
     if (activeAbility.isHealing && !activeAbility.isRevive) {
-      const healAmount = Math.round(effectiveStats.endurance * 3 * RATING_DAMAGE_MULTIPLIERS[rating]);
+      const healAmount = Math.round(effectiveStats.endurance * 3 * (score / 100));
       dispatch({ type: 'HEAL_PLAYER', amount: healAmount });
-      addLog(`${activeAbility.name} — restored ${healAmount} HP (${rating.toUpperCase()})`);
+      addLog(`${activeAbility.name} — restored ${healAmount} HP (${score}%)`);
       dispatch({ type: 'END_PLAYER_TURN' });
       runEnemyTurn();
       return;
     }
 
-    const dmg = computeDamage(activeAbility, rating);
+    const dmg = computeDamage(activeAbility, score);
     dispatch({ type: 'APPLY_DAMAGE_TO_ENEMY', amount: dmg });
-    addLog(`${activeAbility.name} — ${dmg} dmg to ${enemy.name} (${rating.toUpperCase()})`);
+    addLog(`${activeAbility.name} — ${dmg} dmg to ${enemy.name} (${score}%)`);
 
     if (state.enemy.hp - dmg <= 0) return; // victory handled by reducer
 
