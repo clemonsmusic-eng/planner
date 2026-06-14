@@ -2,7 +2,7 @@ import { useState, useReducer, useRef, useCallback } from 'react';
 import type { Character, Rating } from '../types/game';
 import type { EnemyDef } from '../lib/enemies';
 import type { Ability } from '../lib/abilities';
-import { getAbilitiesForInstrument, battleBeatCount, battleBpm } from '../lib/abilities';
+import { getAbilitiesForInstrument, battleBeatCount, battleBpm, battleBpmRange } from '../lib/abilities';
 import type { AbilityTier } from '../lib/abilities';
 import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
@@ -170,6 +170,7 @@ interface Props {
 export default function BattleScreen({ character, enemy, onVictory, onDefeat, simulatorMode = false }: Props) {
   const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemy, simulatorMode));
   const [activeAbility, setActiveAbility] = useState<Ability | null>(null);
+  const [activeBpm, setActiveBpm] = useState(60); // tempo rolled when an action is chosen
   const [isEnemyTurnAnimating, setIsEnemyTurnAnimating] = useState(false);
   const [playerActing, setPlayerActing] = useState(false);
   const [lastRating, setLastRating] = useState<Rating | null>(null);
@@ -178,10 +179,16 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
   const color = getInstrumentColor(character.instrument);
   const abilities = getAbilitiesForInstrument(character.instrument, character.level);
+  const bpmRange = battleBpmRange(character.currentZone);
   const effectiveStats = getEffectiveStats(character);
   const pitchTolerance = pitchToleranceCents(effectiveStats.accuracy);
 
   const addLog = useCallback((msg: string) => dispatch({ type: 'ADD_LOG', message: msg }), []);
+
+  function selectAbility(ab: Ability) {
+    setActiveBpm(battleBpm(character.currentZone)); // roll tempo once per action
+    setActiveAbility(ab);
+  }
 
   function computeDamage(ability: Ability, rating: Rating): number {
     const base = effectiveStats.power * ability.damageMultiplier * RATING_DAMAGE_MULTIPLIERS[rating];
@@ -410,8 +417,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           </div>
         ) : (
           <>
-            <div className="text-academy-cream/40 text-[10px] uppercase tracking-widest mb-2 font-fantasy">
-              Choose Action
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy">
+                Choose Action
+              </span>
+              <span className="text-academy-cream/30 text-[9px] font-fantasy">
+                ♩= {bpmRange[0]}–{bpmRange[1]}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {abilities.map((ab) => {
@@ -419,7 +431,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                 return (
                   <button
                     key={ab.id}
-                    onClick={() => setActiveAbility(ab)}
+                    onClick={() => selectAbility(ab)}
                     className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
                     style={{ borderColor: `${color}20` }}
                   >
@@ -466,7 +478,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
             description: activeAbility.description,
             xpBase: 0,
             beatCount: battleBeatCount(activeAbility.tier, character.currentZone),
-            bpm: battleBpm(character.currentZone),
+            bpm: activeBpm,
           }}
           character={character}
           pitchToleranceOverride={effectivePitchTolerance}

@@ -38,11 +38,21 @@ export function battleBeatCount(tier: AbilityTier, zone: number): number {
   return BEATS[tier][act];
 }
 
-// BPM scales gently across acts
+// Tempo: every zone starts at a 60 BPM floor; the ceiling climbs with
+// progression, reaching 160 BPM by the final zone. Each battle action rolls
+// a tempo somewhere in the zone's [floor, ceiling] range.
+const BPM_FLOOR = 60;
+const BPM_CEILING = 160;
+
+export function battleBpmRange(zone: number): [number, number] {
+  const progress = Math.max(0, Math.min(1, (zone - 1) / 11)); // zone 1 → 0, zone 12 → 1
+  const ceiling = Math.round(BPM_FLOOR + (BPM_CEILING - BPM_FLOOR) * progress);
+  return [BPM_FLOOR, Math.max(BPM_FLOOR, ceiling)];
+}
+
 export function battleBpm(zone: number): number {
-  if (zone <= 4) return 60;
-  if (zone <= 8) return 72;
-  return 84;
+  const [min, max] = battleBpmRange(zone);
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 const ABILITIES: Record<string, Ability> = {
