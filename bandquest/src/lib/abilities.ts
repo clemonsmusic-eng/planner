@@ -24,9 +24,13 @@ export interface Ability {
   isHealing: boolean;
   isRevive: boolean;
   isAoE: boolean;
-  inflicts?: StatusType;        // status applied to the enemy on a Good-or-better hit
-  selfStatus?: StatusType;      // buff applied to the player when used (Good or better)
-  generatesCooldown?: number;   // turns before reuse
+  inflicts?: StatusType;          // status applied to the enemy on a Good-or-better hit
+  inflictsMany?: StatusType[];    // multiple statuses applied to the enemy at once
+  selfStatus?: StatusType;        // buff applied to the player when used (Good or better)
+  selfStatusMany?: StatusType[];  // multiple buffs applied to the player at once
+  clearsSelfDebuffs?: boolean;    // strips all debuffs from the player
+  clearsEnemyBuffs?: boolean;     // strips all buffs from the enemy
+  generatesCooldown?: number;     // turns before reuse
   flavorText?: string;
 }
 
@@ -102,6 +106,21 @@ const ABILITIES: Record<string, Ability> = {
     isRevive: true,
     isAoE: false,
     flavorText: 'The Wind Dancer\'s exclusive gift.',
+  },
+  wind_barrier: {
+    id: 'wind_barrier',
+    name: 'Wind Barrier',
+    description: 'Raise a barrier: clears your debuffs and reflects incoming damage.',
+    levelGate: 15,
+    challengeType: 'prepared_performance',
+    tier: 'medium',
+    damageMultiplier: 0,
+    isHealing: false,
+    isRevive: false,
+    isAoE: false,
+    selfStatusMany: ['deflect', 'focus'],
+    clearsSelfDebuffs: true,
+    flavorText: 'A spinning shield of air turns the enemy\'s force aside.',
   },
 
   // ── Clarinet / Chromatic Monk ────────────────────────────────────────────────
@@ -210,6 +229,21 @@ const ABILITIES: Record<string, Ability> = {
     isAoE: true,
     flavorText: 'André, Marsalis, Balsom — the greatest gather at the call.',
   },
+  bugle_cry: {
+    id: 'bugle_cry',
+    name: 'Bugle Cry',
+    description: 'A rallying call: clears your debuffs and grants Haste and Focus.',
+    levelGate: 15,
+    challengeType: 'prepared_performance',
+    tier: 'medium',
+    damageMultiplier: 0,
+    isHealing: false,
+    isRevive: false,
+    isAoE: true,
+    selfStatusMany: ['haste', 'focus'],
+    clearsSelfDebuffs: true,
+    flavorText: 'The signal that turns a retreat into a charge.',
+  },
 
   // ── Trombone / Slide Knight ──────────────────────────────────────────────────
   sustained_tone_trombone: {
@@ -266,6 +300,21 @@ const ABILITIES: Record<string, Ability> = {
     isAoE: false,
     selfStatus: 'regen',
   },
+  full_resonance: {
+    id: 'full_resonance',
+    name: 'Full Resonance',
+    description: 'Party-wide restore: clears your debuffs and grants Regen and Calm.',
+    levelGate: 20,
+    challengeType: 'technique_scale',
+    tier: 'strong',
+    damageMultiplier: 0,
+    isHealing: true,
+    isRevive: false,
+    isAoE: true,
+    selfStatusMany: ['regen', 'calm'],
+    clearsSelfDebuffs: true,
+    flavorText: 'The whole instrument rings as one — and so does the party.',
+  },
 
   // ── Percussion / Stryker Artificer ───────────────────────────────────────────
   mallet_strike: {
@@ -304,6 +353,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: true,
+    clearsSelfDebuffs: true,
     flavorText: 'The shockwave of the strike vibrates every debuff loose.',
   },
 
@@ -376,6 +426,21 @@ const ABILITIES: Record<string, Ability> = {
     isRevive: false,
     isAoE: false,
   },
+  fundamental_collapse: {
+    id: 'fundamental_collapse',
+    name: 'Fundamental Collapse',
+    description: 'Strips all enemy buffs and inflicts Slow, Blind, and Poison at once.',
+    levelGate: 20,
+    challengeType: 'technique_scale',
+    tier: 'strong',
+    damageMultiplier: 0,
+    isHealing: false,
+    isRevive: false,
+    isAoE: false,
+    inflictsMany: ['slow', 'blind', 'poison'],
+    clearsEnemyBuffs: true,
+    flavorText: 'The Sage does not strike. The Sage dismantles.',
+  },
 
   // ── Universal (defend) ───────────────────────────────────────────────────────
   defend: {
@@ -399,17 +464,17 @@ export function getAbilitiesForInstrument(
   const base: Ability[] = [];
 
   const map: Record<InstrumentId, string[]> = {
-    flute: ['zephyr_strike', 'ethereal_trill', 'breath_of_life'],
+    flute: ['zephyr_strike', 'ethereal_trill', 'wind_barrier', 'breath_of_life'],
     clarinet: ['register_strike', 'scale_rush', 'chromatic_flurry'],
     alto_sax: ['smooth_tone_strike', 'vibrato_lash'],
-    trumpet: ['reveille', 'double_tongue_flurry', 'buglers_holiday'],
+    trumpet: ['reveille', 'double_tongue_flurry', 'bugle_cry', 'buglers_holiday'],
     trombone: ['sustained_tone_trombone', 'slide_glissando'],
-    euphonium: ['sustained_tone_euphonium', 'low_brass_heal'],
+    euphonium: ['sustained_tone_euphonium', 'low_brass_heal', 'full_resonance'],
     percussion: ['mallet_strike', 'rhythm_pulse', 'percussion_purge'],
     french_horn: ['horn_call'],
     tuba: ['pedal_tone'],
     oboe: ['reed_strike'],
-    bassoon: ['standing_wave', 'resonant_frequency'],
+    bassoon: ['standing_wave', 'resonant_frequency', 'fundamental_collapse'],
   };
 
   const ids = map[instrument] ?? ['zephyr_strike'];
