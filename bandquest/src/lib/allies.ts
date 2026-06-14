@@ -1,5 +1,14 @@
 import type { AllyId, SymphonyAlly } from '../types/game';
 
+// Scale applied to ally effect amounts based on the summon confirmation rating.
+export const SUMMON_SCALE: Record<string, number> = {
+  superior: 1.0,
+  excellent: 0.8,
+  good:      0.6,
+  fair:      0.4,
+  poor:      0.2,
+};
+
 export const ALLIES: Record<AllyId, SymphonyAlly> = {
   percival: {
     id: 'percival',
