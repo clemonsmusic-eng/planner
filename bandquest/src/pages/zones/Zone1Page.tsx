@@ -136,10 +136,10 @@ export default function Zone1Page() {
   async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number) {
     const challengeId = battleId === 'mini_boss' ? 'z1_mini_boss_defeated' : 'z1_boss_defeated';
     await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
+    const drop = getBossGearDrop(challengeId, char);
+    if (drop) { await equipGear(drop); setGearDrop(drop); }
     if (battleId === 'boss') {
       await advanceZone(2);
-      const drop = getBossGearDrop(challengeId, char);
-      if (drop) { await equipGear(drop); setGearDrop(drop); }
     }
     void rpEarned;
     setActiveBattle(null);
