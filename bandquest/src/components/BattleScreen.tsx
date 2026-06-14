@@ -9,7 +9,7 @@ import { getEffectiveStats } from '../lib/gear';
 import {
   STATUS_DEFS, hasStatus, tickDurations, clearStatus, clearByKind, applyStatus,
   endOfTurnHpDelta, newStatus,
-  BLIND_TOLERANCE_MULT, BLIND_MISS_CHANCE, FOCUS_TOLERANCE_MULT,
+  BLIND_TOLERANCE_MULT, BLIND_MISS_CHANCE, FOCUS_TOLERANCE_MULT, MANIC_TOLERANCE_MULT,
   MANIC_DEAL_MULT, MANIC_TAKEN_MULT, CALM_DEAL_MULT, CALM_TAKEN_MULT,
   VULNERABLE_TAKEN_MULT, DEFLECT_PCT, CONFUSION_FAIL_CHANCE,
 } from '../lib/statusEffects';
@@ -524,7 +524,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     ? pitchTolerance * BLIND_TOLERANCE_MULT
     : isFocused
       ? pitchTolerance * FOCUS_TOLERANCE_MULT
-      : pitchTolerance;
+      : isManic
+        ? pitchTolerance * MANIC_TOLERANCE_MULT
+        : pitchTolerance;
 
   // The player passes automatically when asleep or slowed on a skip turn.
   const playerAsleep = hasStatus(state.playerStatuses, 'sleep');
@@ -787,7 +789,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
             )}
             {isManic && (
               <p className="text-orange-400 text-[10px] text-center mt-1">
-                🔥 Manic — you deal 1.5× but take 1.25× damage
+                🔥 Manic — pitch window narrowed (±{Math.round(effectivePitchTolerance)}¢) · deals 1.5× / takes 1.25×
               </p>
             )}
           </>
@@ -808,6 +810,11 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           }}
           character={character}
           pitchToleranceOverride={effectivePitchTolerance}
+          challengeFlags={{
+            blind:    hasStatus(state.playerStatuses, 'blind'),
+            manic:    hasStatus(state.playerStatuses, 'manic'),
+            confused: hasStatus(state.playerStatuses, 'confusion'),
+          }}
           onComplete={handleAbilityComplete}
           onClose={() => setActiveAbility(null)}
         />

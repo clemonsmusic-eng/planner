@@ -79,3 +79,8 @@
     text-shadow: 0 0 20px currentColor;
   }
 }
+
+@keyframes notation-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-48px); }
+}

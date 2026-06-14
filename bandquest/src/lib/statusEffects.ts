@@ -52,6 +52,7 @@ export const MANIC_DEAL_MULT = 1.5;        // damage dealt while manic
 export const MANIC_TAKEN_MULT = 1.25;      // damage taken while manic
 export const DEFLECT_PCT = 0.5;            // share of incoming damage reflected
 export const CONFUSION_FAIL_CHANCE = 0.5;  // chance a confused action fizzles
+export const MANIC_TOLERANCE_MULT = 0.75;  // performer's pitch window when manic (narrowed)
 export const FOCUS_TOLERANCE_MULT = 1.5;   // performer's pitch window when focused
 export const CALM_DEAL_MULT = 0.75;        // damage dealt while calm
 export const CALM_TAKEN_MULT = 0.75;       // damage taken while calm

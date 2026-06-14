@@ -13,15 +13,22 @@ interface Challenge {
   bpm?: number;        // battle performance: tempo
 }
 
+interface ChallengeFlags {
+  blind?: boolean;    // blurs the notation display
+  manic?: boolean;    // scrolls the notation faster; pitch window already narrowed via pitchToleranceOverride
+  confused?: boolean; // overlays wrong notes/rests in discordant colours
+}
+
 interface Props {
   challenge: Challenge;
   character: Character;
   onComplete: (rating: Rating, score: number) => void;
   onClose: () => void;
   pitchToleranceOverride?: number;  // override from battle debuffs
+  challengeFlags?: ChallengeFlags;
 }
 
-export default function ChallengeModal({ challenge, character, onComplete, onClose, pitchToleranceOverride }: Props) {
+export default function ChallengeModal({ challenge, character, onComplete, onClose, pitchToleranceOverride, challengeFlags }: Props) {
   const [phase, setPhase] = useState<'intro' | 'challenge' | 'result'>('intro');
   const [rating, setRating] = useState<Rating | null>(null);
   const [score, setScore] = useState(0);
@@ -49,6 +56,7 @@ export default function ChallengeModal({ challenge, character, onComplete, onClo
             onRating={handleRating}
             onClose={onClose}
             pitchToleranceOverride={pitchToleranceOverride}
+            challengeFlags={challengeFlags}
           />
         )}
         {phase === 'result' && rating && (
@@ -139,12 +147,13 @@ function IntroPhase({ challenge, onStart, onClose }: {
   );
 }
 
-function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleranceOverride }: {
+function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleranceOverride, challengeFlags }: {
   challenge: Challenge;
   character: Character;
   onRating: (rating: Rating, score: number) => void;
   onClose: () => void;
   pitchToleranceOverride?: number;
+  challengeFlags?: ChallengeFlags;
 }) {
   const pitchTolerance = pitchToleranceOverride ?? pitchToleranceCents(character.stats.accuracy);
   const rhythmTolerance = rhythmToleranceMs(character.stats.technique);
@@ -177,6 +186,7 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
       pitchTolerance={pitchTolerance}
       beatCount={challenge.beatCount}
       bpm={challenge.bpm}
+      challengeFlags={challengeFlags}
     />
   );
 }
@@ -185,7 +195,7 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
 
 function PerformanceChallenge({
   challenge, onRating, onClose, pitchTolerance,
-  beatCount = 8, bpm = 72,
+  beatCount = 8, bpm = 72, challengeFlags,
 }: {
   challenge: Challenge;
   onRating: (r: Rating, s: number) => void;
@@ -193,7 +203,11 @@ function PerformanceChallenge({
   pitchTolerance: number;
   beatCount?: number;
   bpm?: number;
+  challengeFlags?: ChallengeFlags;
 }) {
+  const isBlind    = challengeFlags?.blind    ?? false;
+  const isManic    = challengeFlags?.manic    ?? false;
+  const isConfused = challengeFlags?.confused ?? false;
   const beatMs = (60 / bpm) * 1000;
   const bars = Math.ceil(beatCount / 4);
   const durationSecs = Math.round((beatMs * beatCount) / 1000);
@@ -254,13 +268,38 @@ function PerformanceChallenge({
         <button onClick={onClose} className="text-academy-cream/40 hover:text-academy-cream/80">✕</button>
       </div>
 
-      {/* Notation placeholder */}
-      <div className="notation-display min-h-20 flex items-center justify-center mb-3">
-        <div className="text-center text-academy-cream/40">
+      {/* Notation display — visual difficulty effects from battle statuses */}
+      <div className="notation-display min-h-20 flex items-center justify-center mb-3 relative overflow-hidden">
+        {/* Real notation content — blurred when blind, scrolling when manic */}
+        <div
+          className="text-center text-academy-cream/40"
+          style={{
+            filter: isBlind ? 'blur(2.5px)' : undefined,
+            animation: isManic ? 'notation-scroll 1.4s linear infinite alternate' : undefined,
+          }}
+        >
           <div className="text-4xl mb-1">𝄞</div>
           <p className="text-xs">{bars} {bars === 1 ? 'bar' : 'bars'} · ♩= {bpm} · ~{durationSecs}s</p>
         </div>
+        {/* Confusion — wrong notes / rests overlaid in discordant colours */}
+        {isConfused && (
+          <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
+            <span className="absolute text-fuchsia-400/70 text-2xl" style={{ top: '18%', left: '10%' }}>♩</span>
+            <span className="absolute text-red-400/60 text-xl"     style={{ top: '55%', right: '14%' }}>𝄽</span>
+            <span className="absolute text-fuchsia-300/55 text-3xl" style={{ top: '28%', right: '22%' }}>♪</span>
+            <span className="absolute text-orange-400/50 text-lg"   style={{ bottom: '18%', left: '28%' }}>♫</span>
+            <span className="absolute text-red-500/45 text-2xl"    style={{ top: '12%', right: '8%' }}>𝄾</span>
+          </div>
+        )}
       </div>
+      {/* Status effect notices below the notation */}
+      {(isBlind || isManic || isConfused) && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {isBlind    && <span className="text-[9px] font-fantasy px-1.5 py-0.5 rounded text-rating-fair bg-rating-fair/10">🌫️ BLIND — notation blurred</span>}
+          {isManic    && <span className="text-[9px] font-fantasy px-1.5 py-0.5 rounded text-orange-400 bg-orange-400/10">🔥 MANIC — notation scrolling · pitch window narrowed</span>}
+          {isConfused && <span className="text-[9px] font-fantasy px-1.5 py-0.5 rounded text-fuchsia-300 bg-fuchsia-300/10">💫 CONFUSED — wrong notes overlaid</span>}
+        </div>
+      )}
 
       {!listening ? (
         <button onClick={() => setListening(true)} className="btn-primary w-full">
