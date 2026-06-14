@@ -448,6 +448,12 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         finishEnemyTurn();
         return;
       }
+      // Cramped — hard 1-turn stun, NOT cleared by damage.
+      if (hasStatus(eStatuses, 'cramped')) {
+        addLog(`🤝 ${enemy.name}'s hand seizes up — it cannot act!`);
+        finishEnemyTurn();
+        return;
+      }
       // Slow — acts only every other turn.
       if (hasStatus(eStatuses, 'slow') && enemyTurnNoRef.current % 2 === 0) {
         addLog(`🐌 ${enemy.name} is too slow to act.`);
@@ -528,10 +534,11 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         ? pitchTolerance * MANIC_TOLERANCE_MULT
         : pitchTolerance;
 
-  // The player passes automatically when asleep or slowed on a skip turn.
-  const playerAsleep = hasStatus(state.playerStatuses, 'sleep');
+  // The player passes automatically when asleep, cramped, or slowed on a skip turn.
+  const playerAsleep   = hasStatus(state.playerStatuses, 'sleep');
+  const playerCramped  = hasStatus(state.playerStatuses, 'cramped');
   const playerSlowSkip = hasStatus(state.playerStatuses, 'slow') && playerTurnNoRef.current % 2 === 0;
-  const playerMustSkip = playerAsleep || playerSlowSkip;
+  const playerMustSkip = playerAsleep || playerCramped || playerSlowSkip;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -672,15 +679,19 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         ) : playerMustSkip ? (
           <div className="text-center py-3">
             <div className="font-fantasy text-academy-cream/70 text-sm mb-2">
-              {playerAsleep ? '💤 You are asleep…' : '🐌 You are too slow to act this turn.'}
+              {playerAsleep   ? '💤 You are asleep…'
+               : playerCramped ? '🤝 Your hand is cramped — you cannot act.'
+               : '🐌 You are too slow to act this turn.'}
             </div>
             <button
               onClick={() => skipPlayerTurn(playerAsleep
                 ? `💤 ${character.displayName} is asleep and cannot act.`
-                : `🐌 ${character.displayName} is too slow and loses the turn.`)}
+                : playerCramped
+                  ? `🤝 ${character.displayName}'s hand seizes up — the turn is lost.`
+                  : `🐌 ${character.displayName} is too slow and loses the turn.`)}
               className="btn-secondary"
             >
-              {playerAsleep ? 'Snooze…' : 'Pass Turn'} →
+              {playerAsleep ? 'Snooze…' : playerCramped ? 'Seize Up…' : 'Pass Turn'} →
             </button>
           </div>
         ) : menu === 'items' ? (

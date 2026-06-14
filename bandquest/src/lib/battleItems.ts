@@ -79,6 +79,14 @@ export const BATTLE_ITEMS: Record<string, BattleItem> = {
     id: 'cracking_oil', name: 'Cracking Oil', fantasyName: 'Shatter Solvent', icon: '💥',
     applies: 'vulnerable', target: 'enemy', description: 'Expose the enemy — it takes 1.5× damage.',
   },
+  cold_rosin: {
+    id: 'cold_rosin', name: 'Cold Rosin', fantasyName: 'Seizing Grit', icon: '🤝',
+    applies: 'cramped', target: 'enemy', description: "Seize the enemy's hand — it loses its next turn.",
+  },
+  hand_balm: {
+    id: 'hand_balm', name: 'Hand Balm', fantasyName: 'Limbering Salve', icon: '🤸',
+    applies: 'limber', target: 'self', description: 'Warm up your hands — immune to Cramped.',
+  },
 };
 
 // A modest per-battle loadout until inventory persistence exists.

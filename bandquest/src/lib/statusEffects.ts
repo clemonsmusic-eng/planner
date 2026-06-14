@@ -6,7 +6,11 @@
 // these rules in three places:
 //   • per-turn tick   — poison / regen change HP at the end of the owner's turn
 //   • action modifier — blind / manic / confusion / deflect alter a resolved action
-//   • turn flow       — sleep / slow / haste change how many turns the owner gets
+//   • turn flow       — sleep / slow / haste / cramped change how many turns the owner gets
+//
+// cramped vs. sleep: both skip a turn, but cramped is NOT cleared by taking damage
+// and always lasts exactly 1 turn. Think carpal-tunnel-style muscle seize — you
+// can't just shake it off mid-performance.
 
 export type StatusType =
   // debuffs
@@ -17,6 +21,7 @@ export type StatusType =
   | 'poison'
   | 'blind'
   | 'vulnerable'
+  | 'cramped'     // hard 1-turn stun — not cleared by damage
   // buffs (each is the opposite of one debuff)
   | 'alert'      // ↔ sleep
   | 'haste'      // ↔ slow
@@ -24,7 +29,8 @@ export type StatusType =
   | 'clarity'    // ↔ confusion
   | 'regen'      // ↔ poison
   | 'focus'      // ↔ blind
-  | 'deflect';   // ↔ vulnerable
+  | 'deflect'    // ↔ vulnerable
+  | 'limber';    // ↔ cramped
 
 export interface StatusEffect {
   type: StatusType;
@@ -95,6 +101,11 @@ export const STATUS_DEFS: Record<StatusType, StatusDef> = {
     colorClass: 'text-red-400 bg-red-400/10', defaultDuration: 2, opposite: 'deflect',
     description: 'Takes 1.5× damage from all sources.',
   },
+  cramped: {
+    type: 'cramped', name: 'Cramped', kind: 'debuff', icon: '🤝', badge: 'CRAMP',
+    colorClass: 'text-rose-300 bg-rose-300/10', defaultDuration: 1, opposite: 'limber',
+    description: 'Hand seizes up — skips next turn. Unlike sleep, not cleared by damage.',
+  },
 
   // ── Buffs (opposite of the matching debuff) ──────────────────────────────────
   alert: {
@@ -131,6 +142,11 @@ export const STATUS_DEFS: Record<StatusType, StatusDef> = {
     type: 'deflect', name: 'Deflect', kind: 'buff', icon: '🛡️', badge: 'DEFLECT',
     colorClass: 'text-cyan-300 bg-cyan-300/10', defaultDuration: 2, opposite: 'vulnerable',
     description: 'Reflects half of incoming damage back at the attacker.',
+  },
+  limber: {
+    type: 'limber', name: 'Limber', kind: 'buff', icon: '🤸', badge: 'LIMBER',
+    colorClass: 'text-rose-200 bg-rose-200/10', defaultDuration: 3, opposite: 'cramped',
+    description: 'Hands are warm and loose — immune to Cramped.',
   },
 };
 
