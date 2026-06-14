@@ -1,7 +1,7 @@
 import type { InstrumentId } from '../types/game';
+import type { StatusType } from './statusEffects';
 
 export type EnemyTier = 1 | 2 | 3 | 4 | 5 | 6;
-export type DebuffType = 'accuracy_drain' | 'silence' | 'resonance_lock' | 'confusion';
 
 export interface EnemyDef {
   id: string;
@@ -14,8 +14,9 @@ export interface EnemyDef {
   attackDescription: string;
   specialAttackName?: string;
   specialAttackChallengeType?: string;
-  debuff?: DebuffType;
+  debuff?: StatusType;
   debuffDuration?: number;
+  debuffChance?: number;  // chance the enemy inflicts its status on a standard attack (default 0.4)
   vulnerableTo: InstrumentId[];
   isBoss: boolean;
   phase2Threshold?: number;
@@ -35,7 +36,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     attackDescription: 'Drains Accuracy — pitches harder to land',
     specialAttackName: 'Flat Pulse',
     specialAttackChallengeType: 'aural_pitch_spy',
-    debuff: 'accuracy_drain',
+    debuff: 'blind',
     debuffDuration: 2,
     vulnerableTo: ['oboe', 'clarinet', 'flute'],
     isBoss: false,
@@ -78,7 +79,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     attackDescription: 'Stacks Accuracy drain; forces a lower note challenge',
     specialAttackName: 'Deep Sag',
     specialAttackChallengeType: 'aural_pitch_spy',
-    debuff: 'accuracy_drain',
+    debuff: 'blind',
     debuffDuration: 3,
     vulnerableTo: ['oboe', 'clarinet', 'flute'],
     isBoss: false,
@@ -126,7 +127,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     attackDescription: 'Rattles the score — Accuracy drain + rhythm disruption',
     specialAttackName: 'Score Rattle',
     specialAttackChallengeType: 'aural_pitch_spy',
-    debuff: 'accuracy_drain',
+    debuff: 'blind',
     debuffDuration: 2,
     vulnerableTo: ['oboe', 'clarinet', 'flute'],
     isBoss: true,
@@ -144,7 +145,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     attackDescription: 'Flat Breath — all pitch challenges have halved tolerance this battle',
     specialAttackName: 'Flat Breath',
     specialAttackChallengeType: 'aural_pitch_spy',
-    debuff: 'accuracy_drain',
+    debuff: 'blind',
     debuffDuration: 999,
     vulnerableTo: ['oboe', 'flute', 'clarinet'],
     isBoss: true,

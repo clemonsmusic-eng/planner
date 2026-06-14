@@ -6,6 +6,12 @@ import { getAbilitiesForInstrument, battleBeatCount, battleBpm, battleBpmRange }
 import type { AbilityTier } from '../lib/abilities';
 import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
+import {
+  STATUS_DEFS, hasStatus, mergeStatus, tickDurations, clearStatus, endOfTurnHpDelta, newStatus,
+  BLIND_TOLERANCE_MULT, BLIND_MISS_CHANCE, MANIC_DEAL_MULT, MANIC_TAKEN_MULT, DEFLECT_PCT,
+  CONFUSION_FAIL_CHANCE,
+} from '../lib/statusEffects';
+import type { StatusEffect } from '../lib/statusEffects';
 import ChallengeModal from './ChallengeModal';
 import Avatar from './Avatar';
 
@@ -16,19 +22,14 @@ interface EnemyState {
   hp: number;
   maxHp: number;
   phase: 1 | 2;
-  debuffs: ActiveDebuff[];
-}
-
-interface ActiveDebuff {
-  type: string;
-  turnsLeft: number;
+  statuses: StatusEffect[];
 }
 
 interface BattleState {
   playerHp: number;
   playerMaxHp: number;
   playerRp: number;
-  playerDebuffs: ActiveDebuff[];
+  playerStatuses: StatusEffect[];
   defending: boolean;
   enemy: EnemyState;
   log: string[];
@@ -38,15 +39,17 @@ interface BattleState {
 }
 
 type BattleAction =
-  | { type: 'APPLY_DAMAGE_TO_ENEMY'; amount: number }
-  | { type: 'APPLY_DAMAGE_TO_PLAYER'; amount: number }
+  | { type: 'DAMAGE_ENEMY'; amount: number }
+  | { type: 'DAMAGE_PLAYER'; amount: number }
   | { type: 'HEAL_PLAYER'; amount: number }
   | { type: 'ADD_LOG'; message: string }
-  | { type: 'END_PLAYER_TURN' }
-  | { type: 'END_ENEMY_TURN' }
+  | { type: 'SET_TURN'; turn: BattleState['turn'] }
   | { type: 'SET_DEFENDING'; value: boolean }
-  | { type: 'APPLY_PLAYER_DEBUFF'; debuff: ActiveDebuff }
-  | { type: 'CLEAR_PLAYER_DEBUFFS' }
+  | { type: 'APPLY_PLAYER_STATUS'; effect: StatusEffect }
+  | { type: 'APPLY_ENEMY_STATUS'; effect: StatusEffect }
+  | { type: 'CLEAR_PLAYER_STATUSES' }
+  | { type: 'TICK_PLAYER_STATUSES' }
+  | { type: 'TICK_ENEMY_STATUSES' }
   | { type: 'EARN_RP'; amount: number }
   | { type: 'EXPOSE_WEAKPOINT' };
 
@@ -55,14 +58,14 @@ function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode 
     playerHp: character.hp,
     playerMaxHp: character.maxHp,
     playerRp: character.resonancePoints,
-    playerDebuffs: [],
+    playerStatuses: [],
     defending: false,
     enemy: {
       def: enemy,
       hp: enemy.maxHp,
       maxHp: enemy.maxHp,
       phase: 1,
-      debuffs: [],
+      statuses: [],
     },
     log: [`Battle starts! ${enemy.name} appears!`],
     turn: 'player',
@@ -73,7 +76,7 @@ function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode 
 
 function reducer(state: BattleState, action: BattleAction): BattleState {
   switch (action.type) {
-    case 'APPLY_DAMAGE_TO_ENEMY': {
+    case 'DAMAGE_ENEMY': {
       const newHp = Math.max(0, state.enemy.hp - action.amount);
       const phase = state.enemy.def.phase2Threshold &&
         newHp / state.enemy.maxHp <= state.enemy.def.phase2Threshold &&
@@ -82,18 +85,21 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
         : state.enemy.phase;
       return {
         ...state,
-        enemy: { ...state.enemy, hp: newHp, phase },
+        // Taking damage wakes a sleeping enemy.
+        enemy: { ...state.enemy, hp: newHp, phase, statuses: clearStatus(state.enemy.statuses, 'sleep') },
         turn: newHp === 0 ? 'victory' : state.turn,
         weakpointExposed: false,
       };
     }
-    case 'APPLY_DAMAGE_TO_PLAYER': {
+    case 'DAMAGE_PLAYER': {
       const reduction = state.defending ? 0.5 : 1.0;
       const minHp = state.simulatorMode ? 1 : 0;
       const newHp = Math.max(minHp, state.playerHp - Math.floor(action.amount * reduction));
       return {
         ...state,
         playerHp: newHp,
+        // Taking damage wakes the player.
+        playerStatuses: clearStatus(state.playerStatuses, 'sleep'),
         turn: newHp === 0 ? 'defeat' : state.turn,
       };
     }
@@ -101,21 +107,38 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
       return { ...state, playerHp: Math.min(state.playerMaxHp, state.playerHp + action.amount) };
     case 'ADD_LOG':
       return { ...state, log: [...state.log.slice(-9), action.message] };
-    case 'END_PLAYER_TURN':
-      return { ...state, turn: 'enemy', defending: false };
-    case 'END_ENEMY_TURN': {
-      // Tick player debuffs
-      const debuffs = state.playerDebuffs
-        .map((d) => ({ ...d, turnsLeft: d.turnsLeft - 1 }))
-        .filter((d) => d.turnsLeft > 0);
-      return { ...state, turn: 'player', playerDebuffs: debuffs };
-    }
+    case 'SET_TURN':
+      // Never override a finished battle.
+      if (state.turn === 'victory' || state.turn === 'defeat') return state;
+      return { ...state, turn: action.turn, ...(action.turn === 'enemy' ? { defending: false } : {}) };
     case 'SET_DEFENDING':
       return { ...state, defending: action.value };
-    case 'APPLY_PLAYER_DEBUFF':
-      return { ...state, playerDebuffs: [...state.playerDebuffs, action.debuff] };
-    case 'CLEAR_PLAYER_DEBUFFS':
-      return { ...state, playerDebuffs: [] };
+    case 'APPLY_PLAYER_STATUS':
+      return { ...state, playerStatuses: mergeStatus(state.playerStatuses, action.effect) };
+    case 'APPLY_ENEMY_STATUS':
+      return { ...state, enemy: { ...state.enemy, statuses: mergeStatus(state.enemy.statuses, action.effect) } };
+    case 'CLEAR_PLAYER_STATUSES':
+      return { ...state, playerStatuses: [] };
+    case 'TICK_PLAYER_STATUSES': {
+      const delta = endOfTurnHpDelta(state.playerStatuses, state.playerMaxHp);
+      const minHp = state.simulatorMode ? 1 : 0;
+      const newHp = Math.max(minHp, Math.min(state.playerMaxHp, state.playerHp + delta));
+      return {
+        ...state,
+        playerHp: newHp,
+        playerStatuses: tickDurations(state.playerStatuses),
+        turn: newHp === 0 ? 'defeat' : state.turn,
+      };
+    }
+    case 'TICK_ENEMY_STATUSES': {
+      const delta = endOfTurnHpDelta(state.enemy.statuses, state.enemy.maxHp);
+      const newHp = Math.max(0, Math.min(state.enemy.maxHp, state.enemy.hp + delta));
+      return {
+        ...state,
+        enemy: { ...state.enemy, hp: newHp, statuses: tickDurations(state.enemy.statuses) },
+        turn: newHp === 0 ? 'victory' : state.turn,
+      };
+    }
     case 'EARN_RP':
       return { ...state, playerRp: state.playerRp + action.amount };
     case 'EXPOSE_WEAKPOINT':
@@ -169,6 +192,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   const [perfectFlash, setPerfectFlash] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
+  const playerTurnNoRef = useRef(1);        // counts player turns (slow parity)
+  const enemyTurnNoRef = useRef(0);         // counts enemy turns (slow parity)
+  const bonusActionUsedRef = useRef(false); // haste extra-action consumed this turn
+  // Always-fresh snapshot of state for use inside async (setTimeout) callbacks,
+  // where the captured `state` closure would otherwise be stale.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const color = getInstrumentColor(character.instrument);
   const abilities = getAbilitiesForInstrument(character.instrument, character.level);
@@ -188,12 +218,83 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   function computeDamage(ability: Ability, score: number): number {
     const perfectMult = score === 100 ? 2 : 1;
     const weakpointMult = state.weakpointExposed ? 2 : 1;
+    const manicMult = hasStatus(state.playerStatuses, 'manic') ? MANIC_DEAL_MULT : 1;
     const base = effectiveStats.power * ability.damageMultiplier * (score / 100);
-    return Math.max(1, Math.round(base * perfectMult * weakpointMult));
+    return Math.max(1, Math.round(base * perfectMult * weakpointMult * manicMult));
+  }
+
+  // Damage helpers honor target-side modifiers (manic = takes more; deflect =
+  // reflects half back). Reflected damage is dispatched directly to avoid an
+  // infinite ping-pong between two deflecting combatants.
+  function dealDamageToEnemy(raw: number): number {
+    const s = stateRef.current;
+    let dmg = raw;
+    if (hasStatus(s.enemy.statuses, 'manic')) dmg = Math.round(dmg * MANIC_TAKEN_MULT);
+    if (hasStatus(s.enemy.statuses, 'deflect')) {
+      const reflected = Math.round(dmg * DEFLECT_PCT);
+      dmg -= reflected;
+      if (reflected > 0) {
+        dispatch({ type: 'DAMAGE_PLAYER', amount: reflected });
+        addLog(`🛡️ ${enemy.name} deflects ${reflected} damage back!`);
+      }
+    }
+    dispatch({ type: 'DAMAGE_ENEMY', amount: dmg });
+    return dmg;
+  }
+
+  function dealDamageToPlayer(raw: number): number {
+    const s = stateRef.current;
+    let dmg = raw;
+    if (hasStatus(s.playerStatuses, 'manic')) dmg = Math.round(dmg * MANIC_TAKEN_MULT);
+    if (hasStatus(s.playerStatuses, 'deflect')) {
+      const reflected = Math.round(dmg * DEFLECT_PCT);
+      dmg -= reflected;
+      if (reflected > 0) {
+        dispatch({ type: 'DAMAGE_ENEMY', amount: reflected });
+        addLog(`🛡️ ${character.displayName} deflects ${reflected} damage back!`);
+      }
+    }
+    dispatch({ type: 'DAMAGE_PLAYER', amount: dmg });
+    return dmg;
+  }
+
+  // End of the player's turn: poison/regen tick, then hand control to the enemy.
+  function endPlayerTurn() {
+    bonusActionUsedRef.current = false;
+    const d = endOfTurnHpDelta(stateRef.current.playerStatuses, state.playerMaxHp);
+    if (d < 0) addLog(`☠️ Poison saps ${-d} HP.`);
+    else if (d > 0) addLog(`🌿 Regen restores ${d} HP.`);
+    dispatch({ type: 'TICK_PLAYER_STATUSES' });
+    dispatch({ type: 'SET_TURN', turn: 'enemy' });
+    runEnemyTurn();
+  }
+
+  // After a resolved player action: take an extra action if hasted, else end turn.
+  function afterPlayerAction() {
+    if (hasStatus(state.playerStatuses, 'haste') && !bonusActionUsedRef.current) {
+      bonusActionUsedRef.current = true;
+      addLog('⚡ Haste — act again!');
+      return; // stay on the player's turn; the action menu re-appears
+    }
+    endPlayerTurn();
+  }
+
+  function handleDefend() {
+    if (hasStatus(state.playerStatuses, 'manic')) return; // manic cannot defend
+    dispatch({ type: 'SET_DEFENDING', value: true });
+    addLog(`${character.displayName} braces for impact.`);
+    endPlayerTurn();
+  }
+
+  // Player chose to pass (asleep or slowed). Still ticks statuses so they wear off.
+  function skipPlayerTurn(message: string) {
+    addLog(message);
+    endPlayerTurn();
   }
 
   async function handleAbilityComplete(rating: Rating, score: number) {
     if (!activeAbility) return;
+    const ability = activeAbility;
     setActiveAbility(null);
     setLastRating(rating);
 
@@ -204,27 +305,30 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     rpEarnedRef.current += rp;
     dispatch({ type: 'EARN_RP', amount: rp });
 
-    if (activeAbility.id === 'defend') {
-      dispatch({ type: 'SET_DEFENDING', value: true });
-      addLog(`${character.displayName} braces for impact.`);
-      dispatch({ type: 'END_PLAYER_TURN' });
-      runEnemyTurn();
+    if (ability.id === 'resonant_frequency') {
+      dispatch({ type: 'EXPOSE_WEAKPOINT' });
+      addLog(`Resonant Frequency — ${enemy.name}'s weak point is exposed!`);
+      afterPlayerAction();
       return;
     }
 
-    if (activeAbility.id === 'resonant_frequency') {
-      dispatch({ type: 'EXPOSE_WEAKPOINT' });
-      addLog(`Resonant Frequency — ${enemy.name}'s weak point is exposed!`);
-      dispatch({ type: 'END_PLAYER_TURN' });
-      runEnemyTurn();
-      return;
+    // Percussion Purge shakes every status effect off the player.
+    if (ability.id === 'percussion_purge') {
+      dispatch({ type: 'CLEAR_PLAYER_STATUSES' });
+      addLog('🥁 Percussion Purge — all status effects shaken loose!');
     }
 
     // Miss — no pitch detected during the performance window
     if (score === 0) {
-      addLog(`${activeAbility.name} — MISSED! No sound detected.`);
-      dispatch({ type: 'END_PLAYER_TURN' });
-      runEnemyTurn();
+      addLog(`${ability.name} — MISSED! No sound detected.`);
+      afterPlayerAction();
+      return;
+    }
+
+    // Confusion — half the time the phrase scatters and the action fails
+    if (hasStatus(state.playerStatuses, 'confusion') && Math.random() < CONFUSION_FAIL_CHANCE) {
+      addLog(`💫 Confused! ${ability.name} scatters and fails.`);
+      afterPlayerAction();
       return;
     }
 
@@ -234,44 +338,97 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
       setTimeout(() => setPerfectFlash(false), 2000);
     }
 
-    if (activeAbility.isHealing && !activeAbility.isRevive) {
+    const goodOrBetter = score >= 60; // status application gated on accuracy
+
+    // Self-buff abilities (regen / haste) apply on a solid performance.
+    if (ability.selfStatus && goodOrBetter) {
+      dispatch({ type: 'APPLY_PLAYER_STATUS', effect: newStatus(ability.selfStatus) });
+      addLog(`${STATUS_DEFS[ability.selfStatus].icon} ${ability.name} — ${STATUS_DEFS[ability.selfStatus].name} active!`);
+    }
+
+    if (ability.isHealing && !ability.isRevive) {
       const healAmount = Math.round(effectiveStats.endurance * 3 * (score / 100) * (isPerfect ? 2 : 1));
       dispatch({ type: 'HEAL_PLAYER', amount: healAmount });
-      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${activeAbility.name} — restored ${healAmount} HP (${score}%${isPerfect ? ' ×2' : ''})`);
-      dispatch({ type: 'END_PLAYER_TURN' });
-      runEnemyTurn();
+      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — restored ${healAmount} HP (${score}%${isPerfect ? ' ×2' : ''})`);
+      afterPlayerAction();
       return;
     }
 
-    const dmg = computeDamage(activeAbility, score);
-    dispatch({ type: 'APPLY_DAMAGE_TO_ENEMY', amount: dmg });
-    addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${activeAbility.name} — ${dmg} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''})`);
+    const dmg = computeDamage(ability, score);
+    const applied = dealDamageToEnemy(dmg);
+    addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${applied} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''})`);
 
-    if (state.enemy.hp - dmg <= 0) return; // victory handled by reducer
+    // Inflict a status on the enemy, gated on a Good-or-better hit.
+    if (ability.inflicts && goodOrBetter) {
+      dispatch({ type: 'APPLY_ENEMY_STATUS', effect: newStatus(ability.inflicts) });
+      addLog(`${STATUS_DEFS[ability.inflicts].icon} ${enemy.name} is afflicted with ${STATUS_DEFS[ability.inflicts].name}!`);
+    }
 
-    dispatch({ type: 'END_PLAYER_TURN' });
-    runEnemyTurn();
+    if (state.enemy.hp - applied <= 0) return; // victory handled by reducer
+
+    afterPlayerAction();
   }
 
   function runEnemyTurn() {
     setIsEnemyTurnAnimating(true);
     setTimeout(() => {
-      const enemyPower = state.enemy.def.power + (state.enemy.phase === 2 ? 5 : 0);
-      const dmg = Math.max(1, enemyPower - Math.floor(effectiveStats.endurance * 0.5));
-      dispatch({ type: 'APPLY_DAMAGE_TO_PLAYER', amount: dmg });
-      addLog(`${enemy.name} attacks! ${dmg} damage.`);
+      enemyTurnNoRef.current += 1;
+      const s = stateRef.current;
+      const eStatuses = s.enemy.statuses;
 
-      if (state.enemy.def.debuff && Math.random() < 0.4) {
-        dispatch({
-          type: 'APPLY_PLAYER_DEBUFF',
-          debuff: { type: state.enemy.def.debuff, turnsLeft: state.enemy.def.debuffDuration ?? 2 },
-        });
-        addLog(`${enemy.name} inflicts ${state.enemy.def.debuff}!`);
+      // Sleep — the enemy skips its whole turn (woken only by damage).
+      if (hasStatus(eStatuses, 'sleep')) {
+        addLog(`💤 ${enemy.name} is asleep.`);
+        finishEnemyTurn();
+        return;
+      }
+      // Slow — acts only every other turn.
+      if (hasStatus(eStatuses, 'slow') && enemyTurnNoRef.current % 2 === 0) {
+        addLog(`🐌 ${enemy.name} is too slow to act.`);
+        finishEnemyTurn();
+        return;
       }
 
-      dispatch({ type: 'END_ENEMY_TURN' });
-      setIsEnemyTurnAnimating(false);
+      const attacks = hasStatus(eStatuses, 'haste') ? 2 : 1;
+      const enemyPower = s.enemy.def.power + (s.enemy.phase === 2 ? 5 : 0);
+      const manicMult = hasStatus(eStatuses, 'manic') ? MANIC_DEAL_MULT : 1;
+
+      for (let i = 0; i < attacks; i++) {
+        if (hasStatus(eStatuses, 'confusion') && Math.random() < CONFUSION_FAIL_CHANCE) {
+          addLog(`💫 ${enemy.name} flails in confusion.`);
+          continue;
+        }
+        if (hasStatus(eStatuses, 'blind') && Math.random() < BLIND_MISS_CHANCE) {
+          addLog(`🌫️ ${enemy.name}'s attack misses!`);
+          continue;
+        }
+        const raw = Math.max(1, Math.round(enemyPower * manicMult - effectiveStats.endurance * 0.5));
+        const applied = dealDamageToPlayer(raw);
+        addLog(`${enemy.name} attacks! ${applied} damage.${attacks > 1 ? ` (${i + 1}/${attacks})` : ''}`);
+      }
+
+      // Inflict its signature status.
+      if (s.enemy.def.debuff && Math.random() < (s.enemy.def.debuffChance ?? 0.4)) {
+        const eff = newStatus(s.enemy.def.debuff, s.enemy.def.debuffDuration);
+        dispatch({ type: 'APPLY_PLAYER_STATUS', effect: eff });
+        addLog(`${STATUS_DEFS[s.enemy.def.debuff].icon} ${enemy.name} inflicts ${STATUS_DEFS[s.enemy.def.debuff].name}!`);
+      }
+
+      finishEnemyTurn();
     }, 1200);
+  }
+
+  function finishEnemyTurn() {
+    const s = stateRef.current;
+    const d = endOfTurnHpDelta(s.enemy.statuses, s.enemy.maxHp);
+    if (d < 0) addLog(`☠️ Poison saps ${-d} HP from ${enemy.name}.`);
+    else if (d > 0) addLog(`🌿 ${enemy.name} regenerates ${d} HP.`);
+    dispatch({ type: 'TICK_ENEMY_STATUSES' });
+
+    playerTurnNoRef.current += 1;
+    bonusActionUsedRef.current = false;
+    dispatch({ type: 'SET_TURN', turn: 'player' });
+    setIsEnemyTurnAnimating(false);
   }
 
   // ── Victory / Defeat ─────────────────────────────────────────────────────────
@@ -292,8 +449,14 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
   const hpPercent = (state.playerHp / state.playerMaxHp) * 100;
   const enemyHpPercent = (state.enemy.hp / state.enemy.maxHp) * 100;
-  const hasAccuracyDebuff = state.playerDebuffs.some((d) => d.type === 'accuracy_drain');
-  const effectivePitchTolerance = hasAccuracyDebuff ? pitchTolerance * 0.5 : pitchTolerance;
+  const isBlinded = hasStatus(state.playerStatuses, 'blind');
+  const isManic = hasStatus(state.playerStatuses, 'manic');
+  const effectivePitchTolerance = isBlinded ? pitchTolerance * BLIND_TOLERANCE_MULT : pitchTolerance;
+
+  // The player passes automatically when asleep or slowed on a skip turn.
+  const playerAsleep = hasStatus(state.playerStatuses, 'sleep');
+  const playerSlowSkip = hasStatus(state.playerStatuses, 'slow') && playerTurnNoRef.current % 2 === 0;
+  const playerMustSkip = playerAsleep || playerSlowSkip;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -343,6 +506,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               style={{ width: `${enemyHpPercent}%`, backgroundColor: '#F87171' }}
             />
           </div>
+          <StatusBadges statuses={state.enemy.statuses} />
 
           {/* Battle stage — player faces off against the enemy (FFVI side-view) */}
           <div className="flex items-end justify-between gap-2 py-5 px-1">
@@ -391,14 +555,12 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               <Avatar appearance={character.appearance} instrument={character.instrument} size={40} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 flex-wrap mb-1">
                 <span className="text-xs font-fantasy" style={{ color }}>{character.displayName}</span>
                 {state.defending && (
                   <span className="text-[10px] text-academy-gold bg-academy-gold/10 px-1.5 rounded">GUARDING</span>
                 )}
-                {hasAccuracyDebuff && (
-                  <span className="text-[10px] text-rating-fair bg-rating-fair/10 px-1.5 rounded">PITCH↓</span>
-                )}
+                <StatusBadges statuses={state.playerStatuses} />
               </div>
               <div className="stat-bar">
                 <div
@@ -432,6 +594,20 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           <div className="text-center text-academy-cream/50 font-fantasy text-sm animate-pulse py-4">
             {enemy.name} acts…
           </div>
+        ) : playerMustSkip ? (
+          <div className="text-center py-3">
+            <div className="font-fantasy text-academy-cream/70 text-sm mb-2">
+              {playerAsleep ? '💤 You are asleep…' : '🐌 You are too slow to act this turn.'}
+            </div>
+            <button
+              onClick={() => skipPlayerTurn(playerAsleep
+                ? `💤 ${character.displayName} is asleep and cannot act.`
+                : `🐌 ${character.displayName} is too slow and loses the turn.`)}
+              className="btn-secondary"
+            >
+              {playerAsleep ? 'Snooze…' : 'Pass Turn'} →
+            </button>
+          </div>
         ) : (
           <>
             <div className="flex items-baseline justify-between mb-2">
@@ -459,26 +635,41 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                       </span>
                       <span className="text-[9px] text-academy-cream/25">·</span>
                       <span className="text-[9px] text-academy-cream/35">{beats}♩</span>
+                      {ab.inflicts && (
+                        <>
+                          <span className="text-[9px] text-academy-cream/25">·</span>
+                          <span className="text-[9px]" title={STATUS_DEFS[ab.inflicts].name}>{STATUS_DEFS[ab.inflicts].icon}</span>
+                        </>
+                      )}
+                      {ab.selfStatus && (
+                        <>
+                          <span className="text-[9px] text-academy-cream/25">·</span>
+                          <span className="text-[9px]" title={STATUS_DEFS[ab.selfStatus].name}>{STATUS_DEFS[ab.selfStatus].icon}</span>
+                        </>
+                      )}
                     </div>
                   </button>
                 );
               })}
               <button
-                onClick={() => {
-                  dispatch({ type: 'SET_DEFENDING', value: true });
-                  addLog(`${character.displayName} braces for impact.`);
-                  dispatch({ type: 'END_PLAYER_TURN' });
-                  runEnemyTurn();
-                }}
-                className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
+                onClick={handleDefend}
+                disabled={isManic}
+                className={`card-panel py-2 px-3 text-left transition-all ${isManic ? 'opacity-40 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
               >
                 <div className="text-xs font-fantasy text-academy-gold">Defend</div>
-                <div className="text-[9px] text-academy-cream/40 mt-0.5">instant · no challenge</div>
+                <div className="text-[9px] text-academy-cream/40 mt-0.5">
+                  {isManic ? 'manic — cannot defend' : 'instant · no challenge'}
+                </div>
               </button>
             </div>
-            {hasAccuracyDebuff && (
+            {isBlinded && (
               <p className="text-rating-fair text-[10px] text-center mt-1">
-                ⚠ Pitch tolerance narrowed by Flatling debuff (±{Math.round(effectivePitchTolerance)}¢)
+                🌫️ Blinded — pitch tolerance narrowed (±{Math.round(effectivePitchTolerance)}¢)
+              </p>
+            )}
+            {isManic && (
+              <p className="text-orange-400 text-[10px] text-center mt-1">
+                🔥 Manic — you deal 1.5× but take 1.25× damage
               </p>
             )}
           </>
@@ -553,6 +744,27 @@ function DefeatScreen({ enemy, onRetreat }: { enemy: EnemyDef; onRetreat: () => 
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function StatusBadges({ statuses }: { statuses: StatusEffect[] }) {
+  if (statuses.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {statuses.map((s) => {
+        const def = STATUS_DEFS[s.type];
+        return (
+          <span
+            key={s.type}
+            title={`${def.name}: ${def.description}`}
+            className={`text-[9px] font-fantasy px-1.5 py-0.5 rounded ${def.colorClass}`}
+          >
+            {def.icon} {def.badge}
+            {s.turnsLeft < 99 ? ` ${s.turnsLeft}` : ''}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function getEnemyEmoji(id: string): string {
   const map: Record<string, string> = {

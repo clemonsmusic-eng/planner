@@ -1,4 +1,5 @@
 import type { InstrumentId } from '../types/game';
+import type { StatusType } from './statusEffects';
 
 export type ChallengeType =
   | 'prepared_performance'
@@ -23,6 +24,8 @@ export interface Ability {
   isHealing: boolean;
   isRevive: boolean;
   isAoE: boolean;
+  inflicts?: StatusType;        // status applied to the enemy on a Good-or-better hit
+  selfStatus?: StatusType;      // buff applied to the player when used (Good or better)
   generatesCooldown?: number;   // turns before reuse
   flavorText?: string;
 }
@@ -84,6 +87,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'confusion',
     flavorText: 'The trill carries on the wind, three strikes of pure sound.',
   },
   breath_of_life: {
@@ -164,6 +168,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'blind',
   },
 
   // ── Trumpet / Vanguard ───────────────────────────────────────────────────────
@@ -218,6 +223,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'poison',
   },
   slide_glissando: {
     id: 'slide_glissando',
@@ -230,6 +236,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: true,
+    inflicts: 'slow',
   },
 
   // ── Euphonium / Resonant ─────────────────────────────────────────────────────
@@ -244,6 +251,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'poison',
   },
   low_brass_heal: {
     id: 'low_brass_heal',
@@ -256,6 +264,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: true,
     isRevive: false,
     isAoE: false,
+    selfStatus: 'regen',
   },
 
   // ── Percussion / Stryker Artificer ───────────────────────────────────────────
@@ -282,6 +291,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: true,
+    selfStatus: 'haste',
   },
   percussion_purge: {
     id: 'percussion_purge',
@@ -323,6 +333,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'poison',
   },
 
   // ── Oboe / Crystal Mystic ────────────────────────────────────────────────────
@@ -351,6 +362,7 @@ const ABILITIES: Record<string, Ability> = {
     isHealing: false,
     isRevive: false,
     isAoE: false,
+    inflicts: 'slow',
   },
   resonant_frequency: {
     id: 'resonant_frequency',
