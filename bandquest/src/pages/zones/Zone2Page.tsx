@@ -104,7 +104,7 @@ function buildChallenges(completed: string[]): Challenge[] {
 }
 
 export default function Zone2Page() {
-  const { character, awardChallenge, advanceZone, equipGear } = useGameStore();
+  const { character, awardChallenge, advanceZone, equipGear, addSummonPoints } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
@@ -129,11 +129,12 @@ export default function Zone2Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory() {
+  async function handleBattleVictory(_rp: number, spDelta: number) {
     await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
     if (completedRequired === required.length) await advanceZone(3);
     const drop = getBossGearDrop('z2_mini_boss_defeated', char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
+    if (spDelta !== 0) await addSummonPoints(spDelta);
     setActiveBattle(false);
   }
 

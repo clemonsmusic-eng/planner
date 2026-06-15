@@ -16,7 +16,7 @@ import {
 import type { StatusType, StatusEffect } from '../lib/statusEffects';
 import { BATTLE_ITEMS, STARTER_KIT } from '../lib/battleItems';
 import type { BattleItem } from '../lib/battleItems';
-import { ALLIES, SUMMON_SCALE } from '../lib/allies';
+import { ALLY_BATTLE_DEFS, getAllyForInstrument, SUMMON_SCALE } from '../lib/allies';
 import type { AllyId } from '../types/game';
 import ChallengeModal from './ChallengeModal';
 import Avatar from './Avatar';
@@ -35,9 +35,11 @@ interface BattleState {
   playerHp: number;
   playerMaxHp: number;
   playerRp: number;
+  playerSp: number;
   playerStatuses: StatusEffect[];
   defending: boolean;
   enemy: EnemyState;
+  enemyTaunted: boolean;
   log: string[];
   turn: 'player' | 'enemy' | 'victory' | 'defeat';
   weakpointExposed: boolean;
@@ -59,6 +61,9 @@ type BattleAction =
   | { type: 'TICK_ENEMY_STATUSES' }
   | { type: 'EARN_RP'; amount: number }
   | { type: 'SPEND_RP'; amount: number }
+  | { type: 'EARN_SP'; amount: number }
+  | { type: 'SPEND_SP'; amount: number }
+  | { type: 'SET_ENEMY_TAUNTED'; value: boolean }
   | { type: 'EXPOSE_WEAKPOINT' };
 
 function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode = false): BattleState {
@@ -66,6 +71,7 @@ function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode 
     playerHp: character.hp,
     playerMaxHp: character.maxHp,
     playerRp: character.resonancePoints,
+    playerSp: character.summonPoints,
     playerStatuses: [],
     defending: false,
     enemy: {
@@ -75,6 +81,7 @@ function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode 
       phase: 1,
       statuses: [],
     },
+    enemyTaunted: false,
     log: [`Battle starts! ${enemy.name} appears!`],
     turn: 'player',
     weakpointExposed: false,
@@ -153,6 +160,12 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
       return { ...state, playerRp: state.playerRp + action.amount };
     case 'SPEND_RP':
       return { ...state, playerRp: Math.max(0, state.playerRp - action.amount) };
+    case 'EARN_SP':
+      return { ...state, playerSp: state.playerSp + action.amount };
+    case 'SPEND_SP':
+      return { ...state, playerSp: Math.max(0, state.playerSp - action.amount) };
+    case 'SET_ENEMY_TAUNTED':
+      return { ...state, enemyTaunted: action.value };
     case 'EXPOSE_WEAKPOINT':
       return { ...state, weakpointExposed: true };
     default:
@@ -189,7 +202,7 @@ const RATING_COLORS: Record<Rating, string> = {
 interface Props {
   character: Character;
   enemy: EnemyDef;
-  onVictory: (rpEarned: number) => void;
+  onVictory: (rpEarned: number, spDelta: number) => void;
   onDefeat: () => void;
   simulatorMode?: boolean;
 }
@@ -210,6 +223,8 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   } | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
+  const spEarnedRef = useRef(0);
+  const spSpentRef = useRef(0);
   const playerTurnNoRef = useRef(1);        // counts player turns (slow parity)
   const enemyTurnNoRef = useRef(0);         // counts enemy turns (slow parity)
   const bonusActionUsedRef = useRef(false); // haste extra-action consumed this turn
@@ -369,6 +384,11 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     const rp = RP_AWARDS[rating];
     rpEarnedRef.current += rp;
     dispatch({ type: 'EARN_RP', amount: rp });
+    const sp = Math.floor(rp / 2);
+    if (sp > 0) {
+      spEarnedRef.current += sp;
+      dispatch({ type: 'EARN_SP', amount: sp });
+    }
 
     if (ability.id === 'resonant_frequency') {
       dispatch({ type: 'EXPOSE_WEAKPOINT' });
@@ -452,14 +472,19 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
   // ── Symphony Ally Summons ─────────────────────────────────────────────────────
 
+  // Find the one ally this character's instrument can summon.
+  const characterAllyId = getAllyForInstrument(character.instrument);
+  const canSummon = characterAllyId !== null
+    && character.freedAllies.includes(characterAllyId);
+
   function handleSummon(allyId: AllyId) {
-    const cost = ALLIES[allyId].rpCost;
-    if (stateRef.current.playerRp < cost) {
-      addLog(`Not enough RP to summon ${ALLIES[allyId].trueName}.`);
+    const def = ALLY_BATTLE_DEFS[allyId];
+    if (stateRef.current.playerSp < def.spCost) {
+      addLog(`Not enough SP to summon ${def.name}. (Need ${def.spCost}, have ${stateRef.current.playerSp})`);
       return;
     }
-    dispatch({ type: 'SPEND_RP', amount: cost });
-    setMenu('actions');
+    dispatch({ type: 'SPEND_SP', amount: def.spCost });
+    spSpentRef.current += def.spCost;
     setPendingSummonAllyId(allyId);
   }
 
@@ -468,102 +493,113 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setPendingSummonAllyId(null);
     if (!allyId) return;
 
-    const ally = ALLIES[allyId];
+    const def = ALLY_BATTLE_DEFS[allyId];
     const scale = SUMMON_SCALE[rating] ?? 0.2;
-    addLog(`${ally.summonAbility} — ${ally.trueName} answers the call! (${rating})`);
+    addLog(`${def.abilityName} — ${def.name} answers the call! (${rating})`);
 
     switch (allyId) {
+      // ── percival: timpani solo ── 4 small hits + big finale + vulnerable
       case 'percival': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 8 * scale));
-        addLog(`🥁 Grand Drum Roll — ${dmg} dmg!`);
-        if (scale >= 0.6) applyStatusToEnemy('sleep');
+        const smallHit = Math.round(effectiveStats.power * 2 * scale);
+        let total = 0;
+        for (let i = 0; i < 4; i++) total += dealDamageToEnemy(smallHit);
+        const bigHit = Math.round(effectiveStats.power * 8 * scale);
+        total += dealDamageToEnemy(bigHit);
+        addLog(`🥁 Grand Drum Roll — 4+1 strikes, ${total} total dmg!`);
+        applyStatusToEnemy('vulnerable');
         break;
       }
+      // ── syrinx: full heal
       case 'syrinx': {
-        const heal = Math.round(stateRef.current.playerMaxHp * 0.40 * scale);
+        const heal = Math.round(stateRef.current.playerMaxHp * scale);
         dispatch({ type: 'HEAL_PLAYER', amount: heal });
         addLog(`🌬️ Ethereal Aria — ${heal} HP restored!`);
-        const s = stateRef.current;
-        if (s.enemy.hp / s.enemy.maxHp < 0.40) {
-          applyStatusToEnemy('sleep');
-          addLog('🌬️ The weakened enemy is charmed!');
-        }
         break;
       }
+      // ── salpinx: fanfare chorus — 7 escalating hits + haste + focus
       case 'salpinx': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 6 * scale));
-        addLog(`🎺 Fanfare of Light — ${dmg} dmg!`);
+        const hitMults = [1, 1, 1, 1, 1.5, 1.5, 2];
+        const base = Math.round(effectiveStats.power * 2 * scale);
+        let total = 0;
+        for (const m of hitMults) total += dealDamageToEnemy(Math.round(base * m));
+        addLog(`🎺 Fanfare of Light — 7-hit chorus, ${total} total dmg!`);
         applyStatusToPlayer('haste');
         applyStatusToPlayer('focus');
         break;
       }
+      // ── chalumeau: 12-hit cascade + focus
       case 'chalumeau': {
-        const hitDmg = Math.round(effectiveStats.power * 3 * scale);
+        const hitDmg = Math.round(effectiveStats.power * 1.5 * scale);
         let total = 0;
-        for (let i = 0; i < 4; i++) total += dealDamageToEnemy(hitDmg);
-        addLog(`🎶 Crystalline Cascade — 4 hits, ${total} total dmg!`);
-        break;
-      }
-      case 'hautbois': {
-        const heal = Math.round(stateRef.current.playerMaxHp * 0.25 * scale);
-        dispatch({ type: 'HEAL_PLAYER', amount: heal });
-        addLog(`🎼 The Tuning A — ${heal} HP restored!`);
+        for (let i = 0; i < 12; i++) total += dealDamageToEnemy(hitDmg);
+        addLog(`🎶 Crystalline Cascade — 12 hits, ${total} total dmg!`);
         applyStatusToPlayer('focus');
         break;
       }
-      case 'waldhorn': {
-        const hitDmg = Math.round(effectiveStats.power * 4 * scale);
-        let total = 0;
-        for (let i = 0; i < 3; i++) total += dealDamageToEnemy(hitDmg);
-        addLog(`📯 Mountain Echo — 3 echo strikes, ${total} total dmg!`);
+      // ── hautbois: 50% heal + clear debuffs + deflect
+      case 'hautbois': {
+        const heal = Math.round(stateRef.current.playerMaxHp * 0.5 * scale);
+        dispatch({ type: 'HEAL_PLAYER', amount: heal });
+        addLog(`🎼 The Tuning A — ${heal} HP restored!`);
+        dispatch({ type: 'CLEAR_PLAYER_DEBUFFS' });
+        addLog('🎼 All debuffs cleared!');
+        applyStatusToPlayer('deflect');
         break;
       }
+      // ── waldhorn: 3 escalating echo hits + confusion or cramped
+      case 'waldhorn': {
+        const mults = [3, 5, 7];
+        let total = 0;
+        for (const m of mults) total += dealDamageToEnemy(Math.round(effectiveStats.power * m * scale));
+        addLog(`📯 Mountain Echo — 3 escalating strikes, ${total} total dmg!`);
+        const status = Math.random() < 0.5 ? 'confusion' : 'cramped';
+        applyStatusToEnemy(status as 'confusion' | 'cramped');
+        break;
+      }
+      // ── posaune: massive single hit + slow + cramped
       case 'posaune': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 7 * scale));
+        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 12 * scale));
         addLog(`〰️ Slide into Shadow — ${dmg} dmg!`);
         applyStatusToEnemy('slow');
-        applyStatusToEnemy('blind');
+        applyStatusToEnemy('cramped');
         break;
       }
+      // ── cantora: euphonium = heavy damage; tuba = medium damage + deflect + taunt
       case 'cantora': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 10 * scale));
-        addLog(`🔊 Pedal Tone Quake — ${dmg} dmg!`);
-        applyStatusToPlayer('deflect');
-        applyStatusToPlayer('calm');
-        break;
-      }
-      case 'bassanello': {
-        const heal = Math.round(stateRef.current.playerMaxHp * 0.75 * scale);
-        dispatch({ type: 'HEAL_PLAYER', amount: heal });
-        addLog(`🍃 Cantus Antiquus — ${heal} HP restored!`);
-        applyStatusToPlayer('deflect');
-        applyStatusToPlayer('regen');
-        break;
-      }
-      case 'vela': {
-        const roll = Math.random();
-        if (roll < 0.25) {
-          const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 12 * scale));
-          addLog(`🎷 Cool Jazz Improv — DAMAGE burst! ${dmg} dmg!`);
-        } else if (roll < 0.50) {
-          const heal = Math.round(stateRef.current.playerMaxHp * 0.80 * scale);
-          dispatch({ type: 'HEAL_PLAYER', amount: heal });
-          addLog(`🎷 Cool Jazz Improv — HEAL burst! ${heal} HP!`);
-        } else if (roll < 0.75) {
-          applyStatusToEnemy('slow');
-          applyStatusToEnemy('blind');
-          applyStatusToEnemy('confusion');
-          applyStatusToEnemy('poison');
-          addLog('🎷 Cool Jazz Improv — DEBUFF storm on the enemy!');
-        } else {
-          applyStatusToPlayer('haste');
-          applyStatusToPlayer('focus');
-          applyStatusToPlayer('regen');
+        if (character.instrument === 'tuba') {
+          const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 5 * scale));
+          addLog(`🔊 Pedal Tone Quake — ${dmg} dmg!`);
           applyStatusToPlayer('deflect');
-          addLog('🎷 Cool Jazz Improv — BUFF wave on you!');
+          dispatch({ type: 'SET_ENEMY_TAUNTED', value: true });
+          addLog(`🔊 ${enemy.name} is taunted — it can only basic-attack next turn.`);
+        } else {
+          const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 8 * scale));
+          addLog(`🔊 Pedal Tone Quake — ${dmg} dmg!`);
         }
         break;
       }
+      // ── bassanello: 30% heal + clear debuffs + regen ×5
+      case 'bassanello': {
+        const heal = Math.round(stateRef.current.playerMaxHp * 0.3 * scale);
+        dispatch({ type: 'HEAL_PLAYER', amount: heal });
+        addLog(`🍃 Cantus Antiquus — ${heal} HP restored!`);
+        dispatch({ type: 'CLEAR_PLAYER_DEBUFFS' });
+        addLog('🍃 All debuffs cleared!');
+        // Apply regen with 5-turn duration (overrides the 3-turn default).
+        applyStatusToPlayer('regen', 5);
+        break;
+      }
+      // ── vela: random damage + random enemy debuff
+      case 'vela': {
+        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * (5 + Math.random() * 5) * scale));
+        addLog(`🎷 Cool Jazz Improv — improvised for ${dmg} dmg!`);
+        const debuffs: Array<'slow' | 'blind' | 'confusion' | 'poison' | 'vulnerable' | 'cramped'> =
+          ['slow', 'blind', 'confusion', 'poison', 'vulnerable', 'cramped'];
+        const picked = debuffs[Math.floor(Math.random() * debuffs.length)];
+        applyStatusToEnemy(picked);
+        break;
+      }
+      // ── grand_symphony: everything
       case 'grand_symphony': {
         const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 15));
         dispatch({ type: 'HEAL_PLAYER', amount: stateRef.current.playerMaxHp });
@@ -655,9 +691,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         addLog(`${STATUS_DEFS[s.enemy.def.debuff].icon} ${enemy.name} inflicts ${STATUS_DEFS[s.enemy.def.debuff].name}!`);
       }
 
-      // Special attack — triggers a player defense challenge.
+      // Special attack — skipped when enemy is taunted (Tuba summon).
       const specialChance = s.enemy.phase === 2 ? 0.45 : 0.25;
-      if (s.enemy.def.specialAttackChallengeType && Math.random() < specialChance) {
+      if (!s.enemyTaunted && s.enemy.def.specialAttackChallengeType && Math.random() < specialChance) {
         const atkName = s.enemy.def.specialAttackName ?? 'Special Attack';
         const baseDmg = Math.round(enemyPower * manicMult * 1.5);
         addLog(`⚠️ ${enemy.name} uses ${atkName}! DEFEND!`);
@@ -680,6 +716,8 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     if (d < 0) addLog(`☠️ Poison saps ${-d} HP from ${enemy.name}.`);
     else if (d > 0) addLog(`🌿 ${enemy.name} regenerates ${d} HP.`);
     dispatch({ type: 'TICK_ENEMY_STATUSES' });
+    // Clear any taunt applied by the Tuba summon.
+    if (s.enemyTaunted) dispatch({ type: 'SET_ENEMY_TAUNTED', value: false });
 
     playerTurnNoRef.current += 1;
     bonusActionUsedRef.current = false;
@@ -690,11 +728,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   // ── Victory / Defeat ─────────────────────────────────────────────────────────
 
   if (state.turn === 'victory') {
+    const netSpDelta = spEarnedRef.current - spSpentRef.current;
     return (
       <VictoryScreen
         enemy={enemy}
         rpEarned={rpEarnedRef.current}
-        onContinue={() => onVictory(rpEarnedRef.current)}
+        spEarned={spEarnedRef.current}
+        onContinue={() => onVictory(rpEarnedRef.current, netSpDelta)}
       />
     );
   }
@@ -837,7 +877,10 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               </div>
               <div className="flex justify-between text-[10px] text-academy-cream/40 mt-0.5">
                 <span>HP {state.playerHp}/{state.playerMaxHp}</span>
-                <span>⟡ {state.playerRp} RP</span>
+                <span className="flex gap-2">
+                  <span>⟡ {state.playerRp} RP</span>
+                  {canSummon && <span className="text-academy-gold/60">◈ {state.playerSp} SP</span>}
+                </span>
               </div>
             </div>
           </div>
@@ -916,36 +959,44 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           <>
             <div className="flex items-baseline justify-between mb-2">
               <span className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy">
-                Summon Ally
+                Summon Maestro
               </span>
               <button onClick={() => setMenu('actions')} className="text-academy-cream/40 hover:text-academy-cream/80 text-[10px] font-fantasy">
                 ← Back
               </button>
             </div>
-            <div className="space-y-1.5 mb-2">
-              {character.freedAllies.map((allyId) => {
-                const ally = ALLIES[allyId];
-                const canAfford = state.playerRp >= ally.rpCost;
+            {characterAllyId ? (
+              (() => {
+                const def = ALLY_BATTLE_DEFS[characterAllyId];
+                const canAfford = state.playerSp >= def.spCost;
+                const freed = character.freedAllies.includes(characterAllyId);
                 return (
-                  <button
-                    key={allyId}
-                    onClick={() => handleSummon(allyId)}
-                    disabled={!canAfford}
-                    className={`w-full card-panel py-2 px-3 text-left transition-all ${!canAfford ? 'opacity-40 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-fantasy text-academy-cream/90">{ally.trueName}</span>
-                      <span className={`text-[9px] font-fantasy ${canAfford ? 'text-academy-gold' : 'text-academy-cream/30'}`}>
-                        ⟡ {ally.rpCost} RP
-                      </span>
-                    </div>
-                    <div className="text-[9px] text-academy-cream/50 mt-0.5">{ally.summonAbility} — {ally.summonEffect.slice(0, 60)}{ally.summonEffect.length > 60 ? '…' : ''}</div>
-                  </button>
+                  <div className="space-y-1.5 mb-2">
+                    <button
+                      onClick={() => freed && handleSummon(characterAllyId)}
+                      disabled={!freed || !canAfford}
+                      className={`w-full card-panel py-3 px-3 text-left transition-all ${(!freed || !canAfford) ? 'opacity-40 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-fantasy text-academy-cream/90">{def.name}</span>
+                        <span className={`text-[10px] font-fantasy ${canAfford ? 'text-academy-gold' : 'text-academy-cream/30'}`}>
+                          ◈ {def.spCost} SP
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-academy-gold/80 font-fantasy mb-0.5">{def.abilityName}</div>
+                      <div className="text-[9px] text-academy-cream/50">{def.abilityDescription}</div>
+                      {!freed && (
+                        <div className="text-[9px] text-rating-poor mt-1">Not yet freed — advance the story to unlock.</div>
+                      )}
+                    </button>
+                  </div>
                 );
-              })}
-            </div>
-            <p className="text-academy-cream/30 text-[9px] text-center">
-              Rating on the aural confirmation scales the effect.
+              })()
+            ) : (
+              <p className="text-academy-cream/40 text-xs text-center py-4">No maestro ally for {character.instrument}.</p>
+            )}
+            <p className="text-academy-cream/30 text-[9px] text-center mt-1">
+              ◈ {state.playerSp} SP · Rating on the aural confirmation scales the effect.
             </p>
           </>
         ) : (
@@ -1010,14 +1061,14 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                   {Object.values(items).reduce((a, b) => a + b, 0)} available
                 </div>
               </button>
-              {character.freedAllies.length > 0 && (
+              {canSummon && (
                 <button
                   onClick={() => setMenu('summons')}
                   className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
                 >
-                  <div className="text-xs font-fantasy text-academy-gold">⟡ Summon</div>
+                  <div className="text-xs font-fantasy text-academy-gold">◈ Summon</div>
                   <div className="text-[9px] text-academy-cream/40 mt-0.5">
-                    {character.freedAllies.length} ally{character.freedAllies.length !== 1 ? 's' : ''} · {state.playerRp} RP
+                    {ALLY_BATTLE_DEFS[characterAllyId!].name} · {state.playerSp} SP
                   </div>
                 </button>
               )}
@@ -1065,9 +1116,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         <ChallengeModal
           challenge={{
             id: `summon_${pendingSummonAllyId}`,
-            title: `Summon: ${ALLIES[pendingSummonAllyId].summonAbility}`,
+            title: `Summon: ${ALLY_BATTLE_DEFS[pendingSummonAllyId].abilityName}`,
             type: 'aural_pitch_spy',
-            description: `Call upon ${ALLIES[pendingSummonAllyId].trueName}. ${ALLIES[pendingSummonAllyId].summonEffect} Rating scales the effect.`,
+            description: `${ALLY_BATTLE_DEFS[pendingSummonAllyId].abilityDescription} Rating scales the effect — Superior is full power.`,
             xpBase: 0,
           }}
           character={character}
@@ -1097,9 +1148,10 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
 // ── Victory / Defeat screens ──────────────────────────────────────────────────
 
-function VictoryScreen({ enemy, rpEarned, onContinue }: {
+function VictoryScreen({ enemy, rpEarned, spEarned, onContinue }: {
   enemy: EnemyDef;
   rpEarned: number;
+  spEarned: number;
   onContinue: () => void;
 }) {
   return (
@@ -1121,6 +1173,12 @@ function VictoryScreen({ enemy, rpEarned, onContinue }: {
           <div className="text-academy-cream/40 text-xs mb-1">RP Earned</div>
           <div className="fantasy-title text-xl text-academy-gold">+{rpEarned}</div>
         </div>
+        {spEarned > 0 && (
+          <div className="text-center">
+            <div className="text-academy-cream/40 text-xs mb-1">SP Earned</div>
+            <div className="fantasy-title text-xl text-academy-gold">+{spEarned}</div>
+          </div>
+        )}
       </div>
       <button onClick={onContinue} className="btn-primary">
         Continue →

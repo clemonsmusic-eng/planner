@@ -104,6 +104,7 @@ export default function InstrumentSelectPage() {
       maxHp: instrument.baseStats.endurance * 5,
       resonancePoints: 0,
       resonanceCoins: 0,
+      summonPoints: 0,
       gear: startingGear,
       freedAllies: [],
       completedChallenges: [],

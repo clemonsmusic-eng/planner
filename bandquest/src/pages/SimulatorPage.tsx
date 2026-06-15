@@ -74,7 +74,7 @@ export default function SimulatorPage() {
   }, {});
   const tiers = Object.keys(byTier).map(Number).sort();
 
-  async function handleVictory(rpEarned: number) {
+  async function handleVictory(rpEarned: number, _spDelta: number) {
     if (!selectedEnemy) return;
     const maxPossibleRp = 20 * 10; // ~10 turns at Superior
     const rating = outcomeRating(rpEarned, maxPossibleRp);

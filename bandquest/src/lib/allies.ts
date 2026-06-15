@@ -1,4 +1,10 @@
-import type { AllyId, SymphonyAlly } from '../types/game';
+// ── Symphony Ally Definitions ─────────────────────────────────────────────────
+// Each ally is tied to one or more instruments. Characters can only summon the
+// ally that matches their instrument. Summons cost Summon Points (SP) — a
+// cross-battle resource distinct from in-battle RP. SP is earned proportional
+// to RP earned; bigger summons have higher SP costs.
+
+import type { AllyId, InstrumentId, SymphonyAlly } from '../types/game';
 
 // Scale applied to ally effect amounts based on the summon confirmation rating.
 export const SUMMON_SCALE: Record<string, number> = {
@@ -9,126 +15,171 @@ export const SUMMON_SCALE: Record<string, number> = {
   poor:      0.2,
 };
 
-export const ALLIES: Record<AllyId, SymphonyAlly> = {
+// Extended ally definition used by BattleScreen.
+export interface AllyBattleDef {
+  id: AllyId;
+  name: string;
+  abilityName: string;
+  abilityDescription: string;
+  instruments: InstrumentId[];  // which player instruments can summon this ally
+  spCost: number;               // Summon Point cost
+}
+
+export const ALLY_BATTLE_DEFS: Record<AllyId, AllyBattleDef> = {
   percival: {
-    id: 'percival',
-    trueName: 'Percival',
-    instrument: 'Percussion',
-    corruptedName: 'The Drumming Colossus',
-    summonAbility: 'Grand Drum Roll',
-    summonEffect: 'Massive AoE stun — all enemies lose their next turn',
-    rpCost: 50,
-    freed: false,
-    zone: 8,
+    id: 'percival', name: 'Percival', abilityName: 'Grand Drum Roll',
+    instruments: ['percussion'],
+    spCost: 90,
+    abilityDescription: 'A timpani solo: 4 small hits then a massive finale — leaves the enemy Vulnerable.',
   },
   syrinx: {
-    id: 'syrinx',
-    trueName: 'Syrinx',
-    instrument: 'Flute',
-    corruptedName: 'The Aria Wraith',
-    summonAbility: 'Ethereal Aria',
-    summonEffect: 'Heal the party (20% of each member\'s maxHp) and charm all weak enemies for 1 turn',
-    rpCost: 50,
-    freed: false,
-    zone: 9,
+    id: 'syrinx', name: 'Flaura', abilityName: 'Ethereal Aria',
+    instruments: ['flute'],
+    spCost: 100,
+    abilityDescription: 'Full restore — heals up to 100% of max HP.',
   },
   salpinx: {
-    id: 'salpinx',
-    trueName: 'Salpinx',
-    instrument: 'Trumpet',
-    corruptedName: 'The War Horn Berserker',
-    summonAbility: 'Fanfare of Light',
-    summonEffect: 'High single-target damage (3× base) and party Attack buff (+20 Power) for 3 turns',
-    rpCost: 50,
-    freed: false,
-    zone: 10,
+    id: 'salpinx', name: 'Buccina', abilityName: 'Fanfare of Light',
+    instruments: ['trumpet'],
+    spCost: 110,
+    abilityDescription: 'A legendary trumpet chorus delivers 7 escalating strikes, then grants Haste and Focus.',
   },
   chalumeau: {
-    id: 'chalumeau',
-    trueName: 'Chalumeau',
-    instrument: 'Clarinet',
-    corruptedName: 'The Register Phantom',
-    summonAbility: 'Crystalline Cascade',
-    summonEffect: '5-hit magic attack spread across all enemies',
-    rpCost: 50,
-    freed: false,
-    zone: 10,
+    id: 'chalumeau', name: 'Claribel', abilityName: 'Crystalline Cascade',
+    instruments: ['clarinet'],
+    spCost: 80,
+    abilityDescription: '12 rapid precision strikes, then grants Focus.',
   },
   hautbois: {
-    id: 'hautbois',
-    trueName: 'Hautbois',
-    instrument: 'Oboe',
-    corruptedName: 'The Double-Reed Specter',
-    summonAbility: 'The Tuning A',
-    summonEffect: 'Restores Accuracy buff to all party members and heals 15% HP each',
-    rpCost: 50,
-    freed: false,
-    zone: 9,
+    id: 'hautbois', name: 'Hautbois', abilityName: 'The Tuning A',
+    instruments: ['oboe'],
+    spCost: 90,
+    abilityDescription: 'Restores 50% HP, clears all debuffs, and grants Deflect.',
   },
   waldhorn: {
-    id: 'waldhorn',
-    trueName: 'Waldhorn',
-    instrument: 'French Horn',
-    corruptedName: 'The Forest Guardian',
-    summonAbility: 'Mountain Echo',
-    summonEffect: 'Deals damage that reverberates 3× over 3 turns (delayed AoE)',
-    rpCost: 50,
-    freed: false,
-    zone: 9,
+    id: 'waldhorn', name: 'Waldhorn', abilityName: 'Mountain Echo',
+    instruments: ['french_horn'],
+    spCost: 80,
+    abilityDescription: 'Three reverberating strikes with escalating power — then inflicts Confusion or Cramped.',
   },
   posaune: {
-    id: 'posaune',
-    trueName: 'Posaune',
-    instrument: 'Trombone',
-    corruptedName: 'The Sliding Chaos Knight',
-    summonAbility: 'Slide into Shadow',
-    summonEffect: 'Debuffs all enemies (−20 Accuracy) and deals high damage to one target',
-    rpCost: 50,
-    freed: false,
-    zone: 10,
+    id: 'posaune', name: 'Sackbut', abilityName: 'Slide into Shadow',
+    instruments: ['trombone'],
+    spCost: 100,
+    abilityDescription: 'Massive single-target damage, then inflicts Slow and Cramped on the enemy.',
   },
   cantora: {
-    id: 'cantora',
-    trueName: 'Cantora',
-    instrument: 'Euphonium / Tuba',
-    corruptedName: 'The Stone Colossus',
-    summonAbility: 'Pedal Tone Quake',
-    summonEffect: 'Massive AoE damage and a party damage-shield for 2 turns',
-    rpCost: 50,
-    freed: false,
-    zone: 11,
+    id: 'cantora', name: 'Euphonia', abilityName: 'Pedal Tone Quake',
+    instruments: ['euphonium', 'tuba'],
+    spCost: 90,
+    abilityDescription: 'Euphonium: heavy damage to the enemy. Tuba: medium damage + Deflect + taunts enemy into basic attacks for 1 turn.',
   },
   bassanello: {
-    id: 'bassanello',
-    trueName: 'Bassanello',
-    instrument: 'Bassoon',
-    corruptedName: 'The Ancient Revenant',
-    summonAbility: 'Cantus Antiquus',
-    summonEffect: 'Revives any fallen party member at full HP and applies a barrier (absorbs next hit) to all',
-    rpCost: 50,
-    freed: false,
-    zone: 11,
+    id: 'bassanello', name: 'Fagotto', abilityName: 'Cantus Antiquus',
+    instruments: ['bassoon'],
+    spCost: 70,
+    abilityDescription: 'Restores 30% HP, clears all negative status effects, and grants Regen for 5 turns.',
   },
   vela: {
-    id: 'vela',
-    trueName: 'Vela',
-    instrument: 'Alto Saxophone',
-    corruptedName: 'The Sultry Shadow',
-    summonAbility: 'Cool Jazz Improv',
-    summonEffect: 'Random powerful effect (high variance) — one of: full-party heal, massive single-target damage, AoE stun, or triple RP gain',
-    rpCost: 50,
-    freed: false,
-    zone: 11,
+    id: 'vela', name: 'Adolpha', abilityName: 'Cool Jazz Improv',
+    instruments: ['alto_sax'],
+    spCost: 50,
+    abilityDescription: 'Improvised solo — random damage and a random debuff on the enemy. High variance.',
   },
   grand_symphony: {
-    id: 'grand_symphony',
-    trueName: 'The Grand Symphony',
-    instrument: 'All Instruments',
+    id: 'grand_symphony', name: 'The Grand Symphony', abilityName: 'Sacred Score',
+    instruments: [],
+    spCost: 300,
+    abilityDescription: 'All ten freed allies perform together. Massive damage, full heal, and all buffs.',
+  },
+};
+
+// Return the ally that a character can summon based on their instrument, or null.
+export function getAllyForInstrument(instrument: InstrumentId): AllyId | null {
+  for (const def of Object.values(ALLY_BATTLE_DEFS)) {
+    if (def.instruments.includes(instrument)) return def.id;
+  }
+  return null;
+}
+
+// ── Legacy full SymphonyAlly record (used by narrative / lore system) ─────────
+
+export const ALLIES: Record<AllyId, SymphonyAlly> = {
+  percival: {
+    id: 'percival', trueName: 'Percival', instrument: 'Percussion',
+    corruptedName: 'The Drumming Colossus',
+    summonAbility: 'Grand Drum Roll',
+    summonEffect: 'Timpani solo — 4 small hits + massive finale + Vulnerable',
+    rpCost: 90, freed: false, zone: 8,
+  },
+  syrinx: {
+    id: 'syrinx', trueName: 'Flaura', instrument: 'Flute',
+    corruptedName: 'The Aria Wraith',
+    summonAbility: 'Ethereal Aria',
+    summonEffect: 'Heals up to 100% max HP',
+    rpCost: 100, freed: false, zone: 9,
+  },
+  salpinx: {
+    id: 'salpinx', trueName: 'Buccina', instrument: 'Trumpet',
+    corruptedName: 'The War Horn Berserker',
+    summonAbility: 'Fanfare of Light',
+    summonEffect: '7-hit trumpet chorus + Haste + Focus',
+    rpCost: 110, freed: false, zone: 10,
+  },
+  chalumeau: {
+    id: 'chalumeau', trueName: 'Claribel', instrument: 'Clarinet',
+    corruptedName: 'The Register Phantom',
+    summonAbility: 'Crystalline Cascade',
+    summonEffect: '12-hit cascade + Focus',
+    rpCost: 80, freed: false, zone: 10,
+  },
+  hautbois: {
+    id: 'hautbois', trueName: 'Hautbois', instrument: 'Oboe',
+    corruptedName: 'The Double-Reed Specter',
+    summonAbility: 'The Tuning A',
+    summonEffect: '50% heal + clear debuffs + Deflect',
+    rpCost: 90, freed: false, zone: 9,
+  },
+  waldhorn: {
+    id: 'waldhorn', trueName: 'Waldhorn', instrument: 'French Horn',
+    corruptedName: 'The Forest Guardian',
+    summonAbility: 'Mountain Echo',
+    summonEffect: '3 escalating echo strikes + Confusion or Cramped',
+    rpCost: 80, freed: false, zone: 9,
+  },
+  posaune: {
+    id: 'posaune', trueName: 'Sackbut', instrument: 'Trombone',
+    corruptedName: 'The Sliding Chaos Knight',
+    summonAbility: 'Slide into Shadow',
+    summonEffect: 'Massive damage + Slow + Cramped',
+    rpCost: 100, freed: false, zone: 10,
+  },
+  cantora: {
+    id: 'cantora', trueName: 'Euphonia', instrument: 'Euphonium / Tuba',
+    corruptedName: 'The Stone Colossus',
+    summonAbility: 'Pedal Tone Quake',
+    summonEffect: 'Euphonium: heavy damage | Tuba: AoE + Deflect + taunt',
+    rpCost: 90, freed: false, zone: 11,
+  },
+  bassanello: {
+    id: 'bassanello', trueName: 'Fagotto', instrument: 'Bassoon',
+    corruptedName: 'The Ancient Revenant',
+    summonAbility: 'Cantus Antiquus',
+    summonEffect: '30% heal + clear debuffs + Regen ×5',
+    rpCost: 70, freed: false, zone: 11,
+  },
+  vela: {
+    id: 'vela', trueName: 'Adolpha', instrument: 'Alto Saxophone',
+    corruptedName: 'The Sultry Shadow',
+    summonAbility: 'Cool Jazz Improv',
+    summonEffect: 'Random damage + random debuff on enemy',
+    rpCost: 50, freed: false, zone: 11,
+  },
+  grand_symphony: {
+    id: 'grand_symphony', trueName: 'The Grand Symphony', instrument: 'All Instruments',
     corruptedName: '—',
     summonAbility: 'Sacred Score',
-    summonEffect: 'All freed Symphony members perform together. Massive damage to all enemies and full-party HP restore.',
-    rpCost: 200,
-    freed: false,
-    zone: 12,
+    summonEffect: 'Massive damage + full heal + all buffs',
+    rpCost: 300, freed: false, zone: 12,
   },
 };

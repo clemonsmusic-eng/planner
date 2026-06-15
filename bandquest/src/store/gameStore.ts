@@ -24,6 +24,7 @@ interface GameState {
   awardBossGear: (bossId: string) => Promise<GearItem | null>;
   completeBootCampStep: (stepId: string) => Promise<void>;
   saveAppearance: (appearance: Appearance) => Promise<void>;
+  addSummonPoints: (delta: number) => Promise<void>;
   setCharacter: (character: Character | null) => void;
 }
 
@@ -303,6 +304,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       .update({ appearance })
       .eq('id', character.id);
   },
+
+  addSummonPoints: async (delta) => {
+    const { character } = get();
+    if (!character) return;
+    const newSp = Math.max(0, character.summonPoints + delta);
+    set({ character: { ...character, summonPoints: newSp } });
+    await supabase
+      .from('characters')
+      .update({ summon_points: newSp })
+      .eq('id', character.id);
+  },
 }));
 
 function dbRowToCharacter(row: Record<string, unknown>): Character {
@@ -326,6 +338,7 @@ function dbRowToCharacter(row: Record<string, unknown>): Character {
     maxHp: row.max_hp as number,
     resonancePoints: row.resonance_points as number,
     resonanceCoins: (row.resonance_coins as number) ?? 0,
+    summonPoints: (row.summon_points as number) ?? 0,
     gear: normalizeGear((row.gear as Partial<Record<string, GearItem>>) ?? {}, row.instrument as Character['instrument']),
     freedAllies: ((row.freed_allies as string[]) ?? []) as AllyId[],
     completedChallenges: (row.completed_challenges as string[]) ?? [],

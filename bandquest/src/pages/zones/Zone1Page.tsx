@@ -105,7 +105,7 @@ function buildChallenges(completedChallenges: string[]): Challenge[] {
 }
 
 export default function Zone1Page() {
-  const { character, awardChallenge, advanceZone, equipGear } = useGameStore();
+  const { character, awardChallenge, advanceZone, equipGear, addSummonPoints } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
@@ -133,7 +133,8 @@ export default function Zone1Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number) {
+  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number, spDelta: number) {
+    void rpEarned;
     const challengeId = battleId === 'mini_boss' ? 'z1_mini_boss_defeated' : 'z1_boss_defeated';
     await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
     const drop = getBossGearDrop(challengeId, char);
@@ -141,7 +142,7 @@ export default function Zone1Page() {
     if (battleId === 'boss') {
       await advanceZone(2);
     }
-    void rpEarned;
+    if (spDelta !== 0) await addSummonPoints(spDelta);
     setActiveBattle(null);
   }
 
@@ -151,7 +152,7 @@ export default function Zone1Page() {
       <BattleScreen
         character={character}
         enemy={ENEMIES[enemyId]}
-        onVictory={(rp) => handleBattleVictory(activeBattle, rp)}
+        onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
         onDefeat={() => setActiveBattle(null)}
       />
     );
