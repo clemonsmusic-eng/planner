@@ -91,6 +91,7 @@ export function SchedulePage() {
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
 
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
@@ -241,12 +242,21 @@ export function SchedulePage() {
               isLocked={!!activeProject.inputs.isLocked}
               onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
             />
-            <button
-              onClick={() => generateAndSaveSchedule(activeProject.id)}
-              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
-            >
-              Regenerate
-            </button>
+            {isDirty ? (
+              <button
+                onClick={() => setIsDirty(false)}
+                className="flex-shrink-0 px-3 py-1.5 bg-teal-600 text-white rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+              >
+                Save
+              </button>
+            ) : (
+              <button
+                onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
+                className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+              >
+                Regenerate
+              </button>
+            )}
           </div>
 
           {/* Filter bar */}
@@ -371,6 +381,7 @@ export function SchedulePage() {
               memberId,
               memberName,
             });
+            setIsDirty(true);
             setMemberPickerEntry(null);
           }}
           onClose={() => setMemberPickerEntry(null)}
