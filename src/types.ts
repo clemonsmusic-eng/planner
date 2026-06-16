@@ -116,13 +116,15 @@ export interface DateOverride {
   reason: string;
 }
 
+export type ProjectStatus = 'draft' | 'active' | 'archived';
+
 export interface ProjectInputs {
   // Client Info
   clientName: string;
   projectName: string;
   community: string;
   moveType: MoveType;
-  status: 'draft' | 'active' | 'archived';
+  status: ProjectStatus;
   // Dates
   targetMoveDate: string; // ISO date string
   earliestStartDate: string; // ISO date string
@@ -210,7 +212,7 @@ export interface Project {
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
+export type TabName = 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
 
 export interface AppState {
   projects: Project[];
@@ -221,4 +223,5 @@ export interface AppState {
   lists: ListCategory[];
   phaseTemplates: PhaseTemplate[];
   auctionSettings: AuctionAppSettings;
+  projectListFilter: ProjectStatus | 'all';
 }

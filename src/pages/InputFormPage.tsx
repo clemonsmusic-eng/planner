@@ -86,7 +86,7 @@ export function InputFormPage() {
           <p className="text-ios-gray-600 text-sm">Go to Projects tab and select or create a project.</p>
         </div>
         <button
-          onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' })}
+          onClick={() => { dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' }); dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' }); }}
           className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80"
         >
           Go to Projects

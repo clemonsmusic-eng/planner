@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -57,6 +57,7 @@ function createExampleProject(teamMembers: TeamMember[], lists: ListCategory[] =
 
 type Action =
   | { type: 'SET_ACTIVE_TAB'; tab: TabName }
+  | { type: 'SET_PROJECT_LIST_FILTER'; filter: ProjectStatus | 'all' }
   | { type: 'SET_ACTIVE_PROJECT'; id: string | null }
   | { type: 'CREATE_PROJECT'; project: Project }
   | { type: 'UPDATE_PROJECT'; id: string; inputs: ProjectInputs }
@@ -79,6 +80,9 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_ACTIVE_TAB':
       return { ...state, activeTab: action.tab };
+
+    case 'SET_PROJECT_LIST_FILTER':
+      return { ...state, projectListFilter: action.filter };
 
     case 'SET_ACTIVE_PROJECT':
       return { ...state, activeProjectId: action.id };
@@ -216,12 +220,13 @@ function reducer(state: AppState, action: Action): AppState {
 const initialState: AppState = {
   projects: [],
   activeProjectId: null,
-  activeTab: 'projects',
+  activeTab: 'home',
   teamMembers: [],
   communities: [],
   lists: [],
   phaseTemplates: [],
   auctionSettings: { hourlyRate: 95, performanceLevel: 'Average' },
+  projectListFilter: 'all',
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────

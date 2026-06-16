@@ -2,6 +2,8 @@ import { AppProvider, useApp } from './store/AppContext';
 import { MenuProvider } from './components/MenuContext';
 import { Navigation } from './components/Navigation';
 import { HamburgerMenu } from './components/HamburgerMenu';
+import { HomePage } from './pages/HomePage';
+import { ProjectListPage } from './pages/ProjectListPage';
 import { InputFormPage } from './pages/InputFormPage';
 import { PlanPage } from './pages/PlanPage';
 import { SchedulePage } from './pages/SchedulePage';
@@ -13,7 +15,8 @@ function AppContent() {
 
   const page = (() => {
     switch (state.activeTab) {
-      case 'projects':  return <InputFormPage />;
+      case 'home':      return <HomePage />;
+      case 'projects':  return <ProjectListPage />;
       case 'inputs':    return <InputFormPage />;
       case 'plan':      return <PlanPage />;
       case 'schedule':  return <SchedulePage />;

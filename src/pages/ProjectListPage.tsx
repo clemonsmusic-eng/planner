@@ -38,6 +38,13 @@ function createNewProject(): Project {
   };
 }
 
+const FILTER_LABELS: Record<string, string> = {
+  all: 'Projects',
+  active: 'Active Projects',
+  draft: 'Draft Projects',
+  archived: 'Archived Projects',
+};
+
 export function ProjectListPage() {
   const { state, dispatch } = useApp();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -63,7 +70,10 @@ export function ProjectListPage() {
     }
   }
 
-  const projects = state.projects;
+  const filter = state.projectListFilter ?? 'all';
+  const projects = filter === 'all'
+    ? state.projects
+    : state.projects.filter((p) => (p.inputs.status ?? 'active') === filter);
 
   return (
     <div className="flex flex-col h-full">
@@ -72,9 +82,20 @@ export function ProjectListPage() {
         className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4 pt-safe"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-teal-900">Projects</h1>
-          <span className="text-sm text-ios-gray-600">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'home' })}
+              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full active:bg-ios-gray-100 text-ios-gray-600"
+              aria-label="Back to Home"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4.5-4.5a1 1 0 010-1.414l4.5-4.5a1 1 0 111.414 1.414L6.914 9H17a1 1 0 110 2H6.914l3.293 3.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <h1 className="text-2xl font-bold text-teal-900 truncate">{FILTER_LABELS[filter] ?? 'Projects'}</h1>
+          </div>
+          <span className="flex-shrink-0 text-sm text-ios-gray-600">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
