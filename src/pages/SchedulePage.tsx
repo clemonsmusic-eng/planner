@@ -3,10 +3,26 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
-import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel } from '../types';
+import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES  = new Set(['phase-6']);
+
+const DAY_NAMES: (keyof TeamMemberAvailability)[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function isMemberAvailableForShift(member: TeamMember, dateStr: string, shift: 'AM' | 'PM' | 'Full Day'): boolean {
+  const d = new Date(dateStr + 'T12:00:00');
+  const slot = member.availability[DAY_NAMES[d.getDay()]];
+  if (slot === 'Unavailable') return false;
+  if (slot === 'Full Day') return true;
+  return slot === shift;
+}
+
+function isMemberApprovedForRole(member: TeamMember, phaseId: string, role: RoleType): boolean {
+  const pr = member.phaseRoles[phaseId as PhaseId];
+  if (!pr || pr === 'N/A') return false;
+  return pr.includes(role);
+}
 
 function experienceMultiplier(level: ExperienceLevel): string {
   return level === 'High' ? '0.85×' : level === 'Low' ? '1.15×' : '1.00×';
@@ -74,6 +90,7 @@ export function SchedulePage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
+  const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
 
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
@@ -294,6 +311,7 @@ export function SchedulePage() {
                   onOverride={() => setOverrideDate(day.date)}
                   onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
                   memberMap={memberMap}
+                  onPickMember={setMemberPickerEntry}
                 />
               ))}
             </div>
@@ -329,7 +347,6 @@ export function SchedulePage() {
         <DateMoveSheet
           originalDate={dateMovePicker.originalDate}
           onMove={(newDate) => {
-            // Move all phases that appear on this day
             const phasesOnDay = [...new Set(
               (activeProject.schedule?.days.find(d => d.date === dateMovePicker.originalDate)?.entries ?? [])
                 .map(e => e.phaseId)
@@ -339,6 +356,24 @@ export function SchedulePage() {
             }
           }}
           onClose={() => setDateMovePicker(null)}
+        />
+      )}
+
+      {memberPickerEntry && (
+        <MemberPickerSheet
+          entry={memberPickerEntry}
+          teamMembers={state.teamMembers}
+          onSelect={(memberId, memberName) => {
+            dispatch({
+              type: 'UPDATE_SCHEDULE_ENTRY',
+              projectId: activeProject.id,
+              entryId: memberPickerEntry.id,
+              memberId,
+              memberName,
+            });
+            setMemberPickerEntry(null);
+          }}
+          onClose={() => setMemberPickerEntry(null)}
         />
       )}
     </>
@@ -353,6 +388,7 @@ function DaySection({
   onOverride,
   onDateChange,
   memberMap,
+  onPickMember,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -361,6 +397,7 @@ function DaySection({
   onOverride: () => void;
   onDateChange: () => void;
   memberMap: Map<string, TeamMember>;
+  onPickMember: (entry: ScheduleEntry) => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -426,7 +463,7 @@ function DaySection({
               </div>
               <div className="divide-y divide-ios-gray-100">
                 {phaseEntries.map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} memberMap={memberMap} />
+                  <EntryRow key={entry.id} entry={entry} memberMap={memberMap} onPickMember={onPickMember} />
                 ))}
               </div>
             </Card>
@@ -449,7 +486,15 @@ function groupEntriesByPhase(entries: ScheduleEntry[]) {
   }));
 }
 
-function EntryRow({ entry, memberMap }: { entry: ScheduleEntry; memberMap: Map<string, TeamMember> }) {
+function EntryRow({
+  entry,
+  memberMap,
+  onPickMember,
+}: {
+  entry: ScheduleEntry;
+  memberMap: Map<string, TeamMember>;
+  onPickMember: (entry: ScheduleEntry) => void;
+}) {
   const isConflict = entry.status === 'needs-assignment' || entry.status === 'conflict';
   const isOverMax = entry.status === 'over-max';
 
@@ -464,7 +509,10 @@ function EntryRow({ entry, memberMap }: { entry: ScheduleEntry; memberMap: Map<s
     : null;
 
   return (
-    <div className={`px-3 py-2.5 flex items-start gap-2 ${isConflict ? 'bg-red-50' : isOverMax ? 'bg-yellow-50' : ''}`}>
+    <button
+      onClick={() => onPickMember(entry)}
+      className={`w-full px-3 py-2.5 flex items-start gap-2 text-left active:bg-ios-gray-50 transition-colors ${isConflict ? 'bg-red-50' : isOverMax ? 'bg-yellow-50' : ''}`}
+    >
       <span
         className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 ${
           ROLE_COLORS[entry.role] ?? 'bg-gray-100 text-teal-700'
@@ -504,7 +552,103 @@ function EntryRow({ entry, memberMap }: { entry: ScheduleEntry; memberMap: Map<s
           )}
         </div>
       </div>
-    </div>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-ios-gray-300 flex-shrink-0 mt-0.5">
+        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+      </svg>
+    </button>
+  );
+}
+
+function MemberPickerSheet({
+  entry,
+  teamMembers,
+  onSelect,
+  onClose,
+}: {
+  entry: ScheduleEntry;
+  teamMembers: TeamMember[];
+  onSelect: (memberId: string | null, memberName: string | null) => void;
+  onClose: () => void;
+}) {
+  const approved = teamMembers.filter((m) => isMemberApprovedForRole(m, entry.phaseId, entry.role));
+  const notApproved = teamMembers.filter((m) => !isMemberApprovedForRole(m, entry.phaseId, entry.role));
+
+  function MemberRow({ member }: { member: TeamMember }) {
+    const available = isMemberAvailableForShift(member, entry.date, entry.shift);
+    const isSelected = entry.assignedMember === member.id;
+    return (
+      <button
+        onClick={() => onSelect(member.id, member.name)}
+        className={`w-full flex items-center gap-3 px-4 py-3 min-h-[50px] text-left active:bg-ios-gray-50 border-b border-ios-gray-100 last:border-0`}
+      >
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${available ? 'bg-green-500' : 'bg-red-400'}`} />
+        <span className={`flex-1 text-sm font-medium ${available ? 'text-teal-900' : 'text-ios-gray-500'}`}>
+          {member.name}
+        </span>
+        {!available && (
+          <span className="text-[10px] text-red-500 font-semibold flex-shrink-0">Unavailable</span>
+        )}
+        {isSelected && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-teal-600 flex-shrink-0">
+            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+          </svg>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl flex flex-col"
+        style={{ maxHeight: '75vh', paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-ios-gray-200">
+          <div>
+            <p className="font-bold text-teal-900 text-base">{entry.role}</p>
+            <p className="text-xs text-ios-gray-500">{entry.phaseName} · {SHIFT_LABELS[entry.shift]}</p>
+          </div>
+          <button onClick={onClose} className="text-sm font-semibold text-teal-600 min-h-[36px] px-2">Done</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {/* Unassign option */}
+          {entry.assignedMember && (
+            <>
+              <button
+                onClick={() => onSelect(null, null)}
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[50px] text-left text-red-600 border-b border-ios-gray-200 active:bg-red-50"
+              >
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-ios-gray-300" />
+                <span className="text-sm font-medium">Unassign</span>
+              </button>
+            </>
+          )}
+
+          {/* Approved members */}
+          {approved.length > 0 && (
+            <>
+              <div className="px-4 py-1.5 bg-ios-gray-50 border-b border-ios-gray-100">
+                <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wide">Approved for Role</p>
+              </div>
+              {approved.map((m) => <MemberRow key={m.id} member={m} />)}
+            </>
+          )}
+
+          {/* Divider */}
+          {approved.length > 0 && notApproved.length > 0 && (
+            <div className="px-4 py-1.5 bg-ios-gray-50 border-t border-b border-ios-gray-200 mt-1">
+              <p className="text-[11px] font-bold text-ios-gray-400 uppercase tracking-wide">Not Approved for Role</p>
+            </div>
+          )}
+
+          {/* Not-approved members */}
+          {notApproved.map((m) => <MemberRow key={m.id} member={m} />)}
+        </div>
+      </div>
+    </>
   );
 }
 

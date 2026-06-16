@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -70,7 +70,8 @@ type Action =
   | { type: 'UPDATE_AUCTION_SETTINGS'; settings: AuctionAppSettings }
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
   | { type: 'TOGGLE_LOCK'; id: string }
-  | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string };
+  | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string }
+  | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -177,6 +178,29 @@ function reducer(state: AppState, action: Action): AppState {
           { id: crypto.randomUUID(), phaseId: action.phaseId, originalDate: action.originalDate, newDate: action.newDate },
         ];
         return { ...p, inputs: { ...p.inputs, phaseDateMoves }, updatedAt: new Date().toISOString() };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'UPDATE_SCHEDULE_ENTRY': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+        const days = p.schedule.days.map((day) => ({
+          ...day,
+          entries: day.entries.map((entry) =>
+            entry.id === action.entryId
+              ? {
+                  ...entry,
+                  assignedMember: action.memberId,
+                  assignedMemberName: action.memberName,
+                  status: (action.memberId ? 'assigned' : 'needs-assignment') as AssignmentStatus,
+                  warnings: [],
+                }
+              : entry
+          ),
+        }));
+        return { ...p, schedule: { ...p.schedule, days } };
       });
       saveProjects(projects);
       return { ...state, projects };
