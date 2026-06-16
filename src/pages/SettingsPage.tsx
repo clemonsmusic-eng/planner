@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
+import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings } from '../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1229,6 +1230,8 @@ export function SettingsPage() {
 
         <div className="h-4" />
       </div>
+
+      {isDirty && <FloatingSaveButton onSave={save} />}
     </div>
   );
 }

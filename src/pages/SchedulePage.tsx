@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
+import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -242,21 +243,12 @@ export function SchedulePage() {
               isLocked={!!activeProject.inputs.isLocked}
               onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
             />
-            {isDirty ? (
-              <button
-                onClick={() => setIsDirty(false)}
-                className="flex-shrink-0 px-3 py-1.5 bg-teal-600 text-white rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
-              >
-                Save
-              </button>
-            ) : (
-              <button
-                onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
-                className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
-              >
-                Regenerate
-              </button>
-            )}
+            <button
+              onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
+              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+            >
+              Regenerate
+            </button>
           </div>
 
           {/* Filter bar */}
@@ -387,6 +379,8 @@ export function SchedulePage() {
           onClose={() => setMemberPickerEntry(null)}
         />
       )}
+
+      {isDirty && <FloatingSaveButton onSave={() => setIsDirty(false)} />}
     </>
   );
 }
@@ -414,6 +408,8 @@ function DaySection({
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
   );
 
+  const visitTypes = [...new Map(day.entries.map((e) => [e.phaseId, e.phaseName])).values()];
+
   return (
     <div>
       {/* Sticky section header */}
@@ -423,7 +419,10 @@ function DaySection({
       >
         <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-sm font-bold text-teal-800 truncate">{day.label}</h3>
+            <h3 className="text-sm font-bold text-teal-800 flex-shrink-0">{day.label}</h3>
+            {visitTypes.length > 0 && (
+              <span className="text-xs text-ios-gray-500 truncate">· {visitTypes.join(' · ')}</span>
+            )}
             {hasConflict && (
               <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
             )}

@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
 import { HamburgerButton } from '../components/HamburgerMenu';
+import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
 
 const CLEANOUT_TYPES = ['Basic', 'Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
@@ -615,6 +616,8 @@ export function InputFormPage() {
           )}
         </div>
       </div>
+
+      {!saved && <FloatingSaveButton onSave={handleSaveAndGenerate} label="Save & Generate" />}
 
       {/* Save Prompt Modal */}
       {showSavePrompt && (
