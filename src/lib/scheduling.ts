@@ -83,13 +83,6 @@ function resolveShift(
   return clientPref;
 }
 
-/** Advance a date to the next Friday (5) or Saturday (6). */
-function nextFriOrSat(date: Date): Date {
-  const d = new Date(date);
-  while (d.getDay() !== 5 && d.getDay() !== 6) d.setDate(d.getDate() + 1);
-  return d;
-}
-
 // ─── Main Scheduling Function ─────────────────────────────────────────────────
 
 // memberId → dateStr → shift already committed in a prior project
@@ -196,9 +189,13 @@ export function generateSchedule(
   // → Phase 2 → Phase 4-1 → Sort days (budget-scaled) → Phase 4-2 (last resort)
 
   // Required: Phase 1 + AM Move Day (always included, 2 people each)
-  // Auction cleanout prep and pickup day hours are committed upfront and deducted from the pool.
+  // Auction phases (lot prep, pickup prep, pickup) are committed upfront and deducted from the pool.
   const auctionPickupHours = auction.enabled ? AUCTION_PICKUP_HOURS * AUCTION_PICKUP_TEAM_SIZE : 0;
-  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours - auctionPickupHours;
+  const pickupPrepTpl = phaseTemplates.find(t => t.id === 'phase-pickup-prep');
+  const auctionPickupPrepHours = auction.enabled
+    ? (pickupPrepTpl?.minHours ?? 3) * (pickupPrepTpl?.minTeamSize ?? 3)
+    : 0;
+  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours - auctionPickupHours - auctionPickupPrepHours;
 
   // PM Move Day (5-2) — scale team size down if budget is tight
   const moveDayPMMax = Math.max(1, moveDaySize - 2);
@@ -256,54 +253,59 @@ export function generateSchedule(
     }
   }
 
-  // Cleanout dates — for auction cleanouts, spread across however many workdays are needed
+  // Regular cleanout (phase-6) — scheduled when cleanout is enabled regardless of auction
   const cleanoutDates: string[] = [];
-  interface CleanoutDay { date: string; hoursPerPerson: number | undefined; teamSizeOverride?: number; phaseId: 'phase-6' | 'phase-auction-prep' }
-  const cleanoutSchedule: CleanoutDay[] = [];
-
   if (cleanout.enabled) {
     const cleanoutStart = cleanout.startDate
       ? parseISO(cleanout.startDate)
       : addWorkdays(moveDayDate, 2);
-
-    if (auctionEstHours > 0) {
-      const ctAuctionPrep = phaseTemplates.find((t) => t.id === 'phase-auction-prep');
-      const teamSize = ctAuctionPrep?.minTeamSize ?? AUCTION_PREP_TEAM_SIZE;
-      const maxHoursPerPerson = ctAuctionPrep?.maxHours ?? 6;
-      const capacityPerDay = teamSize * maxHoursPerPerson;
-      const daysNeeded = Math.max(1, Math.ceil(auctionEstHours / capacityPerDay));
-      let remaining = auctionEstHours;
-      let cur = new Date(cleanoutStart);
-      for (let i = 0; i < daysNeeded && remaining > 0.05; i++) {
-        const hoursPerPerson = Math.min(maxHoursPerPerson, Math.round((remaining / teamSize) * 10) / 10);
-        const dateStr = toISODate(cur);
-        cleanoutDates.push(dateStr);
-        cleanoutSchedule.push({ date: dateStr, hoursPerPerson, teamSizeOverride: teamSize, phaseId: 'phase-auction-prep' });
-        remaining -= hoursPerPerson * teamSize;
-        cur = addWorkdays(cur, 1);
-      }
-    } else {
-      const dateStr = toISODate(cleanoutStart);
-      cleanoutDates.push(dateStr);
-      cleanoutSchedule.push({ date: dateStr, hoursPerPerson: undefined, phaseId: 'phase-6' });
-    }
+    cleanoutDates.push(toISODate(cleanoutStart));
   }
 
-  // Auction dates
+  // Auction dates and lot prep scheduling
   let auctionLotOrg: string | null = null;
   let auctionStart: string | null = null;
+  let auctionPickupPrep: string | null = null;
   let auctionPickup: string | null = null;
+  const lotPrepDates: string[] = [];
+  interface LotPrepDay { date: string; hoursPerPerson: number | undefined; teamSizeOverride?: number }
+  const lotPrepSchedule: LotPrepDay[] = [];
+
   if (auction.enabled) {
     const lotOrgDate = addWorkdays(moveDayDate, 8);
     auctionLotOrg = toISODate(lotOrgDate);
+
     const auctionStartDate = (() => {
       let d = addWorkdays(moveDayDate, 10);
-      // next Monday on or after
       while (d.getDay() !== 1) d = addDays(d, 1);
       return d;
     })();
     auctionStart = toISODate(auctionStartDate);
-    auctionPickup = toISODate(nextFriOrSat(addDays(auctionStartDate, 10)));
+
+    // Pickup Day = first Friday that is at least 13 calendar days after lot prep start
+    let pickupDayDate = addDays(new Date(lotOrgDate), 13);
+    while (pickupDayDate.getDay() !== 5) pickupDayDate = addDays(pickupDayDate, 1);
+    auctionPickup = toISODate(pickupDayDate);
+    auctionPickupPrep = toISODate(addDays(pickupDayDate, -1));
+
+    // Lot Prep scheduling — driven by auction estimate (auctionEstHours)
+    if (auctionEstHours > 0) {
+      const ctLotPrep = phaseTemplates.find((t) => t.id === 'phase-lot-prep');
+      const teamSize = ctLotPrep?.minTeamSize ?? AUCTION_PREP_TEAM_SIZE;
+      const maxHoursPerPerson = ctLotPrep?.maxHours ?? 6;
+      const capacityPerDay = teamSize * maxHoursPerPerson;
+      const daysNeeded = Math.max(1, Math.ceil(auctionEstHours / capacityPerDay));
+      let remaining = auctionEstHours;
+      let cur = new Date(lotOrgDate);
+      for (let i = 0; i < daysNeeded && remaining > 0.05; i++) {
+        const hoursPerPerson = Math.min(maxHoursPerPerson, Math.round((remaining / teamSize) * 10) / 10);
+        const dateStr = toISODate(cur);
+        lotPrepDates.push(dateStr);
+        lotPrepSchedule.push({ date: dateStr, hoursPerPerson, teamSizeOverride: teamSize });
+        remaining -= hoursPerPerson * teamSize;
+        cur = addWorkdays(cur, 1);
+      }
+    }
   }
 
   const suggestedDates: SuggestedDates = {
@@ -313,8 +315,10 @@ export function generateSchedule(
     finalPackDay: toISODate(finalPackDayDate),
     moveDay: toISODate(moveDayDate),
     cleanoutDays: cleanoutDates,
+    lotPrepDays: lotPrepDates,
     auctionLotOrg,
     auctionStart,
+    auctionPickupPrep,
     auctionPickup,
   };
 
@@ -410,9 +414,19 @@ export function generateSchedule(
   // Phase 5-2 – PM Move Day (budget-scaled team size)
   if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
 
-  // Phase 6 / Auction Prep – Cleanout (if enabled); auction projects use phase-auction-prep template
-  for (const ct of cleanoutSchedule) {
-    addPhaseOnDate(ct.phaseId, parseISO(ct.date), ct.teamSizeOverride, ct.hoursPerPerson);
+  // Phase 6 – Cleanout (if enabled, single day regardless of auction)
+  for (const dateStr of cleanoutDates) {
+    addPhaseOnDate('phase-6', parseISO(dateStr));
+  }
+
+  // Lot Prep – auction only, driven by auction estimate
+  for (const lp of lotPrepSchedule) {
+    addPhaseOnDate('phase-lot-prep', parseISO(lp.date), lp.teamSizeOverride, lp.hoursPerPerson);
+  }
+
+  // Pickup Prep Day – 1 day before auction pickup
+  if (auction.enabled && auctionPickupPrep) {
+    addPhaseOnDate('phase-pickup-prep', parseISO(auctionPickupPrep), pickupPrepTpl?.minTeamSize);
   }
 
   // Phase 7 – Pickup Day (if auction enabled); always 4 people × 8 hours
@@ -436,7 +450,7 @@ export function generateSchedule(
     'phase-1': 0, 'phase-2': 1, 'phase-3': 2,
     'phase-4-1': 3, 'phase-4-2': 4,
     'phase-5-1': 5, 'phase-5-2': 6,
-    'phase-6': 7, 'phase-auction-prep': 7, 'phase-7': 8,
+    'phase-6': 7, 'phase-lot-prep': 8, 'phase-pickup-prep': 9, 'phase-7': 10,
   };
   tasks.sort((a, b) => (PHASE_PRIORITY[a.phaseId] ?? 5) - (PHASE_PRIORITY[b.phaseId] ?? 5));
 

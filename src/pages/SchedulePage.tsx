@@ -7,7 +7,7 @@ import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
-const CLEANOUT_PHASES  = new Set(['phase-6']);
+const CLEANOUT_PHASES  = new Set(['phase-6', 'phase-lot-prep', 'phase-pickup-prep', 'phase-7']);
 
 const DAY_NAMES: (keyof TeamMemberAvailability)[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

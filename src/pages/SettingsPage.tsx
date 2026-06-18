@@ -27,7 +27,8 @@ const PHASE_CONFIG: { id: PhaseId; label: string }[] = [
   { id: 'phase-5-1',          label: 'Mv AM' },
   { id: 'phase-5-2',          label: 'Mv PM' },
   { id: 'phase-6',            label: 'Clnout' },
-  { id: 'phase-auction-prep', label: 'AcPrep' },
+  { id: 'phase-lot-prep',     label: 'LotPrp' },
+  { id: 'phase-pickup-prep',  label: 'PkPrep' },
   { id: 'phase-7',            label: 'Pickup' },
 ];
 
@@ -721,7 +722,7 @@ function PhaseTemplateCard({
   onChange: (updated: PhaseTemplate) => void;
 }) {
   const shiftLabel = template.isAM ? 'AM' : template.isPM ? 'PM' : template.shift === 'client-pref' ? 'Client Pref' : template.shift;
-  const isAuctionOnly = template.id === 'phase-auction-prep' || template.id === 'phase-7';
+  const isAuctionOnly = template.id === 'phase-lot-prep' || template.id === 'phase-pickup-prep' || template.id === 'phase-7';
 
   return (
     <div className={`bg-ios-gray-50 rounded-xl border px-4 py-3 ${isAuctionOnly ? 'border-amber-200' : 'border-ios-gray-200'}`}>
@@ -1136,7 +1137,7 @@ export function SettingsPage() {
         'phase-1': ['Specialist'], 'phase-2': ['Specialist'], 'phase-3': ['Specialist'],
         'phase-4-1': ['Specialist'], 'phase-4-2': ['Specialist'],
         'phase-5-1': ['Specialist'], 'phase-5-2': ['Specialist'],
-        'phase-6': ['Specialist'], 'phase-auction-prep': ['Specialist'], 'phase-7': ['Specialist'],
+        'phase-6': ['Specialist'], 'phase-lot-prep': ['Specialist'], 'phase-pickup-prep': ['Specialist'], 'phase-7': ['Specialist'],
       } as MemberPhaseRoles,
       availability: {
         Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day',

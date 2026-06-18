@@ -28,7 +28,8 @@ export type PhaseId =
   | 'phase-5-1'
   | 'phase-5-2'
   | 'phase-6'
-  | 'phase-auction-prep'
+  | 'phase-lot-prep'
+  | 'phase-pickup-prep'
   | 'phase-7';
 
 export type MemberPhaseRole = RoleType[] | 'N/A';
@@ -206,8 +207,10 @@ export interface SuggestedDates {
   finalPackDay: string;
   moveDay: string;
   cleanoutDays: string[];
+  lotPrepDays: string[];
   auctionLotOrg: string | null;
   auctionStart: string | null;
+  auctionPickupPrep: string | null;
   auctionPickup: string | null;
 }
 

@@ -292,14 +292,18 @@ function SuggestedDatesCard({
     { label: 'Final Pack Day', date: suggestedDates.finalPackDay },
     { label: 'Move Day', date: suggestedDates.moveDay, accent: true },
     ...suggestedDates.cleanoutDays.map((d, i) => ({
-      label: `Cleanout Day ${i + 1}`,
+      label: suggestedDates.cleanoutDays.length > 1 ? `Cleanout Day ${i + 1}` : 'Cleanout Day',
       date: d,
     })),
-    ...(suggestedDates.auctionLotOrg
-      ? [{ label: 'Auction: Lot Organization', date: suggestedDates.auctionLotOrg }]
-      : []),
+    ...(suggestedDates.lotPrepDays ?? []).map((d, i) => ({
+      label: (suggestedDates.lotPrepDays ?? []).length > 1 ? `Lot Prep Day ${i + 1}` : 'Lot Prep Day',
+      date: d,
+    })),
     ...(suggestedDates.auctionStart
       ? [{ label: 'Auction Start', date: suggestedDates.auctionStart }]
+      : []),
+    ...(suggestedDates.auctionPickupPrep
+      ? [{ label: 'Pickup Prep Day', date: suggestedDates.auctionPickupPrep }]
       : []),
     ...(suggestedDates.auctionPickup
       ? [{ label: 'Pickup Day', date: suggestedDates.auctionPickup }]
