@@ -66,6 +66,7 @@ export function loadTeamMembers(): TeamMember[] {
         ...m,
         minHoursPerWeek: m.minHoursPerWeek ?? 0,
         experience: m.experience ?? { packAndSort: 'Average', cleanout: 'Average' },
+        timeOff: m.timeOff ?? [],
       };
       // Migrate to phaseRoles if missing (from shiftRoles or old roles[])
       if (!member.phaseRoles) {

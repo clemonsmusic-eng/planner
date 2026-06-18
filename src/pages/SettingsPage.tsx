@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
-import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings } from '../types';
+import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest } from '../types';
+import { formatDateLabel } from '../lib/dateUtils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -265,6 +266,9 @@ function MemberCard({ member, onChange, onDelete, dragHandle }: MemberCardProps)
             </div>
           </div>
 
+          {/* Time Off */}
+          <TimeOffSection member={member} onChange={onChange} />
+
           {/* Delete */}
           <button
             onClick={onDelete}
@@ -273,6 +277,172 @@ function MemberCard({ member, onChange, onDelete, dragHandle }: MemberCardProps)
             Remove {member.name}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Time Off Section ─────────────────────────────────────────────────────────
+
+function TimeOffSection({
+  member,
+  onChange,
+}: {
+  member: TeamMember;
+  onChange: (updated: TeamMember) => void;
+}) {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [note, setNote] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const periods = member.timeOff ?? [];
+  const today = new Date().toISOString().slice(0, 10);
+
+  function addPeriod() {
+    if (!startDate || !endDate || endDate < startDate) return;
+    const newPeriod: TimeOffRequest = {
+      id: `to-${Date.now()}`,
+      startDate,
+      endDate,
+      note: note.trim() || undefined,
+    };
+    onChange({ ...member, timeOff: [...periods, newPeriod] });
+    setStartDate('');
+    setEndDate('');
+    setNote('');
+    setAdding(false);
+  }
+
+  function removePeriod(id: string) {
+    onChange({ ...member, timeOff: periods.filter((t) => t.id !== id) });
+  }
+
+  const upcoming = periods.filter((t) => t.endDate >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const past = periods.filter((t) => t.endDate < today).sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2">Time Off</p>
+
+      {/* Upcoming / active periods */}
+      {upcoming.length > 0 && (
+        <div className="space-y-1 mb-2">
+          {upcoming.map((t) => {
+            const isActive = today >= t.startDate && today <= t.endDate;
+            return (
+              <div key={t.id} className={`flex items-start justify-between gap-2 rounded-xl px-3 py-2 border ${isActive ? 'bg-amber-50 border-amber-200' : 'bg-white border-ios-gray-200'}`}>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold ${isActive ? 'text-amber-800' : 'text-teal-900'}`}>
+                    {isActive && <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide mr-1.5">Active · </span>}
+                    {formatDateLabel(t.startDate)}
+                    {t.startDate !== t.endDate && ` – ${formatDateLabel(t.endDate)}`}
+                  </p>
+                  {t.note && <p className="text-xs text-ios-gray-500 truncate">{t.note}</p>}
+                </div>
+                <button
+                  onClick={() => removePeriod(t.id)}
+                  className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-ios-gray-400 active:text-red-500 rounded-lg mt-0.5"
+                  aria-label="Remove time off"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Past periods (collapsed) */}
+      {past.length > 0 && (
+        <details className="mb-2">
+          <summary className="text-xs text-ios-gray-400 cursor-pointer mb-1 select-none">
+            {past.length} past period{past.length !== 1 ? 's' : ''}
+          </summary>
+          <div className="space-y-1 mt-1">
+            {past.map((t) => (
+              <div key={t.id} className="flex items-start justify-between gap-2 rounded-xl px-3 py-2 border border-ios-gray-200 bg-ios-gray-50 opacity-60">
+                <div className="min-w-0">
+                  <p className="text-sm text-ios-gray-600">
+                    {formatDateLabel(t.startDate)}{t.startDate !== t.endDate && ` – ${formatDateLabel(t.endDate)}`}
+                  </p>
+                  {t.note && <p className="text-xs text-ios-gray-400 truncate">{t.note}</p>}
+                </div>
+                <button
+                  onClick={() => removePeriod(t.id)}
+                  className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-ios-gray-300 active:text-red-500 rounded-lg mt-0.5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {/* Add form */}
+      {adding ? (
+        <div className="bg-white rounded-xl border border-teal-200 p-3 space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">From</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (!endDate || e.target.value > endDate) setEndDate(e.target.value);
+                }}
+                className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1.5 text-sm bg-white"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold text-ios-gray-500 uppercase tracking-wide block mb-1">To</label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-2 py-1.5 text-sm bg-white"
+              />
+            </div>
+          </div>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note (optional)"
+            className="w-full min-h-[36px] rounded-xl border border-ios-gray-300 px-3 py-1.5 text-sm bg-white"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setAdding(false); setStartDate(''); setEndDate(''); setNote(''); }}
+              className="flex-1 py-2 rounded-xl border border-ios-gray-300 text-sm text-ios-gray-600 font-medium min-h-[36px]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addPeriod}
+              disabled={!startDate || !endDate || endDate < startDate}
+              className="flex-1 py-2 rounded-xl bg-teal-600 text-white text-sm font-semibold min-h-[36px] disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="w-full py-2.5 border border-dashed border-ios-gray-300 rounded-xl text-xs font-semibold text-ios-gray-500 min-h-[40px] flex items-center justify-center gap-1.5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          Add Time Off
+        </button>
       )}
     </div>
   );

@@ -42,6 +42,7 @@ export interface TeamMember {
   maxHoursPerWeek: number;
   isPriority: boolean;
   experience?: TeamMemberExperience;
+  timeOff?: TimeOffRequest[];
 }
 
 // ─── Phase Templates ──────────────────────────────────────────────────────────
@@ -97,6 +98,13 @@ export type ExperienceLevel = 'High' | 'Average' | 'Low';
 export interface TeamMemberExperience {
   packAndSort: ExperienceLevel;
   cleanout: ExperienceLevel;
+}
+
+export interface TimeOffRequest {
+  id: string;
+  startDate: string; // ISO date YYYY-MM-DD
+  endDate: string;   // ISO date YYYY-MM-DD
+  note?: string;
 }
 
 export interface AuctionOptions {

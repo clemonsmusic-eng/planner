@@ -12,6 +12,7 @@ const CLEANOUT_PHASES  = new Set(['phase-6']);
 const DAY_NAMES: (keyof TeamMemberAvailability)[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function isMemberAvailableForShift(member: TeamMember, dateStr: string, shift: 'AM' | 'PM' | 'Full Day'): boolean {
+  if ((member.timeOff ?? []).some((t) => dateStr >= t.startDate && dateStr <= t.endDate)) return false;
   const d = new Date(dateStr + 'T12:00:00');
   const slot = member.availability[DAY_NAMES[d.getDay()]];
   if (slot === 'Unavailable') return false;

@@ -35,6 +35,11 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Returns true if the member has approved time off covering this ISO date */
+function isMemberOnTimeOff(member: TeamMember, dateStr: string): boolean {
+  return (member.timeOff ?? []).some((t) => dateStr >= t.startDate && dateStr <= t.endDate);
+}
+
 /** Check whether a team member is available on a given date for a given shift type */
 function isMemberAvailableForShift(
   member: TeamMember,
@@ -42,6 +47,9 @@ function isMemberAvailableForShift(
   requiredShift: 'AM' | 'PM' | 'Full Day',
   overrideShift?: AvailabilitySlot
 ): boolean {
+  const dateStr = toISODate(date);
+  if (isMemberOnTimeOff(member, dateStr)) return false;
+
   const dayKey = getDayOfWeekKey(date);
   const slot: AvailabilitySlot = overrideShift ?? member.availability[dayKey];
 
