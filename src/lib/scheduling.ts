@@ -651,7 +651,9 @@ export function generateSchedule(
       memberName: m.name,
       scheduledHours: memberHoursMap[m.id],
       maxHours: m.maxHoursPerWeek,
-      isOverMax: m.maxHoursPerWeek > 0 && memberHoursMap[m.id] > m.maxHoursPerWeek,
+      isOverMax:
+        m.maxHoursPerWeek > 0 &&
+        Object.values(weeklyHours[m.id] ?? {}).some((wkHrs) => wkHrs > m.maxHoursPerWeek),
     }));
 
   return {

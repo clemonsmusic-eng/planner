@@ -449,10 +449,12 @@ function TeamHoursCard({ teamHours }: { teamHours: TeamHoursSummary[] }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-ios-gray-600">
                     {member.scheduledHours}h
-                    {member.maxHours > 0 && ` / ${member.maxHours}h`}
+                    {member.maxHours > 0 && (
+                      <span className="text-ios-gray-400"> · {member.maxHours}h/wk cap</span>
+                    )}
                   </span>
                   {member.isOverMax && (
-                    <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">Over</span>
+                    <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Week over</span>
                   )}
                 </div>
               </div>
