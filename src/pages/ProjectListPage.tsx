@@ -71,9 +71,26 @@ export function ProjectListPage() {
   }
 
   const filter = state.projectListFilter ?? 'all';
+  const allProjects = state.projects;
   const projects = filter === 'all'
-    ? state.projects
-    : state.projects.filter((p) => (p.inputs.status ?? 'active') === filter);
+    ? allProjects
+    : allProjects.filter((p) => (p.inputs.status ?? 'active') === filter);
+
+  const activeProjects = allProjects.filter(p => (p.inputs.status ?? 'active') === 'active');
+  const draftProjects = allProjects.filter(p => (p.inputs.status ?? 'active') === 'draft');
+  const archivedProjects = allProjects.filter(p => (p.inputs.status ?? 'active') === 'archived');
+
+  function renderCard(project: Project) {
+    return (
+      <ProjectCard
+        key={project.id}
+        project={project}
+        onSelect={() => handleSelectProject(project)}
+        onDelete={(e) => handleDeleteProject(project.id, e)}
+        isDeleting={deletingId === project.id}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -100,19 +117,40 @@ export function ProjectListPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {projects.length === 0 ? (
           <EmptyState onCreate={handleCreateProject} />
+        ) : filter !== 'all' ? (
+          <div className="space-y-3">
+            {projects.map(renderCard)}
+          </div>
         ) : (
-          projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onSelect={() => handleSelectProject(project)}
-              onDelete={(e) => handleDeleteProject(project.id, e)}
-              isDeleting={deletingId === project.id}
-            />
-          ))
+          <div className="space-y-6">
+            {activeProjects.length > 0 && (
+              <section>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
+                  Active · {activeProjects.length}
+                </h2>
+                <div className="space-y-3">{activeProjects.map(renderCard)}</div>
+              </section>
+            )}
+            {draftProjects.length > 0 && (
+              <section>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
+                  Draft · {draftProjects.length}
+                </h2>
+                <div className="space-y-3">{draftProjects.map(renderCard)}</div>
+              </section>
+            )}
+            {archivedProjects.length > 0 && (
+              <section>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
+                  Archived · {archivedProjects.length}
+                </h2>
+                <div className="space-y-3">{archivedProjects.map(renderCard)}</div>
+              </section>
+            )}
+          </div>
         )}
       </div>
 
