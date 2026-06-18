@@ -96,6 +96,9 @@ function nextFriOrSat(date: Date): Date {
 export type ExternalBookings = Record<string, Record<string, 'AM' | 'PM' | 'Full Day'>>;
 
 const AUCTION_MIN_PER_LOT: Record<string, number> = { High: 13, Average: 18, Low: 25 };
+const AUCTION_PICKUP_TEAM_SIZE = 4;
+const AUCTION_PICKUP_HOURS = 8;
+const AUCTION_PREP_TEAM_SIZE = 3;
 
 export function generateSchedule(
   inputs: ProjectInputs,
@@ -193,8 +196,9 @@ export function generateSchedule(
   // → Phase 2 → Phase 4-1 → Sort days (budget-scaled) → Phase 4-2 (last resort)
 
   // Required: Phase 1 + AM Move Day (always included, 2 people each)
-  // Auction cleanout hours are also committed upfront and deducted from the pool.
-  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours;
+  // Auction cleanout prep and pickup day hours are committed upfront and deducted from the pool.
+  const auctionPickupHours = auction.enabled ? AUCTION_PICKUP_HOURS * AUCTION_PICKUP_TEAM_SIZE : 0;
+  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours - auctionPickupHours;
 
   // PM Move Day (5-2) — scale team size down if budget is tight
   const moveDayPMMax = Math.max(1, moveDaySize - 2);
@@ -254,7 +258,7 @@ export function generateSchedule(
 
   // Cleanout dates — for auction cleanouts, spread across however many workdays are needed
   const cleanoutDates: string[] = [];
-  interface CleanoutDay { date: string; hoursPerPerson: number | undefined }
+  interface CleanoutDay { date: string; hoursPerPerson: number | undefined; teamSizeOverride?: number }
   const cleanoutSchedule: CleanoutDay[] = [];
 
   if (cleanout.enabled) {
@@ -264,7 +268,7 @@ export function generateSchedule(
 
     if (auctionEstHours > 0) {
       const ct6 = phaseTemplates.find((t) => t.id === 'phase-6');
-      const teamSize = ct6?.minTeamSize ?? 2;
+      const teamSize = AUCTION_PREP_TEAM_SIZE; // fixed at 3 for auction prep days
       const maxHoursPerPerson = ct6?.maxHours ?? 6;
       const capacityPerDay = teamSize * maxHoursPerPerson;
       const daysNeeded = Math.max(1, Math.ceil(auctionEstHours / capacityPerDay));
@@ -274,7 +278,7 @@ export function generateSchedule(
         const hoursPerPerson = Math.min(maxHoursPerPerson, Math.round((remaining / teamSize) * 10) / 10);
         const dateStr = toISODate(cur);
         cleanoutDates.push(dateStr);
-        cleanoutSchedule.push({ date: dateStr, hoursPerPerson });
+        cleanoutSchedule.push({ date: dateStr, hoursPerPerson, teamSizeOverride: AUCTION_PREP_TEAM_SIZE });
         remaining -= hoursPerPerson * teamSize;
         cur = addWorkdays(cur, 1);
       }
@@ -406,14 +410,14 @@ export function generateSchedule(
   // Phase 5-2 – PM Move Day (budget-scaled team size)
   if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
 
-  // Phase 6 – Cleanout (if enabled)
+  // Phase 6 – Cleanout (if enabled); auction prep days use fixed 3-person team
   for (const ct of cleanoutSchedule) {
-    addPhaseOnDate('phase-6', parseISO(ct.date), undefined, ct.hoursPerPerson);
+    addPhaseOnDate('phase-6', parseISO(ct.date), ct.teamSizeOverride, ct.hoursPerPerson);
   }
 
-  // Phase 7 – Pickup Day (if auction enabled)
+  // Phase 7 – Pickup Day (if auction enabled); always 4 people × 8 hours
   if (auction.enabled && auctionPickup) {
-    addPhaseOnDate('phase-7', parseISO(auctionPickup));
+    addPhaseOnDate('phase-7', parseISO(auctionPickup), AUCTION_PICKUP_TEAM_SIZE, AUCTION_PICKUP_HOURS);
   }
 
   // Apply phaseDateMoves: shift specific phase occurrences to a new date
