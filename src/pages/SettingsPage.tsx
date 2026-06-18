@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
@@ -135,9 +135,10 @@ interface MemberCardProps {
   member: TeamMember;
   onChange: (updated: TeamMember) => void;
   onDelete: () => void;
+  dragHandle?: React.ReactNode;
 }
 
-function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
+function MemberCard({ member, onChange, onDelete, dragHandle }: MemberCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   function cycleDay(day: keyof TeamMemberAvailability) {
@@ -149,27 +150,30 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
 
   return (
     <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 overflow-hidden">
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="w-full flex items-center justify-between px-4 py-3 min-h-[52px]"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              member.isPriority ? 'bg-teal-500' : 'bg-ios-gray-300'
-            }`}
-          />
-          <span className="font-semibold text-teal-900 truncate">{member.name}</span>
-        </div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+      <div className="flex items-stretch">
+        {dragHandle}
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="flex-1 flex items-center justify-between pr-4 py-3 min-h-[52px]"
         >
-          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-        </svg>
-      </button>
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                member.isPriority ? 'bg-teal-500' : 'bg-ios-gray-300'
+              }`}
+            />
+            <span className="font-semibold text-teal-900 truncate">{member.name}</span>
+          </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          >
+            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
 
       {expanded && (
         <div className="px-4 pb-4 space-y-4 border-t border-ios-gray-100">
@@ -270,6 +274,111 @@ function MemberCard({ member, onChange, onDelete }: MemberCardProps) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Draggable Member List ────────────────────────────────────────────────────
+
+type DragState = { memberId: string; fromIdx: number; overIdx: number };
+
+function DraggableMemberList({
+  members,
+  onUpdate,
+  onDelete,
+  onReorder,
+}: {
+  members: TeamMember[];
+  onUpdate: (idx: number, updated: TeamMember) => void;
+  onDelete: (idx: number) => void;
+  onReorder: (reordered: TeamMember[]) => void;
+}) {
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+
+  function computeDisplayed(d: DragState | null): TeamMember[] {
+    if (!d || d.fromIdx === d.overIdx) return members;
+    const arr = [...members];
+    const [item] = arr.splice(d.fromIdx, 1);
+    arr.splice(d.overIdx, 0, item);
+    return arr;
+  }
+
+  function findOverIdx(clientY: number, displayed: TeamMember[]): number {
+    for (let i = 0; i < displayed.length; i++) {
+      const el = itemRefs.current.get(displayed[i].id);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return i;
+    }
+    return displayed.length - 1;
+  }
+
+  function handleDragStart(e: React.PointerEvent, memberId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    const fromIdx = members.findIndex((m) => m.id === memberId);
+    if (fromIdx === -1) return;
+    setDrag({ memberId, fromIdx, overIdx: fromIdx });
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!drag) return;
+    e.preventDefault();
+    const displayed = computeDisplayed(drag);
+    const overIdx = findOverIdx(e.clientY, displayed);
+    if (overIdx !== drag.overIdx) setDrag({ ...drag, overIdx });
+  }
+
+  function handlePointerUp() {
+    if (!drag) return;
+    if (drag.fromIdx !== drag.overIdx) {
+      const arr = [...members];
+      const [item] = arr.splice(drag.fromIdx, 1);
+      arr.splice(drag.overIdx, 0, item);
+      onReorder(arr);
+    }
+    setDrag(null);
+  }
+
+  const displayed = computeDisplayed(drag);
+
+  return (
+    <div
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="space-y-2"
+    >
+      {displayed.map((member) => {
+        const originalIdx = members.findIndex((m) => m.id === member.id);
+        const isDragging = drag?.memberId === member.id;
+        return (
+          <div
+            key={member.id}
+            ref={(el) => { itemRefs.current.set(member.id, el); }}
+            className={`transition-opacity duration-100 ${isDragging ? 'opacity-40' : ''}`}
+          >
+            <MemberCard
+              member={member}
+              onChange={(updated) => onUpdate(originalIdx, updated)}
+              onDelete={() => onDelete(originalIdx)}
+              dragHandle={
+                <div
+                  onPointerDown={(e) => handleDragStart(e, member.id)}
+                  className="flex-shrink-0 w-10 flex items-center justify-center self-stretch cursor-grab active:cursor-grabbing select-none"
+                  style={{ touchAction: 'none' }}
+                  aria-label="Drag to reorder"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-ios-gray-300">
+                    <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              }
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -933,16 +1042,12 @@ export function SettingsPage() {
             <p className="text-xs text-ios-gray-500">
               Tap a member to expand. Tap availability cells to cycle: Full Day → AM → PM → Off.
             </p>
-            <div className="space-y-2">
-              {members.map((member, i) => (
-                <MemberCard
-                  key={member.id}
-                  member={member}
-                  onChange={(updated) => updateMember(i, updated)}
-                  onDelete={() => deleteMember(i)}
-                />
-              ))}
-            </div>
+            <DraggableMemberList
+              members={members}
+              onUpdate={updateMember}
+              onDelete={deleteMember}
+              onReorder={(reordered) => { setMembers(reordered); setIsDirty(true); }}
+            />
             <button
               onClick={addMember}
               className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
