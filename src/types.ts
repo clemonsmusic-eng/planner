@@ -28,6 +28,7 @@ export type PhaseId =
   | 'phase-5-1'
   | 'phase-5-2'
   | 'phase-6'
+  | 'phase-auction-prep'
   | 'phase-7';
 
 export type MemberPhaseRole = RoleType[] | 'N/A';

@@ -48,7 +48,7 @@ export function loadTeamMembers(): TeamMember[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAM);
     if (!raw) return DEFAULT_TEAM_MEMBERS;
-    const ALL_PHASE_IDS = ['phase-1','phase-2','phase-3','phase-4-1','phase-4-2','phase-5-1','phase-5-2','phase-6','phase-7'] as const;
+    const ALL_PHASE_IDS = ['phase-1','phase-2','phase-3','phase-4-1','phase-4-2','phase-5-1','phase-5-2','phase-6','phase-auction-prep','phase-7'] as const;
     type AnyMember = TeamMember & { roles?: string[]; shiftRoles?: Record<string, string> };
 
     // Migrate any stored phase role value to RoleType[] | 'N/A'
@@ -80,8 +80,13 @@ export function loadTeamMembers(): TeamMember[] {
         member = { ...member, phaseRoles };
       } else {
         // Migrate existing phaseRoles: any string values → RoleType[]
+          // Backfill 'phase-auction-prep' if missing (stored before this phase was added)
+        const existingRoles = member.phaseRoles as Record<string, unknown>;
+        if (!existingRoles['phase-auction-prep']) {
+          existingRoles['phase-auction-prep'] = existingRoles['phase-6'] ?? ['Specialist'];
+        }
         const migratedRoles = Object.fromEntries(
-          ALL_PHASE_IDS.map(id => [id, migrateRole((member.phaseRoles as Record<string, unknown>)[id])])
+          ALL_PHASE_IDS.map(id => [id, migrateRole(existingRoles[id])])
         ) as TeamMember['phaseRoles'];
         member = { ...member, phaseRoles: migratedRoles };
       }
@@ -161,13 +166,19 @@ export function loadPhaseTemplates(): PhaseTemplate[] {
       // Migrate legacy templates that used `hours`/`teamSize` single fields
       type LegacyTemplate = PhaseTemplate & { hours?: number; teamSize?: number };
       const parsed = JSON.parse(raw) as LegacyTemplate[];
-      return parsed.map((t): PhaseTemplate => ({
+      let migrated = parsed.map((t): PhaseTemplate => ({
         ...t,
         minHours: t.minHours ?? t.hours ?? 4,
         maxHours: t.maxHours ?? t.hours ?? 8,
         minTeamSize: t.minTeamSize ?? t.teamSize ?? 2,
         maxTeamSize: t.maxTeamSize ?? t.teamSize ?? 4,
       }));
+      // Backfill 'phase-auction-prep' template if missing
+      if (!migrated.some(t => t.id === 'phase-auction-prep')) {
+        const defaultAuctionPrep = DEFAULT_PHASE_TEMPLATES.find(t => t.id === 'phase-auction-prep');
+        if (defaultAuctionPrep) migrated = [...migrated, { ...defaultAuctionPrep }];
+      }
+      return migrated;
     }
   } catch {}
   return DEFAULT_PHASE_TEMPLATES.map((t) => ({ ...t }));

@@ -19,15 +19,16 @@ const SLOT_CYCLE: AvailabilitySlot[] = ['Full Day', 'AM', 'PM', 'Unavailable'];
 const ALL_SELECTABLE_ROLES: RoleType[] = ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
 
 const PHASE_CONFIG: { id: PhaseId; label: string }[] = [
-  { id: 'phase-1',   label: 'Vis 1' },
-  { id: 'phase-2',   label: 'Vis 2' },
-  { id: 'phase-3',   label: 'Sort' },
-  { id: 'phase-4-1', label: 'Pk AM' },
-  { id: 'phase-4-2', label: 'Pk PM' },
-  { id: 'phase-5-1', label: 'Mv AM' },
-  { id: 'phase-5-2', label: 'Mv PM' },
-  { id: 'phase-6',   label: 'Clnout' },
-  { id: 'phase-7',   label: 'Pickup' },
+  { id: 'phase-1',            label: 'Vis 1' },
+  { id: 'phase-2',            label: 'Vis 2' },
+  { id: 'phase-3',            label: 'Sort' },
+  { id: 'phase-4-1',          label: 'Pk AM' },
+  { id: 'phase-4-2',          label: 'Pk PM' },
+  { id: 'phase-5-1',          label: 'Mv AM' },
+  { id: 'phase-5-2',          label: 'Mv PM' },
+  { id: 'phase-6',            label: 'Clnout' },
+  { id: 'phase-auction-prep', label: 'AcPrep' },
+  { id: 'phase-7',            label: 'Pickup' },
 ];
 
 function roleAbbr(r: RoleType): string {
@@ -720,11 +721,17 @@ function PhaseTemplateCard({
   onChange: (updated: PhaseTemplate) => void;
 }) {
   const shiftLabel = template.isAM ? 'AM' : template.isPM ? 'PM' : template.shift === 'client-pref' ? 'Client Pref' : template.shift;
+  const isAuctionOnly = template.id === 'phase-auction-prep' || template.id === 'phase-7';
 
   return (
-    <div className="bg-ios-gray-50 rounded-xl border border-ios-gray-200 px-4 py-3">
+    <div className={`bg-ios-gray-50 rounded-xl border px-4 py-3 ${isAuctionOnly ? 'border-amber-200' : 'border-ios-gray-200'}`}>
       <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-sm font-semibold text-teal-900 flex-1">{template.name}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-teal-900">{template.name}</p>
+          {isAuctionOnly && (
+            <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600">Auction only</span>
+          )}
+        </div>
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-ios-gray-200 text-ios-gray-600 whitespace-nowrap flex-shrink-0">
           {shiftLabel}
         </span>
@@ -1129,7 +1136,7 @@ export function SettingsPage() {
         'phase-1': ['Specialist'], 'phase-2': ['Specialist'], 'phase-3': ['Specialist'],
         'phase-4-1': ['Specialist'], 'phase-4-2': ['Specialist'],
         'phase-5-1': ['Specialist'], 'phase-5-2': ['Specialist'],
-        'phase-6': ['Specialist'], 'phase-7': ['Specialist'],
+        'phase-6': ['Specialist'], 'phase-auction-prep': ['Specialist'], 'phase-7': ['Specialist'],
       } as MemberPhaseRoles,
       availability: {
         Mon: 'Full Day', Tue: 'Full Day', Wed: 'Full Day',
