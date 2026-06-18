@@ -12,6 +12,7 @@ import type {
   AvailabilitySlot,
   PhaseTemplate,
   ListCategory,
+  AuctionAppSettings,
 } from '../types';
 import {
   addWorkdays,
@@ -94,12 +95,15 @@ function nextFriOrSat(date: Date): Date {
 // memberId → dateStr → shift already committed in a prior project
 export type ExternalBookings = Record<string, Record<string, 'AM' | 'PM' | 'Full Day'>>;
 
+const AUCTION_MIN_PER_LOT: Record<string, number> = { High: 13, Average: 18, Low: 25 };
+
 export function generateSchedule(
   inputs: ProjectInputs,
   teamMembers: TeamMember[],
   phaseTemplates: PhaseTemplate[],
   lists: ListCategory[] = [],
-  existingBookings: ExternalBookings = {}
+  existingBookings: ExternalBookings = {},
+  auctionSettings?: AuctionAppSettings
 ): ScheduleResult {
   const {
     targetMoveDate,
@@ -177,12 +181,20 @@ export function generateSchedule(
   const h51 = th('phase-5-1', 8);
   const h52 = th('phase-5-2', 4);
 
+  // Auction cleanout estimated hours (computed from lot count × min/lot performance)
+  const auctionEstHours: number = (() => {
+    if (cleanout.type !== 'Full - Auction' || !auction.lotCount || auction.lotCount <= 0) return 0;
+    const minPerLot = AUCTION_MIN_PER_LOT[auctionSettings?.performanceLevel ?? 'Average'] ?? 18;
+    return Math.round((auction.lotCount * minPerLot) / 60 * 10) / 10;
+  })();
+
   // ── Budget-aware phase inclusion ────────────────────────────────────────────
   // Priority order: Phase 1 (required) → Phase 5-1 (required) → Phase 5-2
   // → Phase 2 → Phase 4-1 → Sort days (budget-scaled) → Phase 4-2 (last resort)
 
   // Required: Phase 1 + AM Move Day (always included, 2 people each)
-  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2);
+  // Auction cleanout hours are also committed upfront and deducted from the pool.
+  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours;
 
   // PM Move Day (5-2) — scale team size down if budget is tight
   const moveDayPMMax = Math.max(1, moveDaySize - 2);
@@ -240,13 +252,37 @@ export function generateSchedule(
     }
   }
 
-  // Cleanout dates
+  // Cleanout dates — for auction cleanouts, spread across however many workdays are needed
   const cleanoutDates: string[] = [];
+  interface CleanoutDay { date: string; hoursPerPerson: number | undefined }
+  const cleanoutSchedule: CleanoutDay[] = [];
+
   if (cleanout.enabled) {
     const cleanoutStart = cleanout.startDate
       ? parseISO(cleanout.startDate)
       : addWorkdays(moveDayDate, 2);
-    cleanoutDates.push(toISODate(cleanoutStart));
+
+    if (auctionEstHours > 0) {
+      const ct6 = phaseTemplates.find((t) => t.id === 'phase-6');
+      const teamSize = ct6?.minTeamSize ?? 2;
+      const maxHoursPerPerson = ct6?.maxHours ?? 6;
+      const capacityPerDay = teamSize * maxHoursPerPerson;
+      const daysNeeded = Math.max(1, Math.ceil(auctionEstHours / capacityPerDay));
+      let remaining = auctionEstHours;
+      let cur = new Date(cleanoutStart);
+      for (let i = 0; i < daysNeeded && remaining > 0.05; i++) {
+        const hoursPerPerson = Math.min(maxHoursPerPerson, Math.round((remaining / teamSize) * 10) / 10);
+        const dateStr = toISODate(cur);
+        cleanoutDates.push(dateStr);
+        cleanoutSchedule.push({ date: dateStr, hoursPerPerson });
+        remaining -= hoursPerPerson * teamSize;
+        cur = addWorkdays(cur, 1);
+      }
+    } else {
+      const dateStr = toISODate(cleanoutStart);
+      cleanoutDates.push(dateStr);
+      cleanoutSchedule.push({ date: dateStr, hoursPerPerson: undefined });
+    }
   }
 
   // Auction dates
@@ -304,7 +340,8 @@ export function generateSchedule(
   function addPhaseOnDate(
     phaseId: string,
     date: Date,
-    teamSizeOverride?: number
+    teamSizeOverride?: number,
+    hoursOverride?: number
   ) {
     const template = phaseTemplates.find((p) => p.id === phaseId);
     if (!template) return;
@@ -338,7 +375,7 @@ export function generateSchedule(
         date: dateStr,
         role: roleSpec.role,
         shift,
-        hours: template.minHours,
+        hours: hoursOverride ?? template.minHours,
         isLocked: roleSpec.isLocked,
         teamSizeOverride: size,
         shiftFlexible,
@@ -370,8 +407,8 @@ export function generateSchedule(
   if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
 
   // Phase 6 – Cleanout (if enabled)
-  for (const cd of cleanoutDates) {
-    addPhaseOnDate('phase-6', parseISO(cd));
+  for (const ct of cleanoutSchedule) {
+    addPhaseOnDate('phase-6', parseISO(ct.date), undefined, ct.hoursPerPerson);
   }
 
   // Phase 7 – Pickup Day (if auction enabled)

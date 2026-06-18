@@ -310,7 +310,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
     const extBookings = buildExternalBookings(projectId);
-    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
+    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 
@@ -323,7 +323,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : filtered;
     const inputs = { ...project.inputs, dateOverrides };
     const extBookings = buildExternalBookings(projectId);
-    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
   }
 
@@ -340,7 +340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ];
     const inputs = { ...project.inputs, phaseDateMoves };
     const extBookings = buildExternalBookings(projectId);
-    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings);
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
     return schedule;
   }
