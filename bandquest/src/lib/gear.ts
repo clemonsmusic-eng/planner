@@ -649,7 +649,7 @@ export function getBossGearDrop(bossId: string, character: Character): GearItem 
     z1_mini_boss_defeated: 'acc_t2',                                    // Rehearsal Set / Iron Stand equivalent
     z1_boss_defeated:      isPerc ? `mat_${key}_b_t2` : `inst_${instrument}_t2`,
     z2_mini_boss_defeated: `mat_${key}_a_t2`,
-    z2_boss_defeated:      isPerc ? `mat_${key}_b_t2` : `mat_${key}_b_t2`,
+    z2_winter_concert:     `mat_${key}_b_t2`,
     z3_mini_boss_defeated: isPerc ? 'pacc_crash_cymbals' : 'attire_t2',
     z4_graduation:         'case_t2',
   };

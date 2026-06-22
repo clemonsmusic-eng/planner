@@ -103,13 +103,28 @@ function buildChallenges(completed: string[]): Challenge[] {
   ];
 }
 
+const WINTER_CONCERT_CHALLENGE: Challenge = {
+  id: 'z2_winter_concert',
+  title: 'The Winter Concert',
+  type: 'prepared_performance',
+  uilStandard: 'Zone 2 · Quarter End Performance',
+  description:
+    'Perform your best for the assembled audience. This is the Winter Concert — ' +
+    'the first time your class sounds like an ensemble. Good or better required to advance to Quarter 3.',
+  required: true,
+  completed: false, // checked from character state
+  xpBase: 1500,
+};
+
 export default function Zone2Page() {
   const { character, awardChallenge, advanceZone, equipGear, addSummonPoints } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
-  const [activeBattle, setActiveBattle] = useState<'mini_boss' | 'boss' | null>(null);
+  const [activeBattle, setActiveBattle] = useState(false);
+  const [concertOpen, setConcertOpen] = useState(false);
+  const [concertFailed, setConcertFailed] = useState(false);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
 
   if (!character) return null;
@@ -122,8 +137,8 @@ export default function Zone2Page() {
   const allRequiredDone = completedRequired === required.length;
   const miniBossUnlocked = completedRequired >= 3;
   const miniBossDefeated = character.completedChallenges.includes('z2_mini_boss_defeated');
-  const bossUnlocked = allRequiredDone && miniBossDefeated;
-  const bossDefeated = character.completedChallenges.includes('z2_boss_defeated');
+  const concertUnlocked = allRequiredDone && miniBossDefeated;
+  const concertDone = character.completedChallenges.includes('z2_winter_concert');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -132,27 +147,35 @@ export default function Zone2Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', _rp: number, spDelta: number) {
-    const challengeId = battleId === 'boss' ? 'z2_boss_defeated' : 'z2_mini_boss_defeated';
-    const challengeType = battleId === 'boss' ? 'zone_boss' : 'mini_boss';
-    await awardChallenge(challengeId, challengeType, 100, 'superior');
-    if (battleId === 'boss') {
-      await advanceZone(3);
-    }
-    const drop = getBossGearDrop(challengeId, char);
+  async function handleBattleVictory(_rp: number, spDelta: number) {
+    await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
+    const drop = getBossGearDrop('z2_mini_boss_defeated', char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
     if (spDelta !== 0) await addSummonPoints(spDelta);
-    setActiveBattle(null);
+    setActiveBattle(false);
+  }
+
+  async function handleConcertComplete(rating: Rating, score: number) {
+    await awardChallenge('z2_winter_concert', 'zone_boss', score, rating);
+    const passed = rating === 'good' || rating === 'excellent' || rating === 'superior';
+    if (passed) {
+      const drop = getBossGearDrop('z2_winter_concert', char);
+      if (drop) { await equipGear(drop); setGearDrop(drop); }
+      await advanceZone(3);
+    } else {
+      setConcertFailed(true);
+    }
+    setConcertOpen(false);
   }
 
   if (activeBattle) {
-    const enemyId = activeBattle === 'boss' ? 'resonant_construct' : 'interval_imp';
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES[enemyId]}
-        onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
-        onDefeat={() => setActiveBattle(null)}
+        enemy={ENEMIES.interval_imp}
+        simulatorMode
+        onVictory={handleBattleVictory}
+        onDefeat={() => setActiveBattle(false)}
       />
     );
   }
@@ -188,9 +211,9 @@ export default function Zone2Page() {
           <div className="stat-bar">
             <div className="stat-bar-fill bg-academy-gold" style={{ width: `${(completedRequired / required.length) * 100}%` }} />
           </div>
-          {bossUnlocked && !bossDefeated && (
+          {concertUnlocked && !concertDone && (
             <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
-              ✓ Zone Boss Unlocked — The Resonant Construct
+              ✓ Winter Concert Unlocked
             </div>
           )}
         </div>
@@ -238,7 +261,7 @@ export default function Zone2Page() {
           ))}
         </div>
 
-        {/* Mini-boss */}
+        {/* Mini-boss — simulator mode: no HP loss in Academy zones */}
         <div className={`card-panel mt-4 ${miniBossUnlocked ? 'border-amber-600/50' : 'border-amber-700/20 opacity-60'}`}>
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Mini-Boss</div>
           <div className="flex items-start justify-between gap-4">
@@ -250,46 +273,46 @@ export default function Zone2Page() {
               </div>
             </div>
             {miniBossUnlocked && !miniBossDefeated && (
-              <button onClick={() => setActiveBattle('mini_boss')} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
+              <button onClick={() => setActiveBattle(true)} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
             )}
             {miniBossDefeated && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
-        {/* Zone boss */}
-        {(bossUnlocked || bossDefeated) && (
-          <div className={`card-panel mt-4 ${!bossDefeated ? 'border-discord-crimson/40' : 'border-rating-superior/30'}`}>
-            <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">
-              Zone Boss
+        {/* Winter Concert — quarter-end performance gate */}
+        {(concertUnlocked || concertDone) && (
+          <div className={`card-panel mt-4 ${concertDone ? 'border-rating-superior/30' : 'border-academy-gold/40'}`}>
+            <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">
+              Quarter End
             </div>
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-academy-cream/80 text-sm font-semibold mb-1">
-                  📜 The Resonant Construct
+              <div className="flex-1">
+                <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎶 The Winter Concert</div>
+                <div className="text-academy-cream/50 text-xs mb-1">
+                  A Good rating or better is required to advance to Quarter 3.
                 </div>
-                <div className="text-academy-cream/50 text-xs mb-2">
-                  Assembled from musical notation around the hidden Noteshard fragment. Attacks using
-                  forbidden intervals that scramble your perception.
-                </div>
-                {!bossDefeated && (
-                  <div className="card-panel border-slate-700/30 bg-slate-900/20 text-xs text-academy-cream/60 italic leading-relaxed">
-                    The night before the Winter Concert, a low hum fills the library. The restricted
-                    archive door stands open. Whatever was guarding that Noteshard fragment has
-                    woken up — and it stands between you and the stage.
+                {concertFailed && !concertDone && (
+                  <div className="text-rating-poor text-xs mt-1">
+                    Not quite ready — practice more and try again.
                   </div>
                 )}
               </div>
-              {!bossDefeated ? (
-                <button onClick={() => setActiveBattle('boss')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>
+              {!concertDone ? (
+                <button
+                  onClick={() => { setConcertFailed(false); setConcertOpen(true); }}
+                  className="btn-primary text-xs py-2 px-3 flex-shrink-0"
+                >
+                  Perform
+                </button>
               ) : (
                 <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
               )}
             </div>
-            {bossDefeated && (
+            {concertDone && (
               <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
-                The Winter Concert goes on. The ensemble is clumsy, chaotic, beautiful — and for just
-                a moment, the Theory Wing sounds like it once did before the Shattering. Maestro
-                Persichetti closes his eyes and listens.
+                Clumsy in places, chaotic in others — and beautiful. For a moment, the Theory
+                Wing sounds like what the Grand Symphony must have sounded like before the
+                Shattering. Maestro Persichetti closes his eyes and listens.
               </div>
             )}
           </div>
@@ -305,6 +328,14 @@ export default function Zone2Page() {
           character={character}
           onComplete={handleChallengeComplete}
           onClose={() => setActiveChallenge(null)}
+        />
+      )}
+      {concertOpen && (
+        <ChallengeModal
+          challenge={WINTER_CONCERT_CHALLENGE}
+          character={character}
+          onComplete={handleConcertComplete}
+          onClose={() => setConcertOpen(false)}
         />
       )}
     </div>

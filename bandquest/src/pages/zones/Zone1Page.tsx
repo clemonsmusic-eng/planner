@@ -152,6 +152,7 @@ export default function Zone1Page() {
       <BattleScreen
         character={character}
         enemy={ENEMIES[enemyId]}
+        simulatorMode
         onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
         onDefeat={() => setActiveBattle(null)}
       />

@@ -170,25 +170,6 @@ export const ENEMIES: Record<string, EnemyDef> = {
     phase2Threshold: 0.5,
     lore: 'Maestro Persichetti swears the theory classroom was perfectly normal before this year.',
   },
-  resonant_construct: {
-    id: 'resonant_construct',
-    tier: 2,
-    zone: 2,
-    name: 'The Resonant Construct',
-    description: 'A towering figure assembled from musical notation — staffs for bones, clefs for joints, and a beating tritone at its heart. It formed around the Noteshard fragment hidden in the restricted archive.',
-    power: 28,
-    maxHp: 320,
-    attackDescription: 'Interval Lock — forces an interval identification before any action can be taken',
-    specialAttackName: 'Forbidden Interval',
-    specialAttackChallengeType: 'aural_interval_quest',
-    debuff: 'confusion',
-    debuffDuration: 2,
-    debuffChance: 0.5,
-    vulnerableTo: ['bassoon', 'oboe', 'french_horn'],
-    isBoss: true,
-    phase2Threshold: 0.5,
-    lore: 'The restricted archive was locked for a reason. Now you know why.',
-  },
 };
 
 export type BattleId = string;
@@ -257,17 +238,5 @@ export const BATTLES: Record<BattleId, BattleConfig> = {
     rewardCoins: 15,
     victoryNarrative: 'The Interval Imp dissolves in a cascade of correctly identified intervals. Maestro Persichetti looks unsurprised.',
     defeatNarrative: 'The Imp\'s tritone scramble overwhelms your training. Retreat to the Theory Wing.',
-  },
-  z2_boss: {
-    id: 'z2_boss',
-    name: 'The Resonant Construct',
-    enemies: ['resonant_construct'],
-    zoneId: 2,
-    isBoss: true,
-    isMiniBuffer: false,
-    rewardXp: 1500,
-    rewardCoins: 40,
-    victoryNarrative: 'The tritone at the Construct\'s heart shatters. Musical notation rains down like broken glass. The Winter Concert can begin.',
-    defeatNarrative: 'The Construct\'s forbidden intervals overwhelm your training. Retreat to the Theory Wing.',
   },
 };
