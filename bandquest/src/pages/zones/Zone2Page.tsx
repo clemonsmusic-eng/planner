@@ -122,7 +122,7 @@ export default function Zone2Page() {
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
-  const [activeBattle, setActiveBattle] = useState(false);
+  const [activeBattle, setActiveBattle] = useState<false | 'mini_boss' | 'concert_crash'>(false);
   const [concertOpen, setConcertOpen] = useState(false);
   const [concertFailed, setConcertFailed] = useState(false);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
@@ -138,6 +138,7 @@ export default function Zone2Page() {
   const miniBossUnlocked = completedRequired >= 3;
   const miniBossDefeated = character.completedChallenges.includes('z2_mini_boss_defeated');
   const concertUnlocked = allRequiredDone && miniBossDefeated;
+  const phantomDefeated = character.completedChallenges.includes('z2_shard_phantom_defeated');
   const concertDone = character.completedChallenges.includes('z2_winter_concert');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
@@ -147,10 +148,14 @@ export default function Zone2Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(_rp: number, spDelta: number) {
-    await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
-    const drop = getBossGearDrop('z2_mini_boss_defeated', char);
-    if (drop) { await equipGear(drop); setGearDrop(drop); }
+  async function handleBattleVictory(battleType: 'mini_boss' | 'concert_crash', _rp: number, spDelta: number) {
+    if (battleType === 'mini_boss') {
+      await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
+      const drop = getBossGearDrop('z2_mini_boss_defeated', char);
+      if (drop) { await equipGear(drop); setGearDrop(drop); }
+    } else {
+      await awardChallenge('z2_shard_phantom_defeated', 'mini_boss', 100, 'superior');
+    }
     if (spDelta !== 0) await addSummonPoints(spDelta);
     setActiveBattle(false);
   }
@@ -169,12 +174,13 @@ export default function Zone2Page() {
   }
 
   if (activeBattle) {
+    const enemy = activeBattle === 'mini_boss' ? ENEMIES.interval_imp : ENEMIES.shard_phantom;
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES.interval_imp}
+        enemy={enemy}
         simulatorMode
-        onVictory={handleBattleVictory}
+        onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
         onDefeat={() => setActiveBattle(false)}
       />
     );
@@ -211,9 +217,14 @@ export default function Zone2Page() {
           <div className="stat-bar">
             <div className="stat-bar-fill bg-academy-gold" style={{ width: `${(completedRequired / required.length) * 100}%` }} />
           </div>
-          {concertUnlocked && !concertDone && (
+          {concertUnlocked && !phantomDefeated && !concertDone && (
             <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
               ✓ Winter Concert Unlocked
+            </div>
+          )}
+          {phantomDefeated && !concertDone && (
+            <div className="mt-3 text-center text-rating-excellent text-sm font-fantasy animate-pulse">
+              Phantom defeated — perform the concert to advance
             </div>
           )}
         </div>
@@ -273,46 +284,80 @@ export default function Zone2Page() {
               </div>
             </div>
             {miniBossUnlocked && !miniBossDefeated && (
-              <button onClick={() => setActiveBattle(true)} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
+              <button onClick={() => setActiveBattle('mini_boss')} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
             )}
             {miniBossDefeated && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
-        {/* Winter Concert — quarter-end performance gate */}
-        {(concertUnlocked || concertDone) && (
+        {/* Winter Concert — two-phase: boss crash → performance gate */}
+        {(concertUnlocked || phantomDefeated || concertDone) && (
           <div className={`card-panel mt-4 ${concertDone ? 'border-rating-superior/30' : 'border-academy-gold/40'}`}>
             <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">
-              Quarter End
+              Quarter End · The Winter Concert
             </div>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎶 The Winter Concert</div>
-                <div className="text-academy-cream/50 text-xs mb-1">
-                  A Good rating or better is required to advance to Quarter 3.
-                </div>
-                {concertFailed && !concertDone && (
-                  <div className="text-rating-poor text-xs mt-1">
-                    Not quite ready — practice more and try again.
+
+            {/* Phase 1: Shard Phantom crash */}
+            <div className={`mb-3 ${phantomDefeated || concertDone ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-academy-cream/80 text-sm font-semibold mb-1">
+                    👻 The Shard Phantom crashes the concert
                   </div>
+                  <div className="text-academy-cream/50 text-xs">
+                    A Noteshard fragment awakens the moment the music begins. Drive it back before
+                    the concert can continue.
+                  </div>
+                </div>
+                {!phantomDefeated && !concertDone ? (
+                  <button
+                    onClick={() => setActiveBattle('concert_crash')}
+                    className="btn-danger text-xs py-2 px-3 flex-shrink-0"
+                  >
+                    Fight
+                  </button>
+                ) : (
+                  <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
                 )}
               </div>
-              {!concertDone ? (
-                <button
-                  onClick={() => { setConcertFailed(false); setConcertOpen(true); }}
-                  className="btn-primary text-xs py-2 px-3 flex-shrink-0"
-                >
-                  Perform
-                </button>
-              ) : (
-                <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
-              )}
             </div>
-            {concertDone && (
-              <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
-                Clumsy in places, chaotic in others — and beautiful. For a moment, the Theory
-                Wing sounds like what the Grand Symphony must have sounded like before the
-                Shattering. Maestro Persichetti closes his eyes and listens.
+
+            {/* Phase 2: Perform the concert */}
+            {(phantomDefeated || concertDone) && (
+              <div className="border-t border-white/5 pt-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="text-academy-cream/80 text-sm font-semibold mb-1">
+                      🎶 The Concert Resumes
+                    </div>
+                    <div className="text-academy-cream/50 text-xs mb-1">
+                      The hall is silent. The Phantom is gone. Play. A Good rating or better
+                      is required to advance to Quarter 3.
+                    </div>
+                    {concertFailed && !concertDone && (
+                      <div className="text-rating-poor text-xs mt-1">
+                        Not quite ready — practice more and try again.
+                      </div>
+                    )}
+                  </div>
+                  {!concertDone ? (
+                    <button
+                      onClick={() => { setConcertFailed(false); setConcertOpen(true); }}
+                      className="btn-primary text-xs py-2 px-3 flex-shrink-0"
+                    >
+                      Perform
+                    </button>
+                  ) : (
+                    <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
+                  )}
+                </div>
+                {concertDone && (
+                  <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
+                    Clumsy in places, chaotic in others — and beautiful. For a moment, the Theory
+                    Wing sounds like what the Grand Symphony must have sounded like before the
+                    Shattering. Maestro Persichetti closes his eyes and listens.
+                  </div>
+                )}
               </div>
             )}
           </div>

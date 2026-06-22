@@ -8,6 +8,19 @@ import BattleScreen from '../../components/BattleScreen';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, GearItem } from '../../types/game';
 
+const BOOT_CAMP_GRADUATION_CHALLENGE: Challenge = {
+  id: 'z1_graduation',
+  title: 'Boot Camp Graduation — First 3-Note Song',
+  type: 'prepared_performance',
+  uilStandard: 'Zone 1 · Quarter End',
+  description:
+    'Play your first complete 3-note song for Director Fennelio. This is the moment you ' +
+    'officially become a student of Harmonia Academy. Good or better required to advance to Quarter 2.',
+  required: true,
+  completed: false,
+  xpBase: 1500,
+};
+
 interface Challenge {
   id: string;
   title: string;
@@ -110,7 +123,9 @@ export default function Zone1Page() {
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
-  const [activeBattle, setActiveBattle] = useState<'mini_boss' | 'boss' | null>(null);
+  const [activeBattle, setActiveBattle] = useState<'mini_boss' | null>(null);
+  const [graduationOpen, setGraduationOpen] = useState(false);
+  const [graduationFailed, setGraduationFailed] = useState(false);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
 
   if (!character) return null;
@@ -124,7 +139,8 @@ export default function Zone1Page() {
   const instrument = INSTRUMENTS[character.instrument];
   const miniBossUnlocked = completedRequired >= 4;
   const miniBossDefeated = character.completedChallenges.includes('z1_mini_boss_defeated');
-  const bossDefeated = character.completedChallenges.includes('z1_boss_defeated');
+  const graduationUnlocked = allRequiredDone && miniBossDefeated;
+  const graduationDone = character.completedChallenges.includes('z1_graduation');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -133,27 +149,34 @@ export default function Zone1Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', rpEarned: number, spDelta: number) {
-    void rpEarned;
-    const challengeId = battleId === 'mini_boss' ? 'z1_mini_boss_defeated' : 'z1_boss_defeated';
-    await awardChallenge(challengeId, battleId === 'boss' ? 'zone_boss' : 'mini_boss', 100, 'superior');
-    const drop = getBossGearDrop(challengeId, char);
+  async function handleBattleVictory(_rp: number, spDelta: number) {
+    await awardChallenge('z1_mini_boss_defeated', 'mini_boss', 100, 'superior');
+    const drop = getBossGearDrop('z1_mini_boss_defeated', char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
-    if (battleId === 'boss') {
-      await advanceZone(2);
-    }
     if (spDelta !== 0) await addSummonPoints(spDelta);
     setActiveBattle(null);
   }
 
+  async function handleGraduationComplete(rating: Rating, score: number) {
+    await awardChallenge('z1_graduation', 'zone_boss', score, rating);
+    const passed = rating === 'good' || rating === 'excellent' || rating === 'superior';
+    if (passed) {
+      const drop = getBossGearDrop('z1_graduation', char);
+      if (drop) { await equipGear(drop); setGearDrop(drop); }
+      await advanceZone(2);
+    } else {
+      setGraduationFailed(true);
+    }
+    setGraduationOpen(false);
+  }
+
   if (activeBattle) {
-    const enemyId = activeBattle === 'mini_boss' ? 'enchanted_music_stand' : 'flat_dragon';
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES[enemyId]}
+        enemy={ENEMIES.enchanted_music_stand}
         simulatorMode
-        onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
+        onVictory={handleBattleVictory}
         onDefeat={() => setActiveBattle(null)}
       />
     );
@@ -192,9 +215,9 @@ export default function Zone1Page() {
               style={{ width: `${(completedRequired / required.length) * 100}%` }}
             />
           </div>
-          {allRequiredDone && (
+          {graduationUnlocked && !graduationDone && (
             <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
-              ✓ Zone Boss Unlocked — The Enchanted Music Stand
+              ✓ Boot Camp Graduation Unlocked
             </div>
           )}
         </div>
@@ -254,7 +277,7 @@ export default function Zone1Page() {
         {/* Mini-boss */}
         <div className={`card-panel mt-8 ${miniBossUnlocked ? 'border-amber-600/50' : 'border-amber-700/20 opacity-60'}`}>
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">
-            Mini-Boss
+            Mid-Quarter Boss
           </div>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -275,29 +298,44 @@ export default function Zone1Page() {
           </div>
         </div>
 
-        {/* Zone boss */}
-        {allRequiredDone && (
-          <div className={`card-panel mt-4 ${!bossDefeated ? 'border-discord-crimson/40' : 'border-rating-superior/30'}`}>
-            <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">
-              Zone Boss
+        {/* Boot Camp Graduation — quarter-end performance gate */}
+        {(graduationUnlocked || graduationDone) && (
+          <div className={`card-panel mt-4 ${graduationDone ? 'border-rating-superior/30' : 'border-academy-gold/40'}`}>
+            <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">
+              Quarter End · Boot Camp Graduation
             </div>
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="flex-1">
                 <div className="text-academy-cream/80 text-sm font-semibold mb-1">
-                  🐉 The Flat Dragon
+                  🎓 First 3-Note Song
                 </div>
-                <div className="text-academy-cream/50 text-xs">
-                  Its breath pulls every note flat. Your pitch tolerance is halved for the entire battle.
+                <div className="text-academy-cream/50 text-xs mb-1">
+                  Play your first complete song for Director Fennelio. A Good rating or better is required
+                  to advance to Quarter 2.
                 </div>
+                {graduationFailed && !graduationDone && (
+                  <div className="text-rating-poor text-xs mt-1">
+                    Not quite ready — keep practicing and try again.
+                  </div>
+                )}
               </div>
-              {!bossDefeated ? (
-                <button onClick={() => setActiveBattle('boss')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">
-                  Battle
+              {!graduationDone ? (
+                <button
+                  onClick={() => { setGraduationFailed(false); setGraduationOpen(true); }}
+                  className="btn-primary text-xs py-2 px-3 flex-shrink-0"
+                >
+                  Perform
                 </button>
               ) : (
                 <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
               )}
             </div>
+            {graduationDone && (
+              <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
+                Director Fennelio sets down his baton. A long pause. Then, for the first time all
+                quarter, he smiles. "Welcome to Harmonia Academy," he says. "You are a student here."
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -314,6 +352,15 @@ export default function Zone1Page() {
           character={character}
           onComplete={handleChallengeComplete}
           onClose={() => setActiveChallenge(null)}
+        />
+      )}
+      {/* Boot Camp Graduation Modal */}
+      {graduationOpen && (
+        <ChallengeModal
+          challenge={BOOT_CAMP_GRADUATION_CHALLENGE}
+          character={character}
+          onComplete={handleGraduationComplete}
+          onClose={() => setGraduationOpen(false)}
         />
       )}
     </div>

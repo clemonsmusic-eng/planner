@@ -115,6 +115,25 @@ export const ENEMIES: Record<string, EnemyDef> = {
     isBoss: false,
   },
 
+  shard_phantom: {
+    id: 'shard_phantom',
+    tier: 1,
+    zone: 2,
+    name: 'The Shard Phantom',
+    description: 'A Noteshard fragment awakened by the music of the Winter Concert. It tears through the hall, scattering sheet music and unraveling the ensemble\'s carefully built sound.',
+    power: 20,
+    maxHp: 200,
+    attackDescription: 'Interval Scramble — disrupts your sense of pitch relationships',
+    specialAttackName: 'Discord Fragment',
+    specialAttackChallengeType: 'aural_interval_quest',
+    debuff: 'confusion',
+    debuffDuration: 2,
+    vulnerableTo: ['bassoon', 'oboe', 'french_horn'],
+    isBoss: true,
+    phase2Threshold: 0.5,
+    lore: 'This fragment was dormant in the Theory Wing archives for years. The music of the Winter Concert was enough to wake it.',
+  },
+
   // ── Bosses ─────────────────────────────────────────────────────────────────────
   enchanted_music_stand: {
     id: 'enchanted_music_stand',

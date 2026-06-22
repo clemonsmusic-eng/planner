@@ -26,7 +26,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   alto_sax: {
     id: 'alto_sax',
     name: 'Alto Saxophone',
-    className: 'Shadow Shifter',
+    className: 'Shadow Spectre',
     family: 'woodwind',
     archetype: 'Shapeshifter / Mimic Mage — can clone any player on the field',
     baseStats: { power: 14, accuracy: 12, technique: 16, endurance: 12 },
@@ -70,7 +70,7 @@ export const INSTRUMENTS: Record<InstrumentId, InstrumentDef> = {
   percussion: {
     id: 'percussion',
     name: 'Percussion',
-    className: 'Stryker Artificer',
+    className: 'Stryking Artificer',
     family: 'percussion',
     archetype: 'Mechanic / Gadget-Maker — most versatile stat spread',
     baseStats: { power: 12, accuracy: 12, technique: 16, endurance: 12 },
