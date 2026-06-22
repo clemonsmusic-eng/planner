@@ -109,7 +109,7 @@ export default function Zone2Page() {
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
-  const [activeBattle, setActiveBattle] = useState(false);
+  const [activeBattle, setActiveBattle] = useState<'mini_boss' | 'boss' | null>(null);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
 
   if (!character) return null;
@@ -119,8 +119,11 @@ export default function Zone2Page() {
   const required = challenges.filter((c) => c.required);
   const optional = challenges.filter((c) => !c.required);
   const completedRequired = required.filter((c) => c.completed).length;
+  const allRequiredDone = completedRequired === required.length;
   const miniBossUnlocked = completedRequired >= 3;
   const miniBossDefeated = character.completedChallenges.includes('z2_mini_boss_defeated');
+  const bossUnlocked = allRequiredDone && miniBossDefeated;
+  const bossDefeated = character.completedChallenges.includes('z2_boss_defeated');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -129,22 +132,27 @@ export default function Zone2Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(_rp: number, spDelta: number) {
-    await awardChallenge('z2_mini_boss_defeated', 'mini_boss', 100, 'superior');
-    if (completedRequired === required.length) await advanceZone(3);
-    const drop = getBossGearDrop('z2_mini_boss_defeated', char);
+  async function handleBattleVictory(battleId: 'mini_boss' | 'boss', _rp: number, spDelta: number) {
+    const challengeId = battleId === 'boss' ? 'z2_boss_defeated' : 'z2_mini_boss_defeated';
+    const challengeType = battleId === 'boss' ? 'zone_boss' : 'mini_boss';
+    await awardChallenge(challengeId, challengeType, 100, 'superior');
+    if (battleId === 'boss') {
+      await advanceZone(3);
+    }
+    const drop = getBossGearDrop(challengeId, char);
     if (drop) { await equipGear(drop); setGearDrop(drop); }
     if (spDelta !== 0) await addSummonPoints(spDelta);
-    setActiveBattle(false);
+    setActiveBattle(null);
   }
 
   if (activeBattle) {
+    const enemyId = activeBattle === 'boss' ? 'resonant_construct' : 'interval_imp';
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES.interval_imp}
-        onVictory={handleBattleVictory}
-        onDefeat={() => setActiveBattle(false)}
+        enemy={ENEMIES[enemyId]}
+        onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
+        onDefeat={() => setActiveBattle(null)}
       />
     );
   }
@@ -180,6 +188,11 @@ export default function Zone2Page() {
           <div className="stat-bar">
             <div className="stat-bar-fill bg-academy-gold" style={{ width: `${(completedRequired / required.length) * 100}%` }} />
           </div>
+          {bossUnlocked && !bossDefeated && (
+            <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
+              ✓ Zone Boss Unlocked — The Resonant Construct
+            </div>
+          )}
         </div>
 
         {/* Story beat */}
@@ -237,11 +250,50 @@ export default function Zone2Page() {
               </div>
             </div>
             {miniBossUnlocked && !miniBossDefeated && (
-              <button onClick={() => setActiveBattle(true)} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
+              <button onClick={() => setActiveBattle('mini_boss')} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
             )}
             {miniBossDefeated && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
+
+        {/* Zone boss */}
+        {(bossUnlocked || bossDefeated) && (
+          <div className={`card-panel mt-4 ${!bossDefeated ? 'border-discord-crimson/40' : 'border-rating-superior/30'}`}>
+            <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">
+              Zone Boss
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-academy-cream/80 text-sm font-semibold mb-1">
+                  📜 The Resonant Construct
+                </div>
+                <div className="text-academy-cream/50 text-xs mb-2">
+                  Assembled from musical notation around the hidden Noteshard fragment. Attacks using
+                  forbidden intervals that scramble your perception.
+                </div>
+                {!bossDefeated && (
+                  <div className="card-panel border-slate-700/30 bg-slate-900/20 text-xs text-academy-cream/60 italic leading-relaxed">
+                    The night before the Winter Concert, a low hum fills the library. The restricted
+                    archive door stands open. Whatever was guarding that Noteshard fragment has
+                    woken up — and it stands between you and the stage.
+                  </div>
+                )}
+              </div>
+              {!bossDefeated ? (
+                <button onClick={() => setActiveBattle('boss')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>
+              ) : (
+                <span className="text-rating-superior text-lg flex-shrink-0">✓</span>
+              )}
+            </div>
+            {bossDefeated && (
+              <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
+                The Winter Concert goes on. The ensemble is clumsy, chaotic, beautiful — and for just
+                a moment, the Theory Wing sounds like it once did before the Shattering. Maestro
+                Persichetti closes his eyes and listens.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {gearDrop && (
