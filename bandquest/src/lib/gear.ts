@@ -650,7 +650,7 @@ export function getBossGearDrop(bossId: string, character: Character): GearItem 
     z1_graduation:         isPerc ? `mat_${key}_b_t2` : `inst_${instrument}_t2`,
     z2_mini_boss_defeated: `mat_${key}_a_t2`,
     z2_winter_concert:     `mat_${key}_b_t2`,
-    z3_mini_boss_defeated: isPerc ? 'pacc_crash_cymbals' : 'attire_t2',
+    z3_contest_won:        isPerc ? 'pacc_crash_cymbals' : 'attire_t2',
     z4_graduation:         'case_t2',
   };
   const itemId = drops[bossId];

@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { getBossGearDrop } from '../../lib/gear';
 import ChallengeModal from '../../components/ChallengeModal';
-import BattleScreen from '../../components/BattleScreen';
-import { ENEMIES } from '../../lib/enemies';
 import type { Rating, GearItem } from '../../types/game';
 
 interface Challenge {
@@ -90,26 +88,46 @@ function buildChallenges(completed: string[]): Challenge[] {
       completed: completed.includes('z3_cresc_decresc_long'),
       xpBase: 150,
     },
-    {
-      id: 'z3_town_concert',
-      title: 'The Town Concert (Ensemble)',
-      type: 'prepared_performance',
-      uilStandard: 'UIL Zone 3 · Ensemble',
-      description: "Perform your part of a Sacred Score fragment. The town of Crotchet is listening.",
-      required: false,
-      completed: completed.includes('z3_town_concert'),
-      xpBase: 500,
-    },
   ];
 }
 
+// ── The Crotchet Invitational (bracket) ─────────────────────────────────────────
+const SEMIFINAL_CHALLENGE: Challenge = {
+  id: 'z3_semifinal',
+  title: 'Semifinal — vs Piano Preparatory',
+  type: 'prepared_performance',
+  uilStandard: 'The Crotchet Invitational · Semifinal',
+  description:
+    'Perform your prepared piece for the judges. Piano Preparatory just played a crisp, ' +
+    'confident set — match or beat them (Good or better) to reach the final.',
+  required: true,
+  completed: false,
+  xpBase: 600,
+};
+
+const FINAL_CHALLENGE: Challenge = {
+  id: 'z3_final',
+  title: 'Final — vs The String School',
+  type: 'prepared_performance',
+  uilStandard: 'The Crotchet Invitational · Final',
+  description:
+    'The whole town has packed the square. The String School are the favorites — perform a ' +
+    'Sacred Score fragment and take the trophy (Good or better).',
+  required: true,
+  completed: false,
+  xpBase: 1500,
+};
+
+type MatchId = 'semifinal' | 'final';
+
 export default function Zone3Page() {
-  const { character, awardChallenge, advanceZone, equipGear, addSummonPoints } = useGameStore();
+  const { character, awardChallenge, advanceZone, equipGear } = useGameStore();
   const navigate = useNavigate();
 
   const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
+  const [activeMatch, setActiveMatch] = useState<MatchId | null>(null);
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
-  const [activeBattle, setActiveBattle] = useState(false);
+  const [matchFailed, setMatchFailed] = useState<MatchId | null>(null);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
 
   if (!character) return null;
@@ -119,8 +137,9 @@ export default function Zone3Page() {
   const required = challenges.filter((c) => c.required);
   const optional = challenges.filter((c) => !c.required);
   const completedRequired = required.filter((c) => c.completed).length;
-  const miniBossUnlocked = completedRequired >= 3;
-  const miniBossDefeated = character.completedChallenges.includes('z3_mini_boss_defeated');
+  const allRequiredDone = completedRequired === required.length;
+  const semifinalWon = character.completedChallenges.includes('z3_semifinal_won');
+  const contestWon = character.completedChallenges.includes('z3_contest_won');
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -129,29 +148,29 @@ export default function Zone3Page() {
     setActiveChallenge(null);
   }
 
-  async function handleBattleVictory(_rp: number, spDelta: number) {
-    await awardChallenge('z3_mini_boss_defeated', 'mini_boss', 100, 'superior');
-    if (completedRequired === required.length) await advanceZone(4);
-    const drop = getBossGearDrop('z3_mini_boss_defeated', char);
-    if (drop) { await equipGear(drop); setGearDrop(drop); }
-    if (spDelta !== 0) await addSummonPoints(spDelta);
-    setActiveBattle(false);
-  }
-
-  if (activeBattle) {
-    return (
-      <BattleScreen
-        character={character}
-        enemy={ENEMIES.double_flat_wretch}
-        onVictory={handleBattleVictory}
-        onDefeat={() => setActiveBattle(false)}
-      />
-    );
+  async function handleMatchComplete(match: MatchId, rating: Rating, score: number) {
+    const passed = rating === 'good' || rating === 'excellent' || rating === 'superior';
+    const type = match === 'final' ? 'zone_boss' : 'mini_boss';
+    setLastRating({ id: `z3_${match}`, rating });
+    if (passed) {
+      const winKey = match === 'final' ? 'z3_contest_won' : 'z3_semifinal_won';
+      await awardChallenge(winKey, type, score, rating); // marks completion + XP/RP/coins
+      if (match === 'final') {
+        const drop = getBossGearDrop('z3_contest_won', char);
+        if (drop) { await equipGear(drop); setGearDrop(drop); }
+        await advanceZone(4);
+      }
+    } else {
+      // Award attempt XP without marking the bracket gate complete.
+      await awardChallenge(`z3_${match}`, type, score, rating, { trackCompletion: false });
+      setMatchFailed(match);
+    }
+    setActiveMatch(null);
   }
 
   return (
     <div className="min-h-screen pb-24">
-      <div className="relative bg-gradient-to-b from-gray-800/50 to-transparent px-4 pt-8 pb-6">
+      <div className="relative bg-gradient-to-b from-amber-900/30 to-transparent px-4 pt-8 pb-6">
         <button
           onClick={() => navigate('/hub')}
           className="text-academy-cream/40 hover:text-academy-cream/80 text-sm mb-4 flex items-center gap-1 transition-colors"
@@ -163,9 +182,9 @@ export default function Zone3Page() {
         </div>
         <h1 className="fantasy-title text-2xl text-academy-cream mb-2">The Town of Crotchet</h1>
         <p className="text-academy-cream/60 text-sm leading-relaxed">
-          First supervised field trips beyond the Academy walls. Crotchet is half-ruined, its
-          citizens dull and grey from the Twisted Melodies that drift through. Colors seem to have
-          faded from the cobblestones. But the people still gather when music plays.
+          Your first field trip beyond the Academy walls. Crotchet is bright and bustling — banners
+          strung between the rooftops, every guild hall flying its colors. The regional inter-school
+          contest has come to town, and the Academy has entered you.
         </p>
       </div>
 
@@ -178,15 +197,19 @@ export default function Zone3Page() {
           <div className="stat-bar">
             <div className="stat-bar-fill bg-academy-gold" style={{ width: `${(completedRequired / required.length) * 100}%` }} />
           </div>
+          {allRequiredDone && !contestWon && (
+            <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
+              🏆 The Crotchet Invitational is open
+            </div>
+          )}
         </div>
 
-        <div className="card-panel mb-6 border-gray-700/40 bg-gray-900/20">
+        <div className="card-panel mb-6 border-amber-700/30 bg-amber-900/10">
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Story</div>
           <p className="text-academy-cream/70 text-sm leading-relaxed italic">
-            In the market square, a Twisted Melody begins to coalesce from the fog. Before you can
-            react, a hand grabs your shoulder — Valeria Croft, a recent Academy graduate, steps
-            forward. "Watch how I handle this," she says. "Then you'll understand what mastery
-            looks like."
+            Four schools, one trophy: Choral College, Piano Preparatory, The String School — and you.
+            Valeria Croft finds you at the staging tent and straightens your collar. "Nervous? Good,"
+            she says. "Channel it. Now go show them what the Academy can do."
           </p>
         </div>
 
@@ -208,21 +231,61 @@ export default function Zone3Page() {
           ))}
         </div>
 
-        <div className={`card-panel mt-4 ${miniBossUnlocked ? 'border-amber-600/50' : 'border-amber-700/20 opacity-60'}`}>
-          <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Mini-Boss</div>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-academy-cream/80 text-sm font-semibold mb-1">😔 The Flatling Mob</div>
-              <div className="text-academy-cream/50 text-xs">
-                A swarm draining color from the town square.
-                {!miniBossUnlocked && <span className="text-academy-gold/50"> (Complete 3 required challenges)</span>}
-              </div>
-            </div>
-            {miniBossUnlocked && !miniBossDefeated && (
-              <button onClick={() => setActiveBattle(true)} className="btn-secondary text-xs py-2 px-3 flex-shrink-0">Fight</button>
-            )}
-            {miniBossDefeated && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
+        {/* The bracket */}
+        <div className="card-panel mt-4 border-academy-gold/30">
+          <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-1">
+            🏆 The Crotchet Invitational
           </div>
+          <div className="text-academy-cream/40 text-xs mb-4">
+            Single-elimination. Win your semifinal, then take the final to claim the trophy and advance to Quarter 4.
+          </div>
+
+          {!allRequiredDone && (
+            <div className="text-academy-gold/50 text-xs mb-4">
+              Complete all required challenges to enter the contest.
+            </div>
+          )}
+
+          <div className="text-[10px] text-academy-cream/40 uppercase tracking-widest mb-2">Semifinals</div>
+
+          <MatchCard
+            opponent="Piano Preparatory" oppEmoji="🎹"
+            state={semifinalWon ? 'won' : allRequiredDone ? 'play' : 'locked'}
+            onPlay={() => { setMatchFailed(null); setActiveMatch('semifinal'); }}
+            failed={matchFailed === 'semifinal'}
+            lockedHint="Finish the required work"
+          />
+
+          {/* The other semifinal resolves on its own */}
+          <div className="rounded-lg border border-white/10 px-3 py-2.5 mb-4 opacity-70">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm">
+                <span className="text-academy-cream/80">🎶 Choral College</span>
+                <span className="text-academy-cream/40 mx-2">vs</span>
+                <span className="text-academy-cream/80">🎻 The String School</span>
+              </div>
+              <span className="text-academy-cream/50 text-[10px] italic">String School advances</span>
+            </div>
+          </div>
+
+          <div className="text-[10px] text-academy-cream/40 uppercase tracking-widest mb-2">Final</div>
+
+          <MatchCard
+            opponent="The String School" oppEmoji="🎻"
+            state={contestWon ? 'champion' : semifinalWon ? 'play' : 'locked'}
+            onPlay={() => { setMatchFailed(null); setActiveMatch('final'); }}
+            failed={matchFailed === 'final'}
+            lockedHint="Win your semifinal first"
+            winLabel="🏆 Champions"
+          />
+
+          {contestWon && (
+            <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
+              The square erupts. The String School's first chair shakes your hand, grinning. The
+              Academy's banner rises over Crotchet, and for one bright afternoon the whole town sings
+              along. You've earned your colors.
+            </div>
+          )}
         </div>
       </div>
 
@@ -237,6 +300,54 @@ export default function Zone3Page() {
           onClose={() => setActiveChallenge(null)}
         />
       )}
+      {activeMatch && (
+        <ChallengeModal
+          challenge={activeMatch === 'final' ? FINAL_CHALLENGE : SEMIFINAL_CHALLENGE}
+          character={character}
+          onComplete={(r, s) => handleMatchComplete(activeMatch, r, s)}
+          onClose={() => setActiveMatch(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function MatchCard({ opponent, oppEmoji, state, onPlay, failed, lockedHint, winLabel }: {
+  opponent: string;
+  oppEmoji: string;
+  state: 'locked' | 'play' | 'won' | 'champion';
+  onPlay: () => void;
+  failed?: boolean;
+  lockedHint?: string;
+  winLabel?: string;
+}) {
+  const won = state === 'won' || state === 'champion';
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 mb-2 ${
+      state === 'locked' ? 'opacity-50 border-white/10' :
+      won ? 'border-rating-superior/40' : 'border-academy-gold/30'}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm">
+          <span className="text-academy-cream/90 font-semibold">🎺 You</span>
+          <span className="text-academy-cream/40 mx-2">vs</span>
+          <span className="text-academy-cream/80">{oppEmoji} {opponent}</span>
+        </div>
+        {state === 'play' && (
+          <button onClick={onPlay} className="btn-primary text-xs py-1.5 px-3 flex-shrink-0">Perform</button>
+        )}
+        {won && (
+          <span className="text-rating-superior text-sm font-fantasy flex-shrink-0">{winLabel ?? '✓ Won'}</span>
+        )}
+        {state === 'locked' && (
+          <span className="text-academy-cream/30 text-[10px] flex-shrink-0">{lockedHint ?? 'Locked'}</span>
+        )}
+      </div>
+      {failed && state === 'play' && (
+        <div className="text-rating-poor text-xs mt-1.5">
+          The judges weren't convinced — regroup and perform again.
+        </div>
+      )}
     </div>
   );
 }
@@ -245,7 +356,7 @@ function GearDropBanner({ item, onDismiss }: { item: GearItem; onDismiss: () => 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-6">
       <div className="card-panel w-full max-w-sm border-rating-excellent/60">
-        <div className="text-[10px] text-rating-excellent uppercase tracking-widest font-fantasy mb-2">⚔️ Gear Acquired</div>
+        <div className="text-[10px] text-rating-excellent uppercase tracking-widest font-fantasy mb-2">🏆 Prize Awarded</div>
         <div className="text-academy-cream/90 font-fantasy text-base mb-0.5">{item.name}</div>
         <div className="text-academy-cream/50 text-xs italic mb-2">{item.fantasyName}</div>
         <div className="text-rating-good text-xs mb-4">

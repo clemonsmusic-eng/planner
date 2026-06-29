@@ -243,10 +243,12 @@ mischievous training-hall sprite. **Ends with the Winter Concert** — crashed b
 concert-sprite drawn to the music's energy** (the former "Shard Phantom," reframed: no Noteshards
 exist yet). Drive it off, then perform. *(Implemented; lore reframe needed.)*
 
-**Zone 3 — The Town of Crotchet** *(Q3).* First field trips into a bright, healthy world. **Ends
-with the inter-school Contest** — competitive musical duels against **Choral College**, **Piano
+**Zone 3 — The Town of Crotchet** *(Q3).* First field trips into a bright, bustling town. **Ends
+with The Crotchet Invitational** — a single-elimination bracket against **Choral College**, **Piano
 Preparatory**, and **The String School** (friendly rivals; the String School carries only a light
-outsider's edge).
+outsider's edge). You play your semifinal (vs Piano Preparatory) and, if you win, the final (vs The
+String School, who advance from the other semifinal); taking the trophy earns your Ensemble Colors
+and advances to Quarter 4.
 
 **Zone 4 — The Grand Auditorium** *(Q4).* The students give their **final performance** as
 graduates. Then the Maestros take the stage for the annual **Renewal** under Vexus's baton — and

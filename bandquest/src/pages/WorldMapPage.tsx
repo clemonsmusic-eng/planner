@@ -25,8 +25,8 @@ const WORLD_ZONES: ZoneData[] = [
   },
   {
     id: 3, name: 'The Town of Crotchet', act: 1, quarter: 'Q3 · Spring',
-    emoji: '🏘️', flavor: 'Half-ruined, its citizens dull and grey from Twisted Melodies drifting through the streets.',
-    boss: 'The Flatling Horde',
+    emoji: '🏘️', flavor: 'A bright market town hosting the regional inter-school contest — banners, crowds, and four schools chasing one trophy.',
+    boss: 'The Crotchet Invitational',
   },
   {
     id: 4, name: 'The Grand Auditorium', act: 1, quarter: 'Q4 · End of Year',
