@@ -2,84 +2,86 @@
 
 *This document is the canonical story bible. It expands and supersedes the story
 sections of the GDD where they conflict — including the GDD's older framing of Vexus as a
-string player and any string-based villains/enemies (e.g. "Void Strings"), which are
-superseded here. The GDD remains the source of truth for systems (stats, gear, challenge
-formats, classroom features).*
+string player, any string-based villains/enemies (e.g. "Void Strings"), and the idea that
+the Academy was founded after a past Shattering. The GDD remains the source of truth for
+systems (stats, gear, challenge formats, classroom features).*
 
 ---
 
 ## 1. Premise
 
 **The Composer** wrote the world of **Symphonica** into existence, and the **Grand Symphony
-Score** — the unified body of the ten **Sacred Scores** — sustains its vitality. As long as
-the Symphony performs the Score, the world breathes.
+Score** — the unified body of the ten **Sacred Scores** — sustains its vitality.
 
-To direct that Symphony, the Composer appointed a **Conductor: Vexus.** Gifted, trusted, and
-placed at the very center of creation's music, Vexus came to want more than to *direct* the
-Composer's work — he wanted to prove himself the Composer's **equal**. In secret he rewrote
-the Grand Symphony Score, threading **tritones** through it to show he could compose a
-greater music than the one he'd been given to conduct.
+The Grand Symphony is performed by ten **Maestros**, the section leaders of the world's music
+— who also serve as the **professors of Harmonia Academy**, training each new generation. To
+direct them, the Composer appointed a **Conductor: Vexus.**
+
+Once a year, at the Academy's **graduation**, after the graduating students give their final
+performance, the Maestros take the stage and perform the Grand Symphony Score under Vexus's
+baton. This performance — **the Renewal** — sustains Symphonica for another year. It is the
+most beloved tradition in the world, and this year's graduates have waited their whole lives
+to witness it as alumni.
 
 ### The Shattering
-At the first performance of his rewritten Score, the ten **Maestros** — the section leaders
-of the Grand Symphony — raised their instruments and tried to play it. As they played they
-grew visibly more disturbed: the tritones fought their hands and ears, the harmony curdled,
-the tension and dynamics climbing relentlessly with nowhere to resolve. The music drove
-itself to a breaking point — and the Score **shattered**, bursting into fragments. Each
-shard — a **Noteshard** — drove into one of the ten Maestros, corrupting them.
+Obsessed with proving himself the Composer's **equal**, Vexus has secretly rewritten this
+year's Score, threading **tritones** through it. At the Renewal, the Maestros raise their
+instruments and begin — and as they play his tritonal score they grow visibly more disturbed:
+the intervals fight their hands and ears, the harmony curdles, the tension and dynamics climb
+with nowhere to resolve, until the music drives itself to a breaking point and the Score
+**shatters.** Each shard — a **Noteshard** — drives into one of the ten Maestros, corrupting
+them, as the graduating students watch in horror.
 
-Vexus drew the wrong lesson. Watching his musicians strain and fail, he concluded they were
-simply **inferior performers, incapable of realizing his genius.** So he abandoned living
-players altogether and mastered **tritonal magic** — animating instruments **with no players
-at all**, directing a soulless orchestra himself, served by **created lieutenants** he
-conjures to carry out his will.
+Vexus draws the wrong lesson. His musicians, he decides, were simply **inferior** — incapable
+of realizing his genius. So he abandons living players altogether, masters **tritonal magic**
+to animate instruments **with no players at all**, and retreats to his island, **Discordia.**
 
-### The spreading silence
-Vexus retreated to his island, **Discordia**, and his tritonal influence — once contained
-there — has bled outward across Symphonica over the years. It is **far stronger west of the
-Staff Range than east**; the mountains are a partial bulwark. The eastern heartland, with its
-great cities and schools, is **only now realizing** what is happening: the corruption is
-spreading, and unchecked it brings **decay, and eventually the death of all Symphonica.**
+### The unraveling
+With the Renewal corrupted, Symphonica destabilizes. Everyone woven into the world's music —
+the Maestros, the faculty, the established musicians — is corrupted or left **dulled and
+graying**, unable to act. Only the newest musicians — **this year's graduates, and a handful
+of recent ones** — remain untouched and clear-headed.
 
-**Vexus is blind to this.** He does not hear the world dying. He believes his tritonal work
-is an *improvement* — the music the Composer was too timid to write. **Harmonia Academy**
-(the Wind Academy) was founded by the surviving Maestros and faculty to train a new
-generation to reclaim the Noteshards, restore the Grand Symphony Score, and end the spreading
-silence before it reaches everything.
+Vexus's tritonal influence radiates from Discordia in the far west and deepens by the day;
+the **Staff Range** is a partial bulwark, so it is far worse west of the mountains than east.
+Unchecked, it means **decay and the death of all Symphonica.** The students — the only ones
+left who can still play with a whole heart — must reclaim the ten Noteshards from their own
+corrupted professors, restore the Grand Symphony Score, and perform it **at the source** to
+silence Vexus. **Vexus is blind to the ruin**; he believes his music is an improvement the
+Composer was too timid to write.
 
 ---
 
 ## 2. The Central Theme
 
-- **Hubris and vindication.** Vexus was the Composer's own appointed Conductor — and tried
-  to prove himself the Composer's equal. That overreach broke the world. His arc is the cost
-  of a brilliant servant who could not bear to merely serve.
+- **Hubris and vindication.** Vexus was the Composer's own appointed Conductor — and tried to
+  prove himself the Composer's equal. That overreach broke the world.
 - **Tragic, but still stopped.** Vexus genuinely believes the decay he spreads is beauty. He
   cannot hear what he has done. He is not malicious — he is *blind* — and that is what makes
   him tragic. He must still be stopped.
 - **Musicianship vindicated.** Vexus declared living musicians *inferior* and replaced them
-  with flawless, soulless automation. The students prove him wrong: practiced, collective,
-  **human** musicianship — an ensemble of real players performing together — is the one thing
-  his magic cannot replicate, and the only thing that restores the world. *This is the heart
-  of the game, and the reason co-op matters.*
+  with soulless automation. His own **students** — the ones his professors trained, the
+  generation he never counted — prove him wrong: practiced, collective, **human**
+  musicianship is the one thing his magic cannot replicate, and the only thing that restores
+  the world. *This is the heart of the game, and the reason co-op matters.*
 
 **The Composer is blameless.** Vexus alone rewrote the Score. No shared guilt, no "the
-Composer drove him to it." The story keeps this clean.
+Composer drove him to it."
 
 ---
 
 ## 3. The Corruption Rule
 
-There are two faces of the corruption:
+Two faces of the corruption:
 
-**The Maestros** — when the Score shattered, the shards lodged in them and **stripped the
-musician away, leaving only the instrument's function cranked to a lethal extreme.** A
-corrupted Maestro is terrifying precisely because they are *brilliant at one thing* and
-nothing remains to temper it.
+**The Maestros (the students' own professors)** — the shards stripped the musician away,
+leaving only the instrument's **function cranked to a lethal extreme.** A corrupted Maestro
+is terrifying precisely because they are *brilliant at one thing* and nothing remains to
+temper it.
 
-**The Twisted Melodies** (the enemy bestiary) — these are **instruments with no players**,
-animated directly by Vexus's tritonal magic. Every enemy that is "an instrument or notation
-brought to destructive life" is one of these player-less constructs.
+**The Twisted Melodies** (the enemy bestiary) — **instruments with no players**, animated by
+Vexus's tritonal magic. Every enemy that is "an instrument or notation brought to destructive
+life" is one of these player-less constructs.
 
 | Maestro | Function reduced to… | Manifestation |
 |--------|----------------------|---------------|
@@ -99,13 +101,13 @@ brought to destructive life" is one of these player-less constructs.
 ## 4. The Win Condition
 
 1. Vexus's rewritten Score shattered into **ten Noteshards**, one lodged in each Maestro.
-2. **Freeing the ten Maestros** (all by the end of Zone 8) reclaims the ten shards and lets
-   the true **Grand Symphony Score** be reassembled.
-3. But the Score cannot heal the world from afar — Vexus's tritonal magic radiates from
-   Discordia, actively re-corrupting everything it touches.
-4. The only way to restore the Score and halt the death is to **perform it live, at the
-   source** — inside the Hall of Discord — overpowering Vexus's player-less phantom orchestra
-   with a living ensemble. **The finale is that performance.**
+2. **Freeing the ten Maestros** (all by the end of Zone 8) reclaims the shards and lets the
+   true **Grand Symphony Score** be reassembled.
+3. The Score cannot heal the world from afar — Vexus's tritonal magic radiates from Discordia,
+   actively re-corrupting everything.
+4. The only way to restore the Score and halt the death is to **perform it live, at the source**
+   — inside the Hall of Discord — overpowering Vexus's player-less phantom orchestra with a
+   living ensemble. **The finale is that performance.**
 
 The **Grand Symphony** ally ultimate (unlocked once all ten are freed) is the in-system
 expression of this: ten restored Maestros and the players performing together.
@@ -116,70 +118,64 @@ expression of this: ten restored Maestros and the players performing together.
 
 ### Protagonist
 A **player-avatar student** of Harmonia Academy. In cooperative play, classmates form the
-party. Their arc is simple and pointed: an ordinary student who, through practice and
-ensemble, **proves the thing Vexus denied** — that living musicians matter.
+party. Their arc: an ordinary graduate who, through practice and ensemble, **proves the thing
+Vexus denied** — that living musicians matter — by saving the very professors who taught them.
 
 ### Allies
-- **Valeria Croft** — a recent Academy graduate; capable, self-reliant. **Leads the
-  expedition** once the students leave the Academy (the in-fiction authority who "advances
-  the class"), and supplies the map of confirmed Maestro locations.
-- **The Wandering Quartet** — four graduates a year ahead (Lyra, Soren, Mira, Dex); model
-  ensemble trust, post jobs, and provide the ship **The Fourth Wind** for the sea crossing.
+- **Headmaster Fennelio** — the Academy's administrator; survives the Shattering dulled but
+  lucid. Gives the students their first guidance and charge, but is too diminished to journey.
+- **Maestro Persichetti** (theory) & **Maestro Barenboimi** (conducting) — non-performing
+  academic staff who survive alongside Fennelio as advisors at the Academy.
+- **Valeria Croft** — a recent graduate, untouched by the corruption; **leads the expedition**
+  (the in-fiction authority who "advances the class") and supplies the map of confirmed Maestro
+  locations.
+- **The Wandering Quartet** — four graduates a year ahead (Lyra, Soren, Mira, Dex); also
+  spared, model ensemble trust, and provide the ship **The Fourth Wind**.
 - **Captain André** — veteran trumpeter; leads the cliff militia at the Clef Cliffs.
-- **Elder Rampal** — hermit flutist who knew the Composer's Symphony before the Shattering;
-  meets the heroes on the Chromatic Coasts to steel them for the crossing.
+- **Elder Rampal** — hermit flutist; meets the heroes on the Chromatic Coasts to steel them.
+
+### The Hall of Fame (educational easter-egg)
+The legendary **past masters** of Symphonica — studied in the Library, with recordings and
+biographies that unlock as lore. These are the real-musician homages: **Galwaynius** (Galway),
+**Wintonious** (Marsalis), **Frostoni** (Fröst), **Adolph** (Sax), **Lindbergio** (Lindberg),
+**Glennia** (Glennie), and others. In-world they are the historic giants the Maestros studied
+— a clean home for the educational nods, separate from the current faculty.
 
 ### The Mobile Hub *(traveling-academy)*
-- **The Touring Company** — a caravan carrying the party across the land zones (5–8).
+- **The Touring Company** — a caravan across the land zones (5–8).
 - **The Fourth Wind** — the Wandering Quartet's ship, for the sea crossing (Zones 9–12).
 
 ### Antagonists
 - **Vexus, the Conductor (the Discordian Overlord)** — the final boss. His weapon is the
-  **baton** and his tritonal magic, conducting a phantom orchestra of player-less
-  instruments. Tragic, blind, vindication-driven, stopped.
-- **Lieutenant Contra** — a **contrabass clarinet** automaton-lieutenant commanding the
-  Discordian Outpost in Zone 7. The first of Vexus's created lieutenants the party meets.
-- **Piano** & **Forte** — two Vexian knight-commander automatons patrolling the Dissonant
-  Dunes (Zone 11); a soft-and-loud pair, both must fall before the Hall opens.
-- **Ostinato, the Usher** — a gearwork automaton built to defeat and eject unwelcome guests
-  from the Hall of Discord.
-- **The Tritone Trio** — **General Grave** (contrabassoon, the leader and Vexus's second),
-  **Commander Mesto** (English horn), and **Lieutenant Kije** (piccolo): three player-less
-  automatons forming a tritone, animated by tritonal magic. Created beings, not corrupted
-  Maestros — no redemption. *(Rank runs deepest-voice-highest: General Grave leads, Lieutenant
-  Kije is the junior.)*
+  **baton** and his tritonal magic, conducting a phantom orchestra of player-less instruments.
+  Tragic, blind, vindication-driven, stopped.
+- **Lieutenant Contra** — a **contrabass clarinet** automaton commanding the Discordian Outpost
+  (Zone 7).
+- **Piano** & **Forte** — two Vexian knight-commander automatons patrolling the Dissonant Dunes
+  (Zone 11).
+- **Ostinato, the Usher** — a gearwork automaton that ejects unwelcome guests from the Hall.
+- **The Tritone Trio** — **General Grave** (contrabassoon, leader and Vexus's second),
+  **Commander Mesto** (English horn), **Lieutenant Kije** (piccolo): player-less automatons
+  forming a tritone. *(Rank runs deepest-voice-highest.)* The Trio's instruments are the
+  auxiliary extensions of flute, oboe, and bassoon — dark, soulless reflections of three of
+  the very Maestros Vexus cast aside (Flaura, Hautbois, Fagotto).
 
 *Motif: every one of Vexus's lieutenants is an **extreme-range auxiliary wind** (contrabass
-clarinet, piccolo, English horn, contrabassoon) — the outer fringes of the ensemble, fitting
-his obsession with music beyond the ordinary. The Trio's three instruments are the auxiliary
-extensions of flute, oboe, and bassoon — making them dark, soulless reflections of three of the
-very Maestros Vexus cast aside (Flaura, Hautbois, Fagotto).*
+clarinet, piccolo, English horn, contrabassoon) — the outer fringes of the ensemble.*
 
 ---
 
-## 6. The Ten Maestros
+## 6. The Ten Maestros (the students' professors)
 
-The Maestros were the **section leaders** of the Grand Symphony. The Academy faculty were
-their section members (the oldest faculty), their students, or otherwise elevated musicians —
-no required one-to-one correlation.
+The Maestros are the **section-leader professors of Harmonia Academy** — the teachers who
+trained the students all year before the Renewal corrupted them. Freeing them is rescuing one's
+own mentors.
 
 **Freeing a Maestro resets them.** When the shard is drawn out, the function-corruption falls
 away and their **true personality and perspective return** — as if waking from a long, fevered
-dream. They remember the corrupted years the way one remembers a dream: present, but distanced.
+dream. They remember the corrupted period the way one remembers a dream: present, but distanced.
 Most step back into themselves clear-eyed; **Hautbois is the exception** — she grasps too sharply
 what her hands did to the forest, and the reset can't mend that.
-
-**Restored selves (who they are once freed):**
-- **Flaura** (Flute) — gentle and nurturing; the ensemble's heart and only true healer.
-- **Buccina** (Trumpet) — bold and fiercely loyal; the rallying spark, devoted younger sister to Waldhorn.
-- **Claribel** (Clarinet) — quick, free-spirited wanderer; warm beneath a sharp wit.
-- **Percival** (Percussion) — gruff, big-hearted tinkerer who builds for others → the Grand Artificer.
-- **Adolpha** (Alto Sax) — cool, charismatic improviser; adapts to anyone yet stays herself.
-- **Sackbut** (Trombone) — broad, jovial powerhouse; a gentle giant with an enormous sound.
-- **Euphonia** (Euph/Tuba) — warm, steady, grounding; the dependable foundation everyone leans on.
-- **Waldhorn** (French Horn) — thoughtful and far-seeing, a touch melancholy; the wandering caller, Buccina's older brother.
-- **Hautbois** (Oboe) — exacting and deeply sensitive; gives the ensemble its tuning A → the one the reset can't fully heal.
-- **Fagotto** (Bassoon) — wise, dry-witted scholar; keeper of old knowledge → retires to the Library.
 
 | # | Maestro → Corrupted Form | Instrument | Zone · Location | Map? | Post-freeing role |
 |---|--------------------------|-----------|------------------|------|-------------------|
@@ -194,64 +190,86 @@ what her hands did to the forest, and the reset can't mend that.
 | 9 | Hautbois → The Double-Reed Specter | Oboe | 8 · Forgotten Forest | ✅ Confirmed | **Non-combat guide** (won't fight) |
 | 10 | Fagotto → The Ancient Revenant | Bassoon | 8 · Forgotten Forest (finale) | Incidental | **Library** keeper |
 
-**Map confirms only 4** locations: Flute & Trumpet (Zone 5), Oboe & French Horn (Zone 8).
-The other six are **incidental** — found because **reclaimed Noteshards resonate toward the
-shards still unfreed**, drawing the party to them (so the discoveries aren't pure chance).
+**Map confirms only 4** locations: Flute & Trumpet (Zone 5), Oboe & French Horn (Zone 8). The
+Shattering flung the corrupted Maestros across the land toward the tritonal source; the other six
+are **incidental** — found because **reclaimed Noteshards resonate toward the shards still
+unfreed**, drawing the party to them.
 
-**Summonable (7):** Flaura, Buccina *(after Zone 8)*, Bassetta, Adolpha, Sackbut, Euphonia,
-Waldhorn.
-**Non-summonable (3):** Percival *(Grand Artificer)*, Hautbois *(guide, won't fight)*,
-Fagotto *(Library)*.
+**Restored selves (who they are once freed):**
+- **Flaura** (Flute) — gentle and nurturing; the ensemble's heart and only true healer.
+- **Buccina** (Trumpet) — bold and fiercely loyal; the rallying spark, devoted younger sister to Waldhorn.
+- **Claribel** (Clarinet) — quick, free-spirited wanderer; warm beneath a sharp wit.
+- **Percival** (Percussion) — gruff, big-hearted tinkerer who builds for others → the Grand Artificer.
+- **Adolpha** (Alto Sax) — cool, charismatic improviser; adapts to anyone yet stays herself.
+- **Sackbut** (Trombone) — broad, jovial powerhouse; a gentle giant with an enormous sound.
+- **Euphonia** (Euph/Tuba) — warm, steady, grounding; the foundation everyone leans on.
+- **Waldhorn** (French Horn) — thoughtful and far-seeing, a touch melancholy; the wandering caller, Buccina's older brother.
+- **Hautbois** (Oboe) — exacting and deeply sensitive; gives the ensemble its tuning A → the one the reset can't fully heal.
+- **Fagotto** (Bassoon) — wise, dry-witted scholar; keeper of old knowledge → retires to the Library.
 
 The Maestros exist as plot-fixed NPCs **regardless of which instruments a classroom enables** —
-a Base-Six-only class still meets Waldhorn, Hautbois, and Fagotto.
+a Base-Six-only class still meets Waldhorn, Hautbois, and Fagotto. Once the world is restored,
+the freed Maestros **resume their professorships** (Fagotto as the Library-keeper, Percival as the
+Grand Artificer).
 
 ### Companion subplots
-- **Buccina & Waldhorn (siblings).** Freed in Zone 5, Buccina reveals she is searching for her
-  **long-lost older brother, Waldhorn**. The map confirms a Maestro in the Zone 8 Forest, so she
-  **travels with the party as a playable guest** (Z5–8), driving them west. Reuniting with and
-  freeing Waldhorn resolves her arc; only then does she convert to a summon.
-- **Hautbois (the guide who won't fight).** Freed in Zone 8 and shattered by what her corruption
-  did — felling the ancient forest — she refuses to fight again, traveling with the party through
-  Act 3 offering **guidance only**.
+- **Buccina & Waldhorn (siblings).** Both professors before the Shattering. Freed in Zone 5,
+  Buccina searches for her **brother Waldhorn — scattered and lost when the Score shattered.**
+  The map confirms a Maestro in the Zone 8 Forest, so she **travels with the party as a playable
+  guest** (Z5–8). Finding and freeing him resolves her arc; only then does she convert to a summon.
+- **Hautbois (the guide who won't fight).** Freed in Zone 8 and unable to forgive what her
+  corruption did to the forest, she lays down her instrument and travels with the party through
+  Act 3 offering **guidance only.**
 
 ---
 
 ## 7. ACT 1 — The Academy Years (Zones 1–4)
 
-*Warm, golden, the least-corrupted corner of the world. One school year, four quarters.*
+*Warm, golden, and whole. The students' final year at Harmonia Academy, trained by the Maestros
+themselves. There is no corruption in the world yet — and that is the point.*
 
-**Zone 1 — The Rehearsal Halls** *(Q1).* Boot Camp; the **Enchanted Music Stand** mid-quarter.
-**Ends with Boot Camp Graduation** — the first 3-note song for Director Fennelio. *(Implemented.)*
+**Combat in Act 1 is real, but it is not the war.** Full battle mechanics, framed as school
+life: **ambient magical creatures** (the world has its own quirky minor magic, none of it
+Vexus's doing), **Battle-Simulator training and sparring** (retry-friendly, no true death), and
+**inter-school duels**. The stakes are low; the fights are real; the ramp into actual war begins
+the instant the Shattering hits.
 
-**Zone 2 — The Theory Wing** *(Q2).* A too-small Noteshard fragment surfaces in the stacks; the
-**Interval Imp** mid-quarter. **Ends with the Winter Concert, crashed by the Shard Phantom** —
-drive it back, then perform. *(Implemented.)*
+**Zone 1 — The Rehearsal Halls** *(Q1).* Boot Camp under the Maestros. The **Enchanted Music
+Stand** — an ambient bit of school magic, a haunted practice-room curio, not an omen. **Ends with
+Boot Camp Graduation** (the first 3-note song for Headmaster Fennelio). *(Implemented.)*
 
-**Zone 3 — The Town of Crotchet** *(Q3).* First field trips; Crotchet is graying as the
-corruption creeps east. A Twisted Melody attack; **Valeria Croft** assists. **Ends with the
-inter-school Contest** against **Choral College**, **Piano Preparatory**, and **The String
-School** — friendly rivals (the String School carries a light outsider's edge, no more than
-that).
+**Zone 2 — The Theory Wing** *(Q2).* Study under the theory faculty; the **Interval Imp**, a
+mischievous training-hall sprite. **Ends with the Winter Concert** — crashed by an **ambient
+concert-sprite drawn to the music's energy** (the former "Shard Phantom," reframed: no Noteshards
+exist yet). Drive it off, then perform. *(Implemented; lore reframe needed.)*
 
-**Zone 4 — The Grand Auditorium** *(Q4).* Director Fennelio reveals the truth: the Academy was
-built as a counter-force to the spreading silence, and these students are the plan. **Ends with
-the Graduation Performance** of a restored Sacred Score fragment. Students receive **Journey
-Instruments** and set out; **Valeria leads**, and the **Touring Company** caravan rolls west.
+**Zone 3 — The Town of Crotchet** *(Q3).* First field trips into a bright, healthy world. **Ends
+with the inter-school Contest** — competitive musical duels against **Choral College**, **Piano
+Preparatory**, and **The String School** (friendly rivals; the String School carries only a light
+outsider's edge).
+
+**Zone 4 — The Grand Auditorium** *(Q4).* The students give their **final performance** as
+graduates. Then the Maestros take the stage for the annual **Renewal** under Vexus's baton — and
+Vexus debuts his tritonal Score. **This is the Shattering** (see §1): the Maestros strain, the
+music builds and breaks, the shards corrupt them, the world destabilizes. The students — the only
+ones left clear-headed — are charged by Headmaster Fennelio to save their teachers and the world.
+**This is the Act 1 climax and the turn into Act 2.**
 
 ---
 
 ## 8. ACT 2 — Into the World (Zones 5–8)
 
-*The journey west is a journey into worsening corruption. All ten Maestros are freed by the end.*
+*The immediate aftermath. The students set out westward — toward the deepening corruption and its
+source — to reclaim the ten Noteshards from their own scattered, corrupted professors. Valeria
+leads; the Touring Company carries them. All ten are freed by the end of Act 2.*
 
 ### Zone 5 — Melodious Meadows
 Warm farmland where music rides the wind — sweeter the breeze, safer; the more it sours, the
 nearer a corrupted Maestro (**navigation-by-ear**). Hub: the **Village of Legato**.
-- **Flaura → The Aria Wraith** *(Flute, confirmed)* — endlessly sustaining a field of dead
-  crops. First ally; explains the Noteshard infection.
+- **Flaura → The Aria Wraith** *(Flute, confirmed)* — endlessly sustaining a field of dead crops.
+  First freed; explains the Noteshard infection from the inside.
 - **Buccina → The War Horn Berserker** *(Trumpet, confirmed)* — at the **Monument of the Fallen
-  March**. Freed, reveals her search for her brother **Waldhorn** and **joins as a playable guest.**
+  March**. Freed, she searches for her scattered brother **Waldhorn** and **joins as a playable guest.**
 
 ### Zone 6 — Sands of Time
 A desert, crossed edge-to-heart:
@@ -268,14 +286,14 @@ Cold mountains; the first real Discordian foothold — an **outpost**, not a bas
 points the way.
 1. **Player's Pass** *(summit)* — **The Sound Shadow** *(Adolpha, Alto Sax)*. Freeing her opens
    the descent.
-2. **The Discordian Outpost** — commanded by **Lieutenant Contra** (contrabass clarinet
-   automaton), the first of Vexus's created lieutenants. The two low-brass Maestros — **Sackbut →
-   The Sliding Chaos Knight** *(Trombone)* and **Euphonia → The Stone Colossus** *(Euph/Tuba)* —
-   are held in his thrall until the party breaks it and frees them.
+2. **The Discordian Outpost** — commanded by **Lieutenant Contra** (contrabass clarinet automaton),
+   the first of Vexus's created lieutenants. The two low-brass Maestros — **Sackbut → The Sliding
+   Chaos Knight** *(Trombone)* and **Euphonia → The Stone Colossus** *(Euph/Tuba)* — are held in his
+   thrall until the party breaks it and frees them.
 
 ### Zone 8 — Forgotten Forest
-At the **base of the mountains**, drowned in **thick fog**; the only way through is to **follow
-the tritones**.
+At the **base of the mountains**, drowned in **thick fog**; the only way through is to **follow the
+tritones**.
 1. **The Forest Flogger** *(Waldhorn, French Horn, confirmed)* — found first; his endless echoing
    calls *are* the fog. **Buccina confronts the brother she's sought**; freeing him resolves her arc
    and she converts to a summon.
@@ -292,13 +310,13 @@ fragment; far off, light parts over the Hall of Discord. The party boards **The 
 
 ## 9. ACT 3 — The Assault (Zones 9–12)
 
-*The Symphony is whole; the Score is restored but cannot heal the world while Vexus re-corrupts
-it from the source. This is the voyage to silence him at Discordia.*
+*The Score is restored but cannot heal the world while Vexus re-corrupts it from the source. This
+is the voyage to silence him at Discordia.*
 
 ### Zone 9 — Chromatic Coasts
-The corruption trail reaches the shore; color drains in chromatic bands nearer the water.
-**Elder Rampal** meets the heroes to steady them. **Valeria** and the **Wandering Quartet**
-rendezvous to plan the crossing.
+The corruption trail reaches the shore; color drains in chromatic bands nearer the water. **Elder
+Rampal** meets the heroes to steady them. **Valeria** and the **Wandering Quartet** rendezvous to
+plan the crossing.
 
 ### Zone 10 — Syncopated Seas
 The crossing aboard **The Fourth Wind**. The naturally uneven seas turn violent this near
@@ -311,15 +329,15 @@ Guard under **Piano** and **Forte**. Both must fall before the Hall's doors open
 
 ### Zone 12 — The Hall of Discord
 *Dark, imposing, operatic.* A four-stage dungeon:
-1. **Ostinato, the Usher** — the automaton built to eject unwelcome guests. Beaten, it looks like
-   a clear path to the stage—
+1. **Ostinato, the Usher** — the automaton built to eject unwelcome guests. Beaten, it looks like a
+   clear path to the stage—
 2. **The Failsafe** — dying, Ostinato trips a trap door, dropping the heroes into the **basement
    practice rooms and rehearsal halls.**
 3. **The Practice Rooms** — a gauntlet of rooms, each a different challenge type, winding to the
    **large practice studio.**
 4. **The Tritone Trio** — **General Grave** (contrabassoon, leader), **Commander Mesto** (English
-   horn), **Lieutenant Kije** (piccolo): player-less automatons that protect one another and must
-   be broken apart.
+   horn), **Lieutenant Kije** (piccolo): player-less automatons that protect one another and must be
+   broken apart.
 5. **Vexus** — the final battle: the heroes and the restored Maestros perform the true Grand
    Symphony Score against Vexus's phantom orchestra of player-less instruments. **Living ensemble
    musicianship overpowers flawless automation.** His conducting falters; the tritonal magic
@@ -330,36 +348,39 @@ Guard under **Piano** and **Forte**. Both must fall before the Hall's doors open
 ## 10. The Ending
 
 The final battle is a performance, not a slaughter. As the restored Score swells — played by
-living musicians, the very thing Vexus dismissed as inferior — his automated orchestra falls
-silent and the spreading death reverses. He is **stopped, not slain**: disarmed, his baton
-stilled, left to the restored Academy's judgment (the faculty are noted, without resolution, to
-disagree about his fate).
+living musicians, the very thing Vexus dismissed as inferior — his automated orchestra falls silent
+and the spreading death reverses. He is **stopped, not slain**: disarmed, his baton stilled, left
+to the Academy's judgment (the surviving faculty are noted, without resolution, to disagree about
+his fate).
 
-The tragedy holds to the end. Vexus believed living musicians could never realize his music —
-and the students restore the world by doing exactly that. Whether, in his final silence, he
-finally *hears* it — or remains blind, certain he was right — is left for the epilogue, and
+The tragedy holds to the end. Vexus believed living musicians could never realize his music — and
+his own professors' students restore the world by doing exactly that. Whether, in his final
+silence, he finally *hears* it — or remains blind, certain he was right — is left for the epilogue,
 shaded by the player's rating on that last performance.
 
-**The Composer is blameless**; Vexus alone rewrote the Score. The Sacred Scores are restored,
-the Grand Symphony plays again, and Symphonica blooms back from the western silence — color
-returning east-to-west as the corruption recedes toward the empty island it came from.
+**The Composer is blameless**; Vexus alone rewrote the Score. The Sacred Scores are restored, the
+Grand Symphony plays again, and Symphonica blooms back from the western silence — color returning
+east-to-west as the corruption recedes toward the empty island it came from. The freed Maestros
+return to Harmonia Academy, and a new year of students arrives.
 
 ---
 
 ## 11. Geography & the Corruption Gradient
 
-Vexus's tritonal influence radiates **from Discordia in the far west, eastward**, and the
-**Staff Range is a partial bulwark** — which is why the map reads the way it does:
+The Shattering struck at the Academy's Grand Auditorium in the **east**, but **Vexus retreated to
+Discordia in the far west and entrenches the corruption from there** — so the influence is **far
+stronger west of the Staff Range than east**, the mountains a partial bulwark. That is why the map
+reads as it does:
 
-- **East of the range** (Concerta, the schools, the meadows): warm, golden, civilized, **least
-  corrupted** — and only now waking to the danger.
+- **East of the range** (Concerta, the schools, the meadows): warm, golden, **least corrupted** —
+  the students' uncorrupted staging ground.
 - **West of the range** (Forgotten Forest, Sands of Time, Chromatic Coasts): cooler, wilder,
   **heavily corrupted** frontier.
 - **The Syncopated Sea & Discordia**: the cold grey-violet source.
 
-So Act 2's westward march is literally **walking into deepening corruption**, and Act 3's ending —
-color bleeding back east-to-west — is the gradient reversing. Full geography, distances, and the
-scaled blueprint live in [`MAP.md`](./MAP.md).
+So Act 2's westward march is **walking into deepening corruption**, and Act 3's ending — color
+bleeding back east-to-west — is the gradient reversing. Full geography, distances, and the scaled
+blueprint live in [`MAP.md`](./MAP.md).
 
 Travel: the **Touring Company** caravan through Act 2 (land); **The Fourth Wind** ship through
 Act 3 (sea).
