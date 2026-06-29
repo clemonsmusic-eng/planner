@@ -233,10 +233,10 @@ export default function Zone2Page() {
         <div className="card-panel mb-6 border-slate-700/40 bg-slate-900/20">
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Story</div>
           <p className="text-academy-cream/70 text-sm leading-relaxed italic">
-            Deep in the library stacks, you find a fragment too small to be a full Noteshard —
-            a sliver of corrupted parchment that hums faintly. Maestro Persichetti notices and
-            takes it quietly. "This is closer than the Headmaster knows," he says, and says
-            nothing more.
+            Deep in the library stacks, you find a faded page from an old score that still hums
+            faintly when you hold it — a scrap of real music, older than the Academy. Maestro
+            Persichetti turns it over with care. "Good ears," he says. "The Theory Wing keeps a
+            few secrets worth finding. Mind you put it back."
           </p>
         </div>
 
@@ -302,11 +302,11 @@ export default function Zone2Page() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-academy-cream/80 text-sm font-semibold mb-1">
-                    👻 The Shard Phantom crashes the concert
+                    👻 The Footlight Phantom crashes the concert
                   </div>
                   <div className="text-academy-cream/50 text-xs">
-                    A Noteshard fragment awakens the moment the music begins. Drive it back before
-                    the concert can continue.
+                    A mischievous theater-sprite, drawn out of the old hall by the swell of live
+                    music, scatters the sheet music. Shoo it off before the concert can continue.
                   </div>
                 </div>
                 {!phantomDefeated && !concertDone ? (
