@@ -143,13 +143,17 @@ ensemble, **proves the thing Vexus denied** — that living musicians matter.
   Dunes (Zone 11); a soft-and-loud pair, both must fall before the Hall opens.
 - **Ostinato, the Usher** — a gearwork automaton built to defeat and eject unwelcome guests
   from the Hall of Discord.
-- **The Tritone Trio** — **Cadenza** (piccolo, leader, Vexus's second), **Sotto** (English
-  horn), **Grave** (contrabassoon): the extreme edges of the wind family, animated by tritonal
-  magic. Created automatons, not corrupted Maestros — no redemption.
+- **The Tritone Trio** — **General Grave** (contrabassoon, the leader and Vexus's second),
+  **Commander Mesto** (English horn), and **Lieutenant Kije** (piccolo): three player-less
+  automatons forming a tritone, animated by tritonal magic. Created beings, not corrupted
+  Maestros — no redemption. *(Rank runs deepest-voice-highest: General Grave leads, Lieutenant
+  Kije is the junior.)*
 
 *Motif: every one of Vexus's lieutenants is an **extreme-range auxiliary wind** (contrabass
 clarinet, piccolo, English horn, contrabassoon) — the outer fringes of the ensemble, fitting
-his obsession with music beyond the ordinary.*
+his obsession with music beyond the ordinary. The Trio's three instruments are the auxiliary
+extensions of flute, oboe, and bassoon — making them dark, soulless reflections of three of the
+very Maestros Vexus cast aside (Flaura, Hautbois, Fagotto).*
 
 ---
 
@@ -157,8 +161,25 @@ his obsession with music beyond the ordinary.*
 
 The Maestros were the **section leaders** of the Grand Symphony. The Academy faculty were
 their section members (the oldest faculty), their students, or otherwise elevated musicians —
-no required one-to-one correlation. When freed, the "reduced to function" corruption lifts and
-their full selves return.
+no required one-to-one correlation.
+
+**Freeing a Maestro resets them.** When the shard is drawn out, the function-corruption falls
+away and their **true personality and perspective return** — as if waking from a long, fevered
+dream. They remember the corrupted years the way one remembers a dream: present, but distanced.
+Most step back into themselves clear-eyed; **Hautbois is the exception** — she grasps too sharply
+what her hands did to the forest, and the reset can't mend that.
+
+**Restored selves (who they are once freed):**
+- **Flaura** (Flute) — gentle and nurturing; the ensemble's heart and only true healer.
+- **Buccina** (Trumpet) — bold and fiercely loyal; the rallying spark, devoted younger sister to Waldhorn.
+- **Claribel** (Clarinet) — quick, free-spirited wanderer; warm beneath a sharp wit.
+- **Percival** (Percussion) — gruff, big-hearted tinkerer who builds for others → the Grand Artificer.
+- **Adolpha** (Alto Sax) — cool, charismatic improviser; adapts to anyone yet stays herself.
+- **Sackbut** (Trombone) — broad, jovial powerhouse; a gentle giant with an enormous sound.
+- **Euphonia** (Euph/Tuba) — warm, steady, grounding; the dependable foundation everyone leans on.
+- **Waldhorn** (French Horn) — thoughtful and far-seeing, a touch melancholy; the wandering caller, Buccina's older brother.
+- **Hautbois** (Oboe) — exacting and deeply sensitive; gives the ensemble its tuning A → the one the reset can't fully heal.
+- **Fagotto** (Bassoon) — wise, dry-witted scholar; keeper of old knowledge → retires to the Library.
 
 | # | Maestro → Corrupted Form | Instrument | Zone · Location | Map? | Post-freeing role |
 |---|--------------------------|-----------|------------------|------|-------------------|
@@ -296,8 +317,9 @@ Guard under **Piano** and **Forte**. Both must fall before the Hall's doors open
    practice rooms and rehearsal halls.**
 3. **The Practice Rooms** — a gauntlet of rooms, each a different challenge type, winding to the
    **large practice studio.**
-4. **The Tritone Trio** — **Cadenza** (piccolo), **Sotto** (English horn), **Grave** (contrabassoon):
-   player-less automatons that protect one another and must be broken apart.
+4. **The Tritone Trio** — **General Grave** (contrabassoon, leader), **Commander Mesto** (English
+   horn), **Lieutenant Kije** (piccolo): player-less automatons that protect one another and must
+   be broken apart.
 5. **Vexus** — the final battle: the heroes and the restored Maestros perform the true Grand
    Symphony Score against Vexus's phantom orchestra of player-less instruments. **Living ensemble
    musicianship overpowers flawless automation.** His conducting falters; the tritonal magic
