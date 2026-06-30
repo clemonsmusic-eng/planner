@@ -4,8 +4,24 @@ import type { Character, Classroom, AllyId, ZoneId, GearItem, Appearance } from 
 import type { Rating } from '../types/game';
 import { RATING_XP_MULTIPLIERS, RATING_RP_AWARD } from '../types/game';
 import { xpToNextLevel, INSTRUMENTS } from '../lib/instruments';
-import { normalizeAppearance } from '../lib/appearance';
-import { getBossGearDrop, normalizeGear } from '../lib/gear';
+import { normalizeAppearance, randomAppearance } from '../lib/appearance';
+import { getBossGearDrop, normalizeGear, getStartingGear } from '../lib/gear';
+import { useUiStore } from './uiStore';
+
+// ── Guest Mode persistence ──────────────────────────────────────────────────────
+const GUEST_CHAR_KEY = 'bq_guest_character';
+function isGuest(): boolean { return useUiStore.getState().guest; }
+function saveGuest(c: Character | null) {
+  try {
+    if (c) localStorage.setItem(GUEST_CHAR_KEY, JSON.stringify(c));
+    else localStorage.removeItem(GUEST_CHAR_KEY);
+  } catch { /* ignore */ }
+}
+// Persist a character change: localStorage for guests, Supabase otherwise.
+async function persistChar(updated: Character, columns: Record<string, unknown>) {
+  if (isGuest()) { saveGuest(updated); return; }
+  await supabase.from('characters').update(columns).eq('id', updated.id);
+}
 
 interface GameState {
   character: Character | null;
@@ -26,6 +42,11 @@ interface GameState {
   saveAppearance: (appearance: Appearance) => Promise<void>;
   addSummonPoints: (delta: number) => Promise<void>;
   setCharacter: (character: Character | null) => void;
+
+  // Guest Mode (no account; character persists to localStorage)
+  createGuestCharacter: (instrument: Character['instrument'], displayName: string) => void;
+  loadGuestCharacter: () => boolean;
+  exitGuest: () => void;
 }
 
 const BASE_XP: Record<string, number> = {
@@ -120,17 +141,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     const rpAwarded = RATING_RP_AWARD[rating];
     const coinsAwarded = COIN_PER_RATING[rating] + (COIN_BOSS_BONUS[challengeType] ?? 0);
 
-    // Insert challenge result
-    await supabase.from('challenge_results').insert({
-      character_id: character.id,
-      classroom_id: character.classroomId,
-      challenge_id: challengeId,
-      challenge_type: challengeType,
-      rating,
-      score,
-      xp_awarded: xpAwarded,
-      rp_awarded: rpAwarded,
-    });
+    // Insert challenge result (skipped for guests — no DB)
+    if (!isGuest()) {
+      await supabase.from('challenge_results').insert({
+        character_id: character.id,
+        classroom_id: character.classroomId,
+        challenge_id: challengeId,
+        challenge_type: challengeType,
+        rating,
+        score,
+        xp_awarded: xpAwarded,
+        rp_awarded: rpAwarded,
+      });
+    }
 
     // Compute new level from total XP
     const newXp = character.xp + xpAwarded;
@@ -173,32 +196,31 @@ export const useGameStore = create<GameState>((set, get) => ({
       hp: newHp,
       maxHp: newMaxHp,
       completedChallenges,
+      totalAttempts: character.totalAttempts + 1,
+      weeklyXp: character.weeklyXp + xpAwarded,
     };
 
     set({ character: updatedCharacter });
 
-    // Persist everything to Supabase
-    await supabase
-      .from('characters')
-      .update({
-        xp: remainingXp,
-        level: newLevel,
-        resonance_points: newRp,
-        resonance_coins: newCoins,
-        completed_challenges: completedChallenges,
-        total_attempts: character.totalAttempts + 1,
-        weekly_xp: character.weeklyXp + xpAwarded,
-        // Stats (updated on level-up)
-        ...(didLevelUp ? {
-          power: newStats.power,
-          accuracy: newStats.accuracy,
-          technique: newStats.technique,
-          endurance: newStats.endurance,
-          max_hp: newMaxHp,
-          hp: newHp,
-        } : {}),
-      })
-      .eq('id', character.id);
+    // Persist everything (Supabase, or localStorage for guests)
+    await persistChar(updatedCharacter, {
+      xp: remainingXp,
+      level: newLevel,
+      resonance_points: newRp,
+      resonance_coins: newCoins,
+      completed_challenges: completedChallenges,
+      total_attempts: character.totalAttempts + 1,
+      weekly_xp: character.weeklyXp + xpAwarded,
+      // Stats (updated on level-up)
+      ...(didLevelUp ? {
+        power: newStats.power,
+        accuracy: newStats.accuracy,
+        technique: newStats.technique,
+        endurance: newStats.endurance,
+        max_hp: newMaxHp,
+        hp: newHp,
+      } : {}),
+    });
   },
 
   advanceZone: async (newZone: ZoneId) => {
@@ -207,11 +229,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     const updated = { ...character, currentZone: newZone };
     set({ character: updated });
-
-    await supabase
-      .from('characters')
-      .update({ current_zone: newZone })
-      .eq('id', character.id);
+    await persistChar(updated, { current_zone: newZone });
   },
 
   advanceClassroomZone: async (newZone: ZoneId) => {
@@ -231,11 +249,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { character } = get();
     if (!character) return;
     const newGear = { ...character.gear, [item.slot]: item };
-    set({ character: { ...character, gear: newGear } });
-    await supabase
-      .from('characters')
-      .update({ gear: newGear })
-      .eq('id', character.id);
+    const updated = { ...character, gear: newGear };
+    set({ character: updated });
+    await persistChar(updated, { gear: newGear });
   },
 
   freeAlly: async (allyId: AllyId) => {
@@ -243,34 +259,28 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!character || character.freedAllies.includes(allyId)) return;
 
     const freedAllies = [...character.freedAllies, allyId];
-    set({ character: { ...character, freedAllies } });
-
-    await supabase
-      .from('characters')
-      .update({ freed_allies: freedAllies })
-      .eq('id', character.id);
+    const updated = { ...character, freedAllies };
+    set({ character: updated });
+    await persistChar(updated, { freed_allies: freedAllies });
   },
 
   spendResonancePoints: (amount) => {
     const { character } = get();
     if (!character || character.resonancePoints < amount) return;
     const newRp = character.resonancePoints - amount;
-    set({ character: { ...character, resonancePoints: newRp } });
-    supabase
-      .from('characters')
-      .update({ resonance_points: newRp })
-      .eq('id', character.id);
+    const updated = { ...character, resonancePoints: newRp };
+    set({ character: updated });
+    if (isGuest()) saveGuest(updated);
+    else supabase.from('characters').update({ resonance_points: newRp }).eq('id', character.id);
   },
 
   spendCoins: async (amount) => {
     const { character } = get();
     if (!character || character.resonanceCoins < amount) return false;
     const newCoins = character.resonanceCoins - amount;
-    set({ character: { ...character, resonanceCoins: newCoins } });
-    await supabase
-      .from('characters')
-      .update({ resonance_coins: newCoins })
-      .eq('id', character.id);
+    const updated = { ...character, resonanceCoins: newCoins };
+    set({ character: updated });
+    await persistChar(updated, { resonance_coins: newCoins });
     return true;
   },
 
@@ -285,7 +295,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   completeBootCampStep: async (stepId) => {
     const { character } = get();
-    if (!character) return;
+    if (!character || isGuest()) return; // guests skip boot camp / DB
 
     await supabase.from('boot_camp_progress').upsert({
       character_id: character.id,
@@ -298,22 +308,58 @@ export const useGameStore = create<GameState>((set, get) => ({
   saveAppearance: async (appearance: Appearance) => {
     const { character } = get();
     if (!character) return;
-    set({ character: { ...character, appearance } });
-    await supabase
-      .from('characters')
-      .update({ appearance })
-      .eq('id', character.id);
+    const updated = { ...character, appearance };
+    set({ character: updated });
+    await persistChar(updated, { appearance });
   },
 
   addSummonPoints: async (delta) => {
     const { character } = get();
     if (!character) return;
     const newSp = Math.max(0, character.summonPoints + delta);
-    set({ character: { ...character, summonPoints: newSp } });
-    await supabase
-      .from('characters')
-      .update({ summon_points: newSp })
-      .eq('id', character.id);
+    const updated = { ...character, summonPoints: newSp };
+    set({ character: updated });
+    await persistChar(updated, { summon_points: newSp });
+  },
+
+  // ── Guest Mode ────────────────────────────────────────────────────────────────
+  createGuestCharacter: (instrument, displayName) => {
+    const stats = computeStatsAtLevel(instrument, 1);
+    const maxHp = stats.endurance * 5;
+    const now = new Date().toISOString();
+    const char: Character = {
+      id: 'guest', userId: 'guest', classroomId: '',
+      displayName: displayName.trim() || 'Guest',
+      instrument, level: 1, xp: 0, xpToNextLevel: xpToNextLevel(1), currentZone: 1,
+      stats, hp: maxHp, maxHp,
+      resonancePoints: 0, resonanceCoins: 0, summonPoints: 0,
+      gear: normalizeGear(getStartingGear(instrument), instrument),
+      freedAllies: [], completedChallenges: [], completedQuests: [],
+      bootCampComplete: true, // guests skip boot camp and start in the world
+      totalAttempts: 0, weeklyXp: 0, suspended: false,
+      appearance: randomAppearance('guest'),
+      createdAt: now, updatedAt: now,
+    };
+    useUiStore.getState().setGuest(true);
+    set({ character: char, classroom: null, loading: false });
+    saveGuest(char);
+  },
+
+  loadGuestCharacter: () => {
+    try {
+      const s = localStorage.getItem(GUEST_CHAR_KEY);
+      if (!s) return false;
+      set({ character: JSON.parse(s) as Character, classroom: null, loading: false });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  exitGuest: () => {
+    saveGuest(null);
+    useUiStore.getState().setGuest(false);
+    set({ character: null, classroom: null });
   },
 }));
 

@@ -2,12 +2,20 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
+import { useUiStore } from '../store/uiStore';
 import DemoModeToggle from '../components/DemoModeToggle';
 
 export default function LandingPage() {
   const { user, loading, signInWithGoogle, signInWithMagicLink, signInWithPassword, signUpWithPassword } = useAuthStore();
-  const { character } = useGameStore();
+  const { character, loadGuestCharacter } = useGameStore();
+  const { guest, setGuest } = useUiStore();
   const navigate = useNavigate();
+
+  function playAsGuest() {
+    setGuest(true);
+    const had = loadGuestCharacter();
+    navigate(had ? '/hub' : '/instrument-select');
+  }
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkError, setMagicLinkError] = useState<string | null>(null);
@@ -59,18 +67,18 @@ export default function LandingPage() {
   }
 
   useEffect(() => {
-    if (!loading && user) {
+    if (loading) return;
+    if (user) {
       if (character) {
-        if (character.bootCampComplete) {
-          navigate('/hub');
-        } else {
-          navigate('/boot-camp');
-        }
+        navigate(character.bootCampComplete ? '/hub' : '/boot-camp');
       } else {
         navigate('/role-select');
       }
+    } else if (guest && character) {
+      // Returning guest with a saved character
+      navigate(character.bootCampComplete ? '/hub' : '/instrument-select');
     }
-  }, [user, loading, character, navigate]);
+  }, [user, loading, character, navigate, guest]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
@@ -141,10 +149,29 @@ export default function LandingPage() {
           </div>
         ) : (
           <div className="w-full space-y-4">
+            {/* Play as Guest — no account, no login */}
+            <button
+              onClick={playAsGuest}
+              className="btn-primary w-full flex items-center justify-center gap-2 text-base py-3.5"
+            >
+              ▶ {guest ? 'Continue as Guest' : 'Play as Guest'}
+            </button>
+            <p className="text-academy-cream/40 text-xs text-center -mt-1">
+              No account needed — your progress saves on this device.
+              Pair with <span className="text-academy-gold/70">🎮 Demo Mode</span> below to play with no microphone.
+            </p>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-academy-gold/20" />
+              <span className="text-academy-cream/30 text-xs">or sign in to save to your account</span>
+              <div className="flex-1 h-px bg-academy-gold/20" />
+            </div>
+
             {/* Google sign-in */}
             <button
               onClick={signInWithGoogle}
-              className="btn-primary flex items-center gap-3 mx-auto"
+              className="btn-secondary flex items-center gap-3 mx-auto"
             >
               <GoogleIcon />
               Sign in with Google

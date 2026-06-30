@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
+import { useUiStore } from '../store/uiStore';
 import { INSTRUMENTS, BASE_SIX, OPTIONAL_INSTRUMENTS, getInstrumentColor } from '../lib/instruments';
 import { getStartingGear } from '../lib/gear';
 import { randomAppearance } from '../lib/appearance';
@@ -10,7 +11,8 @@ import type { InstrumentId } from '../types/game';
 
 export default function InstrumentSelectPage() {
   const { user } = useAuthStore();
-  const { setCharacter } = useGameStore();
+  const { setCharacter, createGuestCharacter } = useGameStore();
+  const guest = useUiStore((s) => s.guest);
   const navigate = useNavigate();
 
   const classroomId = sessionStorage.getItem('pending_classroom_id') ?? '';
@@ -22,17 +24,27 @@ export default function InstrumentSelectPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  if (!classroomId) {
+  if (!classroomId && !guest) {
     navigate('/class-select');
     return null;
   }
 
-  const availableIds = baseOnly
-    ? BASE_SIX
-    : [...BASE_SIX, ...OPTIONAL_INSTRUMENTS];
+  // Guests get the full instrument roster to explore.
+  const availableIds = guest || !baseOnly
+    ? [...BASE_SIX, ...OPTIONAL_INSTRUMENTS]
+    : BASE_SIX;
 
   async function createCharacter() {
-    if (!user || !selected || !displayName.trim()) return;
+    if (!selected || !displayName.trim()) return;
+
+    // Guest Mode: build a local character, skip Supabase, jump into the world.
+    if (guest) {
+      createGuestCharacter(selected, displayName);
+      navigate('/hub');
+      return;
+    }
+
+    if (!user) return;
 
     setSaving(true);
     setError('');
@@ -130,7 +142,7 @@ export default function InstrumentSelectPage() {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <div className="text-academy-gold/60 text-xs tracking-[0.4em] uppercase font-fantasy mb-2">
-            {classroomName}
+            {guest ? 'Guest Demo' : classroomName}
           </div>
           <h1 className="fantasy-title text-3xl mb-2">Choose Your Instrument</h1>
           <p className="text-academy-cream/60 text-sm">

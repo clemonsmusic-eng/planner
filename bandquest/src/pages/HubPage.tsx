@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
+import { useUiStore } from '../store/uiStore';
 import { INSTRUMENTS, getInstrumentColor, xpToNextLevel } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
 import CharacterCard from '../components/CharacterCard';
@@ -11,9 +12,15 @@ import DemoModeToggle from '../components/DemoModeToggle';
 
 
 export default function HubPage() {
-  const { character, classroom } = useGameStore();
+  const { character, classroom, exitGuest } = useGameStore();
   const { user, signOut } = useAuthStore();
+  const guest = useUiStore((s) => s.guest);
   const navigate = useNavigate();
+
+  function handleExit() {
+    if (guest) { exitGuest(); navigate('/'); }
+    else signOut();
+  }
 
   // Update last_active_date and practice streak on hub visit
   useEffect(() => {
@@ -48,10 +55,10 @@ export default function HubPage() {
             Hub
           </button>
           <button
-            onClick={signOut}
+            onClick={handleExit}
             className="text-academy-cream/40 hover:text-academy-cream/80 text-xs transition-colors"
           >
-            Sign out
+            {guest ? 'Exit Guest' : 'Sign out'}
           </button>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { useAuthStore } from './store/authStore';
 import { useGameStore } from './store/gameStore';
+import { useUiStore } from './store/uiStore';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -27,18 +28,20 @@ import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore();
+  const guest = useUiStore((s) => s.guest);
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/" replace />;
+  if (!user && !guest) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 function RequireCharacter({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuthStore();
   const { character, loading: gameLoading } = useGameStore();
+  const guest = useUiStore((s) => s.guest);
 
   if (authLoading || gameLoading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/" replace />;
-  if (!character) return <Navigate to="/class-select" replace />;
+  if (!user && !guest) return <Navigate to="/" replace />;
+  if (!character) return <Navigate to={guest ? '/instrument-select' : '/class-select'} replace />;
   if (character.suspended) return <SuspendedScreen />;
   if (!character.bootCampComplete) return <Navigate to="/boot-camp" replace />;
   return <>{children}</>;
@@ -61,7 +64,7 @@ function SuspendedScreen() {
 
 export default function App() {
   const { setSession, loadProfile, setLoading } = useAuthStore();
-  const { loadCharacter } = useGameStore();
+  const { loadCharacter, loadGuestCharacter } = useGameStore();
 
   useEffect(() => {
     // Restore session on mount
@@ -72,6 +75,8 @@ export default function App() {
           loadCharacter(session.user.id).finally(() => setLoading(false));
         });
       } else {
+        // No session — restore a guest character from localStorage if present.
+        if (useUiStore.getState().guest) loadGuestCharacter();
         setLoading(false);
       }
     });
@@ -89,7 +94,7 @@ export default function App() {
     );
 
     return () => subscription.unsubscribe();
-  }, [setSession, loadProfile, setLoading, loadCharacter]);
+  }, [setSession, loadProfile, setLoading, loadCharacter, loadGuestCharacter]);
 
   return (
     <Routes>
