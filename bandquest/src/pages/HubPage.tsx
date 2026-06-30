@@ -12,14 +12,14 @@ const ZONES = [
   { id: 2, name: 'The Theory Wing', quarter: 'Quarter 2 · Winter', act: 1, available: false },
   { id: 3, name: 'The Town of Crotchet', quarter: 'Quarter 3 · Spring', act: 1, available: false },
   { id: 4, name: 'The Grand Auditorium', quarter: 'Quarter 4 · End of Year', act: 1, available: false },
-  { id: 5, name: 'The Meadows of Mezzo', quarter: 'Quarter 5', act: 2, available: false },
-  { id: 6, name: 'The Tempo Thicket', quarter: 'Quarter 6', act: 2, available: false },
-  { id: 7, name: 'The Clef Mountains', quarter: 'Quarter 7', act: 2, available: false },
-  { id: 8, name: 'The Percussion Plateau', quarter: 'Quarter 8', act: 2, available: false },
-  { id: 9, name: 'The Harmonic Sea', quarter: 'Quarter 9', act: 3, available: false },
-  { id: 10, name: 'The Tonal Plains', quarter: 'Quarter 10', act: 3, available: false },
-  { id: 11, name: 'The Dissonant Wastes', quarter: 'Quarter 11', act: 3, available: false },
-  { id: 12, name: "Discord's Performance Hall", quarter: 'Quarter 12', act: 3, available: false },
+  { id: 5, name: 'Melodious Meadows', quarter: 'Quarter 5', act: 2, available: false },
+  { id: 6, name: 'Sands of Time', quarter: 'Quarter 6', act: 2, available: false },
+  { id: 7, name: 'Clef Cliffs', quarter: 'Quarter 7', act: 2, available: false },
+  { id: 8, name: 'Forgotten Forest', quarter: 'Quarter 8', act: 2, available: false },
+  { id: 9, name: 'Chromatic Coasts', quarter: 'Quarter 9', act: 3, available: false },
+  { id: 10, name: 'Syncopated Seas', quarter: 'Quarter 10', act: 3, available: false },
+  { id: 11, name: 'Dissonant Dunes', quarter: 'Quarter 11', act: 3, available: false },
+  { id: 12, name: 'The Hall of Discord', quarter: 'Quarter 12', act: 3, available: false },
 ];
 
 export default function HubPage() {

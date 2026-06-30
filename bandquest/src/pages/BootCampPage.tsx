@@ -420,7 +420,7 @@ function GraduationScreen({ character, instrument, onContinue }: {
           <p className="text-academy-cream/80 text-sm italic leading-relaxed">
             "You have shown the first and most important quality of a musician:
             the willingness to begin. The {instrument.name} in your hands is not merely
-            an instrument — it is your weapon against the Discordian Overlord's forces.
+            an instrument — it is a voice in the music that keeps our whole world turning.
             You are now a {instrument.className} of Harmonia Academy."
           </p>
           <div className="mt-3 text-right text-academy-gold/60 text-xs">
