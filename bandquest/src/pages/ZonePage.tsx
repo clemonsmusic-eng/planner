@@ -9,6 +9,9 @@ import Zone5Page from './zones/Zone5Page';
 import Zone6Page from './zones/Zone6Page';
 import Zone7Page from './zones/Zone7Page';
 import Zone8Page from './zones/Zone8Page';
+import AssaultZonePage from './zones/AssaultZonePage';
+import { ZONE9_CONFIG, ZONE10_CONFIG, ZONE11_CONFIG } from './zones/act3Configs';
+import Zone12Page from './zones/Zone12Page';
 
 export default function ZonePage() {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -33,6 +36,10 @@ export default function ZonePage() {
     case 6: return <Zone6Page />;
     case 7: return <Zone7Page />;
     case 8: return <Zone8Page />;
+    case 9: return <AssaultZonePage cfg={ZONE9_CONFIG} />;
+    case 10: return <AssaultZonePage cfg={ZONE10_CONFIG} />;
+    case 11: return <AssaultZonePage cfg={ZONE11_CONFIG} />;
+    case 12: return <Zone12Page />;
     default: {
       const zone = getZone(id);
       return (

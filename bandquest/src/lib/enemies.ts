@@ -475,6 +475,114 @@ export const ENEMIES: Record<string, EnemyDef> = {
     phase2Threshold: 0.4,
     lore: 'Free him, and the Symphony is whole again for the first time since the Renewal.',
   },
+
+  // ── Act 3 · Zone 9 — Chromatic Coasts ────────────────────────────────────────
+  wave_walker: {
+    id: 'wave_walker', tier: 3, zone: 9, name: 'Wave Walker',
+    description: 'A translucent thing that flows like a sound wave along the corrupted shore, passing through whatever it pleases.',
+    power: 26, maxHp: 210, attackDescription: 'A phasing surge that slips past your guard',
+    specialAttackName: 'Phase Tide', specialAttackChallengeType: 'aural_chord_oracle',
+    debuff: 'vulnerable', debuffDuration: 2, vulnerableTo: ['trumpet', 'trombone', 'tuba'], isBoss: false,
+  },
+  coastal_dissonance: {
+    id: 'coastal_dissonance', tier: 3, zone: 9, name: 'The Coastal Dissonance',
+    description: 'Where the trail of corruption meets the sea, the surf itself has soured — a standing swell of clashing frequencies guarding the water.',
+    power: 30, maxHp: 430, attackDescription: 'A crashing wall of dissonant sound',
+    specialAttackName: 'Breakwater', specialAttackChallengeType: 'aural_chord_oracle',
+    debuff: 'slow', debuffDuration: 2, vulnerableTo: ['trumpet', 'percussion', 'tuba'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'Clear it, and the way to the Fourth Wind is open.',
+  },
+
+  // ── Act 3 · Zone 10 — Syncopated Seas ────────────────────────────────────────
+  rogue_wave: {
+    id: 'rogue_wave', tier: 3, zone: 10, name: 'Rogue Wave',
+    description: 'An off-beat swell that rears up out of nowhere, cresting against the rhythm of the sea.',
+    power: 28, maxHp: 190, attackDescription: 'A syncopated slam that lands when you least expect it',
+    specialAttackName: 'Offbeat Crash', specialAttackChallengeType: 'aural_rhythm_echo',
+    debuff: 'cramped', debuffDuration: 1, vulnerableTo: ['percussion', 'clarinet', 'alto_sax'], isBoss: false,
+  },
+  the_maelstrom: {
+    id: 'the_maelstrom', tier: 3, zone: 10, name: 'The Maelstrom',
+    description: 'A vast rogue whirlpool that grows louder and wider with every passing moment. It must be broken quickly — or not at all.',
+    power: 34, maxHp: 560, attackDescription: 'A churning vortex that drags you under',
+    specialAttackName: 'Rising Swell', specialAttackChallengeType: 'aural_rhythm_echo',
+    debuff: 'slow', debuffDuration: 2, vulnerableTo: ['percussion', 'trumpet', 'tuba'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'It is loudest just before it breaks. Hold your tempo and do not falter.',
+  },
+
+  // ── Act 3 · Zone 11 — Dissonant Dunes ────────────────────────────────────────
+  cacophony_soldier: {
+    id: 'cacophony_soldier', tier: 5, zone: 11, name: 'Cacophony Soldier',
+    description: 'A made soldier of the Discordian Guard, far stronger when its fellows fight at its side.',
+    power: 30, maxHp: 240, attackDescription: 'A drilled formation strike',
+    specialAttackName: 'Close Ranks', specialAttackChallengeType: 'aural_rhythm_echo',
+    debuff: 'blind', debuffDuration: 1, vulnerableTo: ['oboe', 'clarinet', 'alto_sax'], isBoss: false,
+  },
+  piano_commander: {
+    id: 'piano_commander', tier: 6, zone: 11, name: 'Piano',
+    description: 'A Vexian knight-commander who strikes from near-silence — the soft half of the pair that holds the dunes.',
+    power: 32, maxHp: 500, attackDescription: 'A whisper-quiet strike you never hear coming',
+    specialAttackName: 'Sotto Voce', specialAttackChallengeType: 'aural_pitch_spy',
+    debuff: 'blind', debuffDuration: 2, vulnerableTo: ['oboe', 'flute', 'trumpet'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'Where Forte overwhelms, Piano slips the blade in unseen.',
+  },
+  forte_commander: {
+    id: 'forte_commander', tier: 6, zone: 11, name: 'Forte',
+    description: 'A Vexian knight-commander of overwhelming force — the loud half of the pair, and the one you hear coming a mile off.',
+    power: 40, maxHp: 560, attackDescription: 'A thunderous, ground-splitting blow',
+    specialAttackName: 'Fortissimo', specialAttackChallengeType: 'aural_rhythm_echo',
+    debuff: 'cramped', debuffDuration: 1, vulnerableTo: ['clarinet', 'percussion', 'alto_sax'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'Both must fall before the doors of the Hall will open.',
+  },
+
+  // ── Act 3 · Zone 12 — The Hall of Discord ────────────────────────────────────
+  vexian_knight: {
+    id: 'vexian_knight', tier: 6, zone: 12, name: 'Vexian Knight',
+    description: "One of Vexus's personally made elite, drilled in atonal combat music. The practice rooms are full of them.",
+    power: 34, maxHp: 270, attackDescription: 'An elite multi-hit combination',
+    specialAttackName: 'Atonal Drill', specialAttackChallengeType: 'aural_interval_quest',
+    debuff: 'confusion', debuffDuration: 1, vulnerableTo: ['trumpet', 'oboe', 'clarinet'], isBoss: false,
+  },
+  ostinato_usher: {
+    id: 'ostinato_usher', tier: 6, zone: 12, name: 'Ostinato, the Usher',
+    description: 'A towering brass-and-gearwork automaton built to defeat unwelcome guests and drag them out of the Hall. It never tires and never varies.',
+    power: 36, maxHp: 600, attackDescription: 'A relentless, repeating mechanical combination',
+    specialAttackName: 'Endless Ostinato', specialAttackChallengeType: 'aural_rhythm_echo',
+    debuff: 'cramped', debuffDuration: 1, vulnerableTo: ['percussion', 'clarinet', 'alto_sax'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'Its one trick, repeated forever — find the seam in the loop and break it.',
+  },
+  lieutenant_kije: {
+    id: 'lieutenant_kije', tier: 6, zone: 12, name: 'Lieutenant Kije',
+    description: 'A piccolo given a soldier\'s shape and tritonal cruelty — the shrill, piercing junior of the Tritone Trio.',
+    power: 34, maxHp: 380, attackDescription: 'A piercing high shriek that splits your focus',
+    specialAttackName: 'Piccolo Pierce', specialAttackChallengeType: 'aural_pitch_spy',
+    debuff: 'blind', debuffDuration: 2, vulnerableTo: ['trombone', 'tuba', 'bassoon'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'The highest voice of the Trio. Silence it, and the chord loses its edge.',
+  },
+  commander_mesto: {
+    id: 'commander_mesto', tier: 6, zone: 12, name: 'Commander Mesto',
+    description: 'An English horn automaton of mournful, hollow tone — the inner voice of the Tritone Trio.',
+    power: 38, maxHp: 460, attackDescription: 'A hollow, sorrowing tone that saps the will',
+    specialAttackName: 'Lament', specialAttackChallengeType: 'aural_interval_quest',
+    debuff: 'slow', debuffDuration: 2, vulnerableTo: ['trumpet', 'percussion', 'clarinet'], isBoss: true, phase2Threshold: 0.5,
+    lore: 'The middle voice. With it gone, the tritone cannot hold together.',
+  },
+  general_grave: {
+    id: 'general_grave', tier: 6, zone: 12, name: 'General Grave',
+    description: "A contrabassoon of crushing depth and command — Vexus's second, and the leader of the Tritone Trio.",
+    power: 42, maxHp: 640, attackDescription: 'A subsonic blast that buckles your knees',
+    specialAttackName: 'Grave Depths', specialAttackChallengeType: 'aural_interval_quest',
+    debuff: 'poison', debuffDuration: 3, vulnerableTo: ['flute', 'oboe', 'clarinet'], isBoss: true, phase2Threshold: 0.4,
+    lore: 'The lowest voice and the last. Break the General, and the way to the stage is clear.',
+  },
+  vexus: {
+    id: 'vexus', tier: 6, zone: 12, name: 'Vexus, the Conductor',
+    description: 'The Composer\'s own appointed Conductor, who tried to prove himself the equal of his maker and broke the world. He stands on the stage, baton raised over an orchestra of player-less instruments, certain he is right.',
+    power: 44, maxHp: 840, attackDescription: 'A cascade of tritonal dissonance from a hundred soulless instruments',
+    specialAttackName: 'Atonal Assault', specialAttackChallengeType: 'aural_interval_quest',
+    debuff: 'confusion', debuffDuration: 2, vulnerableTo: [], isBoss: true, phase2Threshold: 0.4,
+    lore: 'He cannot hear what he has done. Beat back his phantom orchestra — and then answer it with living music.',
+  },
 };
 
 export type BattleId = string;
