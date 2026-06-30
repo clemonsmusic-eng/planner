@@ -30,8 +30,8 @@ const WORLD_ZONES: ZoneData[] = [
   },
   {
     id: 4, name: 'The Grand Auditorium', act: 1, quarter: 'Q4 · End of Year',
-    emoji: '🎭', flavor: "The Academy's crown jewel. Here, beneath Maestro Barenboimi's exacting direction, students play their graduation concert.",
-    boss: 'The Graduation Trial',
+    emoji: '🎭', flavor: "The Academy's crown jewel. Graduation night: your final performance, and then the Maestros' Renewal — the night everything changes.",
+    boss: 'Graduation & the Renewal',
   },
   {
     id: 5, name: 'The Meadows of Mezzo', act: 2, quarter: 'Q5',
