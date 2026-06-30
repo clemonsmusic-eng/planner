@@ -7,6 +7,8 @@ import Zone3Page from './zones/Zone3Page';
 import Zone4Page from './zones/Zone4Page';
 import Zone5Page from './zones/Zone5Page';
 import Zone6Page from './zones/Zone6Page';
+import Zone7Page from './zones/Zone7Page';
+import Zone8Page from './zones/Zone8Page';
 
 export default function ZonePage() {
   const { zoneId } = useParams<{ zoneId: string }>();
@@ -29,6 +31,8 @@ export default function ZonePage() {
     case 4: return <Zone4Page />;
     case 5: return <Zone5Page />;
     case 6: return <Zone6Page />;
+    case 7: return <Zone7Page />;
+    case 8: return <Zone8Page />;
     default: {
       const zone = getZone(id);
       return (

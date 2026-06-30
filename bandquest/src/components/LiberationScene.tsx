@@ -6,10 +6,11 @@ export interface LibBeat {
 }
 
 // Stepped "a maestro is freed" cutscene, shared by the Act 2 liberation zones.
-export default function LiberationScene({ beats, onDone, title = 'A Maestro Freed' }: {
+export default function LiberationScene({ beats, onDone, title = 'A Maestro Freed', doneLabel = 'Welcome them back →' }: {
   beats: LibBeat[];
   onDone: () => void;
   title?: string;
+  doneLabel?: string;
 }) {
   const [step, setStep] = useState(0);
   const last = step === beats.length - 1;
@@ -30,7 +31,7 @@ export default function LiberationScene({ beats, onDone, title = 'A Maestro Free
         ))}
       </div>
       <button onClick={() => (last ? onDone() : setStep(step + 1))} className="btn-primary">
-        {last ? 'Welcome them back →' : 'Continue'}
+        {last ? doneLabel : 'Continue'}
       </button>
     </div>
   );
