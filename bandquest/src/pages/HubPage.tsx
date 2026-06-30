@@ -6,21 +6,8 @@ import { getEffectiveStats } from '../lib/gear';
 import CharacterCard from '../components/CharacterCard';
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { ZONES, quarterLabelLong } from '../lib/zones';
 
-const ZONES = [
-  { id: 1, name: 'The Rehearsal Halls', quarter: 'Quarter 1 · Fall', act: 1, available: true },
-  { id: 2, name: 'The Theory Wing', quarter: 'Quarter 2 · Winter', act: 1, available: false },
-  { id: 3, name: 'The Town of Crotchet', quarter: 'Quarter 3 · Spring', act: 1, available: false },
-  { id: 4, name: 'The Grand Auditorium', quarter: 'Quarter 4 · End of Year', act: 1, available: false },
-  { id: 5, name: 'Melodious Meadows', quarter: 'Quarter 5', act: 2, available: false },
-  { id: 6, name: 'Sands of Time', quarter: 'Quarter 6', act: 2, available: false },
-  { id: 7, name: 'Clef Cliffs', quarter: 'Quarter 7', act: 2, available: false },
-  { id: 8, name: 'Forgotten Forest', quarter: 'Quarter 8', act: 2, available: false },
-  { id: 9, name: 'Chromatic Coasts', quarter: 'Quarter 9', act: 3, available: false },
-  { id: 10, name: 'Syncopated Seas', quarter: 'Quarter 10', act: 3, available: false },
-  { id: 11, name: 'Dissonant Dunes', quarter: 'Quarter 11', act: 3, available: false },
-  { id: 12, name: 'The Hall of Discord', quarter: 'Quarter 12', act: 3, available: false },
-];
 
 export default function HubPage() {
   const { character, classroom } = useGameStore();
@@ -183,7 +170,7 @@ export default function HubPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-academy-cream/90 text-sm font-semibold">{zone.name}</div>
-                  <div className="text-academy-cream/40 text-xs">{zone.quarter} · Act {zone.act}</div>
+                  <div className="text-academy-cream/40 text-xs">{quarterLabelLong(zone)} · Act {zone.act}</div>
                 </div>
                 <div className="text-xs font-fantasy" style={{ color: col }}>ENTER →</div>
               </button>

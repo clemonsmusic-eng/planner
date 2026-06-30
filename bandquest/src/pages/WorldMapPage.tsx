@@ -1,79 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
+import { ZONES as WORLD_ZONES, quarterLabelShort, type ZoneMeta } from '../lib/zones';
 
-interface ZoneData {
-  id: number;
-  name: string;
-  act: 1 | 2 | 3;
-  quarter: string;
-  emoji: string;
-  flavor: string;
-  boss: string;
-}
-
-const WORLD_ZONES: ZoneData[] = [
-  {
-    id: 1, name: 'The Rehearsal Halls', act: 1, quarter: 'Q1 · Fall',
-    emoji: '🏛️', flavor: "Stone arches and worn practice rooms echo with a hundred instruments. Maestro Barenboimi's baton never stills.",
-    boss: 'The Flat Dragon',
-  },
-  {
-    id: 2, name: 'The Theory Wing', act: 1, quarter: 'Q2 · Winter',
-    emoji: '📜', flavor: 'Ancient inner wing. Walls lined with faded pre-Shattering scores and censored references to the forbidden interval.',
-    boss: 'The Interval Imp',
-  },
-  {
-    id: 3, name: 'The Town of Crotchet', act: 1, quarter: 'Q3 · Spring',
-    emoji: '🏘️', flavor: 'A bright market town hosting the regional inter-school contest — banners, crowds, and four schools chasing one trophy.',
-    boss: 'The Crotchet Invitational',
-  },
-  {
-    id: 4, name: 'The Grand Auditorium', act: 1, quarter: 'Q4 · End of Year',
-    emoji: '🎭', flavor: "The Academy's crown jewel. Graduation night: your final performance, and then the Maestros' Renewal — the night everything changes.",
-    boss: 'Graduation & the Renewal',
-  },
-  {
-    id: 5, name: 'Melodious Meadows', act: 2, quarter: 'Q5',
-    emoji: '🌾', flavor: 'Warm, golden farmland where music rides the wind. Your first corrupted professors are scattered here — and Buccina is hunting for her lost brother.',
-    boss: 'The Aria Wraith (Flaura)',
-  },
-  {
-    id: 6, name: 'Sands of Time', act: 2, quarter: 'Q6',
-    emoji: '🏜️', flavor: 'A desert of shifting dunes and slippery time — the Octoasis, the echoing Chaconne Caves, and a trading post peddling discord.',
-    boss: 'Caucophonus (Percival)',
-  },
-  {
-    id: 7, name: 'Clef Cliffs', act: 2, quarter: 'Q7',
-    emoji: '⛰️', flavor: "Cold mountain passes and the first Discordian foothold — an outpost where your low-brass professors are held in thrall.",
-    boss: 'Lieutenant Contra',
-  },
-  {
-    id: 8, name: 'Forgotten Forest', act: 2, quarter: 'Q8',
-    emoji: '🌲', flavor: "A fog-drowned wood at the mountains' feet. Follow the tritones to the last of your corrupted professors.",
-    boss: 'Fagotto, the Ancient Revenant',
-  },
-  {
-    id: 9, name: 'Chromatic Coasts', act: 3, quarter: 'Q9',
-    emoji: '🌊', flavor: 'The trail of corruption reaches the western shore; color drains in chromatic bands as Elder Rampal steels you for the crossing.',
-    boss: 'Coastal Dissonance',
-  },
-  {
-    id: 10, name: 'Syncopated Seas', act: 3, quarter: 'Q10',
-    emoji: '🌀', flavor: 'The violent crossing aboard The Fourth Wind — naturally uneven seas turned deadly with tempests and rogue waves.',
-    boss: 'The Maelstrom',
-  },
-  {
-    id: 11, name: 'Dissonant Dunes', act: 3, quarter: 'Q11',
-    emoji: '🌑', flavor: "Landfall in Discordia — grey dunes between the shore and the Hall, patrolled by Vexus's elite guard.",
-    boss: 'Piano & Forte',
-  },
-  {
-    id: 12, name: 'The Hall of Discord', act: 3, quarter: 'Q12',
-    emoji: '🎭', flavor: 'Dark and operatic: Ostinato the Usher, the basement practice rooms, the Tritone Trio — and Vexus himself.',
-    boss: 'Vexus, the Conductor',
-  },
-];
 
 const ACT_CONFIG = {
   1: {
@@ -129,7 +58,7 @@ export default function WorldMapPage() {
 
   const maxZone = Math.max(classroom?.currentZone ?? 1, character.currentZone);
 
-  const actGroups: Record<number, ZoneData[]> = { 1: [], 2: [], 3: [] };
+  const actGroups: Record<number, ZoneMeta[]> = { 1: [], 2: [], 3: [] };
   for (const z of WORLD_ZONES) actGroups[z.act].push(z);
 
   return (
@@ -248,7 +177,7 @@ function ZoneNode({
   zone, isActive, isCompleted, isLocked, isLast: _isLast,
   cfg, onEnter, onReview,
 }: {
-  zone: ZoneData;
+  zone: ZoneMeta;
   isActive: boolean;
   isCompleted: boolean;
   isLocked: boolean;
@@ -329,7 +258,7 @@ function ZoneNode({
                 )}
               </div>
               <div className="text-academy-cream/35 text-[10px] font-fantasy uppercase tracking-widest">
-                Zone {zone.id} · Act {zone.act} · {zone.quarter}
+                Zone {zone.id} · Act {zone.act} · {quarterLabelShort(zone)}
               </div>
             </div>
             <div className="text-2xl flex-shrink-0">{zone.emoji}</div>

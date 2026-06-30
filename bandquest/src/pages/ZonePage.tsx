@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
+import { getZone, quarterLabelShort } from '../lib/zones';
 import Zone1Page from './zones/Zone1Page';
 import Zone2Page from './zones/Zone2Page';
 import Zone3Page from './zones/Zone3Page';
@@ -24,18 +25,28 @@ export default function ZonePage() {
     case 2: return <Zone2Page />;
     case 3: return <Zone3Page />;
     case 4: return <Zone4Page />;
-    default:
+    default: {
+      const zone = getZone(id);
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
-          <div className="text-4xl mb-4">🔒</div>
-          <h1 className="fantasy-title text-2xl mb-2">Zone {id}</h1>
-          <p className="text-academy-cream/60 text-sm mb-6">
-            This zone is under construction. Check back soon.
+          <div className="text-5xl mb-4">{zone?.emoji ?? '🔒'}</div>
+          <div className="text-academy-gold/50 text-[10px] uppercase tracking-[0.3em] font-fantasy mb-1">
+            {zone ? `Zone ${zone.id} · Act ${zone.act} · ${quarterLabelShort(zone)}` : `Zone ${id}`}
+          </div>
+          <h1 className="fantasy-title text-2xl mb-3">{zone?.name ?? `Zone ${id}`}</h1>
+          {zone && (
+            <p className="text-academy-cream/55 text-sm mb-2 max-w-sm leading-relaxed italic">
+              {zone.flavor}
+            </p>
+          )}
+          <p className="text-academy-cream/40 text-xs mb-6">
+            This zone is still being composed. Check back soon.
           </p>
           <button onClick={() => navigate('/hub')} className="btn-secondary">
             ← Return to Hub
           </button>
         </div>
       );
+    }
   }
 }
