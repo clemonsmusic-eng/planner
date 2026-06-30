@@ -7,6 +7,7 @@ import CharacterCard from '../components/CharacterCard';
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ZONES, quarterLabelLong } from '../lib/zones';
+import DemoModeToggle from '../components/DemoModeToggle';
 
 
 export default function HubPage() {
@@ -39,6 +40,7 @@ export default function HubPage() {
       <div className="sticky top-0 z-20 bg-academy-dark/95 backdrop-blur-sm border-b border-academy-gold/10 px-4 py-3 flex items-center justify-between">
         <div className="fantasy-title text-lg text-academy-gold">Symphonica</div>
         <div className="flex items-center gap-3">
+          <DemoModeToggle compact />
           <button
             onClick={() => navigate('/hub')}
             className="text-academy-cream/60 hover:text-academy-cream text-sm transition-colors"

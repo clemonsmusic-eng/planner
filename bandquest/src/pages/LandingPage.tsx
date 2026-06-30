@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useGameStore } from '../store/gameStore';
+import DemoModeToggle from '../components/DemoModeToggle';
 
 export default function LandingPage() {
   const { user, loading, signInWithGoogle, signInWithMagicLink, signInWithPassword, signUpWithPassword } = useAuthStore();
@@ -245,6 +246,10 @@ export default function LandingPage() {
         <p className="mt-6 text-academy-cream/40 text-xs">
           Use your school Google account or email to sign in.
         </p>
+
+        <div className="mt-5 flex justify-center">
+          <DemoModeToggle />
+        </div>
       </div>
 
       {/* Bottom lore text */}

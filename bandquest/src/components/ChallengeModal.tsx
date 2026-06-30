@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Character, Rating } from '../types/game';
 import { pitchToleranceCents, rhythmToleranceMs } from '../lib/instruments';
+import { useUiStore } from '../store/uiStore';
 import MicrophoneListener from './MicrophoneListener';
 
 interface Challenge {
@@ -155,6 +156,7 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
   pitchToleranceOverride?: number;
   challengeFlags?: ChallengeFlags;
 }) {
+  const demoMode = useUiStore((s) => s.demoMode);
   const pitchTolerance = pitchToleranceOverride ?? pitchToleranceCents(character.stats.accuracy);
   const rhythmTolerance = rhythmToleranceMs(character.stats.technique);
 
@@ -176,6 +178,11 @@ function ActiveChallenge({ challenge, character, onRating, onClose, pitchToleran
   }
   if (challenge.type === 'rhythm_performance') {
     return <RhythmTapChallenge onRating={onRating} tolerance={rhythmTolerance} />;
+  }
+  // Demo Mode: replace the microphone performance with a silent tap-timing
+  // mini-game, so the game is fully playable without any audible input.
+  if (demoMode) {
+    return <DemoPerformanceChallenge onRating={onRating} />;
   }
   // Default: microphone-based performance challenge
   return (
@@ -836,6 +843,100 @@ function buildChoices(target: string, pool: string[], count: number): string[] {
     choices.push(others.pop()!);
   }
   return choices.sort(() => Math.random() - 0.5);
+}
+
+// Silent tap-timing mini-game used in Demo Mode in place of the microphone
+// performance. A marker sweeps a track; tap (Space / click) when it crosses the
+// target zone. Five taps; average timing accuracy → rating. No audio in or out.
+function DemoPerformanceChallenge({ onRating }: { onRating: (rating: Rating, score: number) => void }) {
+  const NEEDED = 5;
+  const TARGET = 50;
+  const markerRef = useRef<HTMLDivElement | null>(null);
+  const posRef = useRef(0);
+  const dirRef = useRef(1);
+  const doneRef = useRef(false);
+  const tapsRef = useRef<number[]>([]);
+  const [count, setCount] = useState(0);
+  const [flash, setFlash] = useState<{ label: string; color: string } | null>(null);
+
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const SPEED = 95; // % of track per second (one sweep ≈ 1.05s)
+    const loop = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      let p = posRef.current + dirRef.current * SPEED * dt;
+      if (p >= 100) { p = 100; dirRef.current = -1; }
+      else if (p <= 0) { p = 0; dirRef.current = 1; }
+      posRef.current = p;
+      if (markerRef.current) markerRef.current.style.left = `${p}%`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const tap = useCallback(() => {
+    if (doneRef.current) return;
+    const err = Math.abs(posRef.current - TARGET);
+    const acc = Math.max(0, Math.round(100 - err * 2.2));
+    tapsRef.current.push(acc);
+    const n = tapsRef.current.length;
+    setCount(n);
+    setFlash(
+      acc >= 85 ? { label: 'PERFECT', color: '#FFD700' }
+      : acc >= 60 ? { label: 'GREAT', color: '#4ADE80' }
+      : acc >= 35 ? { label: 'OK', color: '#60A5FA' }
+      : { label: 'MISS', color: '#F87171' },
+    );
+    if (n >= NEEDED) {
+      doneRef.current = true;
+      const avg = Math.round(tapsRef.current.reduce((a, b) => a + b, 0) / n);
+      setTimeout(() => onRating(scoreToRating(avg), avg), 500);
+    }
+  }, [onRating]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); tap(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [tap]);
+
+  return (
+    <div className="text-center">
+      <div className="text-academy-gold/60 text-xs uppercase tracking-widest font-fantasy mb-1">Demo Mode · No Microphone</div>
+      <h3 className="fantasy-title text-lg mb-1">Tap in Time</h3>
+      <p className="text-academy-cream/50 text-xs mb-6">
+        Press <span className="text-academy-cream/80 font-fantasy">Space</span> or tap the button when the
+        marker crosses the gold zone. Five times.
+      </p>
+
+      {/* Track */}
+      <div className="relative h-12 mx-2 mb-6 rounded-lg bg-black/40 border border-academy-gold/20 overflow-hidden">
+        {/* target zone */}
+        <div className="absolute top-0 bottom-0" style={{ left: 'calc(50% - 9%)', width: '18%', background: 'rgba(212,160,23,0.18)', borderLeft: '1px solid rgba(212,160,23,0.5)', borderRight: '1px solid rgba(212,160,23,0.5)' }} />
+        {/* center line */}
+        <div className="absolute top-0 bottom-0" style={{ left: '50%', width: 2, background: 'rgba(212,160,23,0.7)' }} />
+        {/* marker */}
+        <div ref={markerRef} className="absolute top-1 bottom-1" style={{ left: '0%', width: 4, marginLeft: -2, background: '#FCA5A5', borderRadius: 2, boxShadow: '0 0 8px #FCA5A5' }} />
+      </div>
+
+      {/* flash + progress */}
+      <div className="h-6 mb-3 font-fantasy tracking-widest text-sm" style={{ color: flash?.color ?? 'transparent' }}>
+        {flash?.label ?? '·'}
+      </div>
+      <div className="flex items-center justify-center gap-2 mb-6">
+        {Array.from({ length: NEEDED }).map((_, i) => (
+          <span key={i} className={`h-2 w-2 rounded-full ${i < count ? 'bg-academy-gold' : 'bg-academy-cream/20'}`} />
+        ))}
+      </div>
+
+      <button onClick={tap} className="btn-primary w-full text-lg py-4">TAP</button>
+    </div>
+  );
 }
 
 function scoreToRating(score: number): Rating {
