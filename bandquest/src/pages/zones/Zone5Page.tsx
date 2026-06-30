@@ -3,8 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
+import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
+
+const LIBERATION_BEATS: Record<'flaura' | 'buccina', LibBeat[]> = {
+  flaura: [
+    {
+      emoji: '🪈',
+      text: "The Aria Wraith's endless note finally cracks and falls silent. The shard tears loose, and Maestra Flaura — your flute professor — sinks into the dead field, herself again.",
+    },
+    {
+      emoji: '🎶',
+      text: "\"Oh, child… what did he do to us.\" She folds the spent shard into your hand. \"Each of us is carrying one. It rides our music and twists it — but free us, and it comes loose, just like this. Find the others. Please.\" From now on, you can summon Flaura in battle.",
+    },
+  ],
+  buccina: [
+    {
+      emoji: '🎺',
+      text: "The War Horn Berserker's charge collapses mid-blast. Maestra Buccina staggers, blinking, the shard burning out in your palm.",
+    },
+    {
+      emoji: '🥁',
+      text: "\"You're one of mine — good.\" She shoulders her trumpet and looks west. \"I'm not staying behind. My brother Waldhorn was on that stage too, and I'm going to find him.\" Buccina joins you on the road — and answers your summons in battle.",
+    },
+  ],
+};
 
 interface Challenge {
   id: string;
@@ -171,7 +195,7 @@ export default function Zone5Page() {
   }
 
   if (liberation) {
-    return <LiberationScene which={liberation} onDone={finishLiberation} />;
+    return <LiberationScene beats={LIBERATION_BEATS[liberation]} onDone={finishLiberation} />;
   }
 
   return (
@@ -341,60 +365,6 @@ export default function Zone5Page() {
           onClose={() => setActiveChallenge(null)}
         />
       )}
-    </div>
-  );
-}
-
-// ── Liberation cutscene ─────────────────────────────────────────────────────────
-function LiberationScene({ which, onDone }: { which: 'flaura' | 'buccina'; onDone: () => void }) {
-  const beatsByMaestro: Record<'flaura' | 'buccina', { emoji: string; text: string }[]> = {
-    flaura: [
-      {
-        emoji: '🪈',
-        text: "The Aria Wraith's endless note finally cracks and falls silent. The shard tears loose, and Maestra Flaura — your flute professor — sinks into the dead field, herself again.",
-      },
-      {
-        emoji: '🎶',
-        text: "\"Oh, child… what did he do to us.\" She folds the spent shard into your hand. \"Each of us is carrying one. It rides our music and twists it — but free us, and it comes loose, just like this. Find the others. Please.\" From now on, you can summon Flaura in battle.",
-      },
-    ],
-    buccina: [
-      {
-        emoji: '🎺',
-        text: "The War Horn Berserker's charge collapses mid-blast. Maestra Buccina staggers, blinking, the shard burning out in your palm.",
-      },
-      {
-        emoji: '🥁',
-        text: "\"You're one of mine — good.\" She shoulders her trumpet and looks west. \"I'm not staying behind. My brother Waldhorn was on that stage too, and I'm going to find him.\" Buccina joins you on the road — and answers your summons in battle.",
-      },
-    ],
-  };
-
-  const beats = beatsByMaestro[which];
-  const [step, setStep] = useState(0);
-  const last = step === beats.length - 1;
-  const b = beats[step];
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <div className="text-academy-gold/60 text-[10px] uppercase tracking-[0.4em] font-fantasy mb-4">
-        A Maestro Freed
-      </div>
-      <div className="text-6xl mb-6" style={{ filter: 'drop-shadow(0 0 24px #FFD70066)' }}>{b.emoji}</div>
-      <div className="card-panel max-w-md w-full mb-8 border-rating-superior/40">
-        <p className="text-academy-cream/85 text-sm leading-relaxed">{b.text}</p>
-      </div>
-      <div className="flex items-center gap-3 mb-8">
-        {beats.map((_, i) => (
-          <span key={i} className={`h-1.5 rounded-full transition-all ${i === step ? 'w-6 bg-academy-gold' : 'w-1.5 bg-academy-cream/20'}`} />
-        ))}
-      </div>
-      <button
-        onClick={() => (last ? onDone() : setStep(step + 1))}
-        className="btn-primary"
-      >
-        {last ? 'Welcome them back →' : 'Continue'}
-      </button>
     </div>
   );
 }
