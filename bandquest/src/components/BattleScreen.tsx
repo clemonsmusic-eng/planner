@@ -11,7 +11,7 @@ import {
   endOfTurnHpDelta, newStatus,
   BLIND_TOLERANCE_MULT, BLIND_MISS_CHANCE, FOCUS_TOLERANCE_MULT, MANIC_TOLERANCE_MULT,
   MANIC_DEAL_MULT, MANIC_TAKEN_MULT, CALM_DEAL_MULT, CALM_TAKEN_MULT,
-  VULNERABLE_TAKEN_MULT, DEFLECT_PCT, CONFUSION_FAIL_CHANCE,
+  VULNERABLE_TAKEN_MULT, DEFLECT_PCT, CONFUSION_FAIL_CHANCE, ENEMY_DAMAGE_FLOOR,
 } from '../lib/statusEffects';
 import type { StatusType, StatusEffect } from '../lib/statusEffects';
 import { BATTLE_ITEMS, STARTER_KIT } from '../lib/battleItems';
@@ -679,7 +679,13 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           addLog(`🌫️ ${enemy.name}'s attack misses!`);
           continue;
         }
-        const raw = Math.max(1, Math.round(enemyPower * manicMult - effectiveStats.endurance * 0.5));
+        // Endurance mitigates damage, but never below ENEMY_DAMAGE_FLOOR of the
+        // enemy's (manic-scaled) power — so no class becomes invincible.
+        const scaledPower = enemyPower * manicMult;
+        const raw = Math.max(
+          1,
+          Math.round(Math.max(scaledPower * ENEMY_DAMAGE_FLOOR, scaledPower - effectiveStats.endurance * 0.5)),
+        );
         const applied = dealDamageToPlayer(raw);
         addLog(`${enemy.name} attacks! ${applied} damage.${attacks > 1 ? ` (${i + 1}/${attacks})` : ''}`);
       }

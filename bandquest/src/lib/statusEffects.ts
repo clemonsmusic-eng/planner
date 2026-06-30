@@ -64,6 +64,12 @@ export const CALM_DEAL_MULT = 0.75;        // damage dealt while calm
 export const CALM_TAKEN_MULT = 0.75;       // damage taken while calm
 export const VULNERABLE_TAKEN_MULT = 1.5;  // damage taken while vulnerable
 
+// Endurance mitigates incoming enemy damage, but cannot reduce a hit below this
+// fraction of the enemy's power — otherwise high-endurance classes (Tuba/Euphonium)
+// take only 1 damage and become effectively invincible. Keeps every class mortal
+// while preserving the tank fantasy (tanks still take far less per hit).
+export const ENEMY_DAMAGE_FLOOR = 0.4;
+
 export const STATUS_DEFS: Record<StatusType, StatusDef> = {
   // ── Debuffs ──────────────────────────────────────────────────────────────────
   sleep: {
