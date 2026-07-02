@@ -42,9 +42,9 @@ function endingBeats(rating: Rating): LibBeat[] {
 }
 
 type BattleKind = 'usher' | 'knight' | 'kije' | 'mesto' | 'grave' | 'vexus';
-const BATTLE_ENEMY: Record<BattleKind, string> = {
-  usher: 'ostinato_usher', knight: 'vexian_knight', kije: 'lieutenant_kije',
-  mesto: 'commander_mesto', grave: 'general_grave', vexus: 'vexus',
+const BATTLE_ENEMIES: Record<BattleKind, string[]> = {
+  usher: ['ostinato_usher'], knight: ['vexian_knight', 'vexian_knight'], kije: ['lieutenant_kije'],
+  mesto: ['commander_mesto'], grave: ['general_grave'], vexus: ['vexus'],
 };
 const BATTLE_DONE: Record<BattleKind, string> = {
   usher: 'z12_usher', knight: 'z12_knight', kije: 'z12_kije',
@@ -109,7 +109,7 @@ export default function Zone12Page() {
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES[BATTLE_ENEMY[activeBattle]]}
+        enemies={BATTLE_ENEMIES[activeBattle].map((k) => ENEMIES[k])}
         onVictory={handleVictory}
         onDefeat={() => setActiveBattle(null)}
       />

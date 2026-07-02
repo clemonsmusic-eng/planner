@@ -1,12 +1,13 @@
 import { useState, useReducer, useRef, useCallback } from 'react';
 import type { Character, Rating } from '../types/game';
 import type { EnemyDef } from '../lib/enemies';
-import { EFFECTIVENESS_MULT, isHighlyEffective } from '../lib/enemies';
+import { EFFECTIVENESS_MULT } from '../lib/enemies';
 import type { Ability } from '../lib/abilities';
 import { getAbilitiesForInstrument, battleBeatCount, battleBpm, battleBpmRange } from '../lib/abilities';
 import type { AbilityTier } from '../lib/abilities';
-import { getInstrumentColor, pitchToleranceCents, INSTRUMENTS } from '../lib/instruments';
-import { getEffectiveStats } from '../lib/gear';
+import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
+import { buildParty } from '../lib/party';
+import type { PartyMemberDef } from '../lib/party';
 import {
   STATUS_DEFS, hasStatus, tickDurations, clearStatus, clearByKind, applyStatus,
   endOfTurnHpDelta, newStatus,
@@ -24,143 +25,172 @@ import Avatar from './Avatar';
 
 // ── State types ───────────────────────────────────────────────────────────────
 
-interface EnemyState {
+interface MemberState {
+  def: PartyMemberDef;
+  hp: number;
+  maxHp: number;
+  statuses: StatusEffect[];
+  defending: boolean;
+}
+
+interface EnemyUnitState {
   def: EnemyDef;
   hp: number;
   maxHp: number;
   phase: 1 | 2;
   statuses: StatusEffect[];
+  weakpointExposed: boolean;
 }
 
 interface BattleState {
-  playerHp: number;
-  playerMaxHp: number;
-  playerRp: number;
+  party: MemberState[];
+  activeIdx: number;               // whose command it is during the player round
+  enemies: EnemyUnitState[];
+  playerRp: number;                // pooled band resources (held by the hero)
   playerSp: number;
-  playerStatuses: StatusEffect[];
-  defending: boolean;
-  enemy: EnemyState;
   enemyTaunted: boolean;
   log: string[];
   turn: 'player' | 'enemy' | 'victory' | 'defeat';
-  weakpointExposed: boolean;
   simulatorMode: boolean;
 }
 
 type BattleAction =
-  | { type: 'DAMAGE_ENEMY'; amount: number }
-  | { type: 'DAMAGE_PLAYER'; amount: number }
-  | { type: 'HEAL_PLAYER'; amount: number }
+  | { type: 'DAMAGE_ENEMY'; idx: number; amount: number }
+  | { type: 'DAMAGE_MEMBER'; idx: number; amount: number }
+  | { type: 'HEAL_MEMBER'; idx: number; amount: number }
   | { type: 'ADD_LOG'; message: string }
   | { type: 'SET_TURN'; turn: BattleState['turn'] }
-  | { type: 'SET_DEFENDING'; value: boolean }
-  | { type: 'APPLY_PLAYER_STATUS'; effect: StatusEffect }
-  | { type: 'APPLY_ENEMY_STATUS'; effect: StatusEffect }
-  | { type: 'CLEAR_PLAYER_DEBUFFS' }
-  | { type: 'CLEAR_ENEMY_BUFFS' }
-  | { type: 'TICK_PLAYER_STATUSES' }
+  | { type: 'SET_ACTIVE'; idx: number }
+  | { type: 'SET_MEMBER_DEFENDING'; idx: number; value: boolean }
+  | { type: 'CLEAR_ALL_DEFENDING' }
+  | { type: 'APPLY_MEMBER_STATUS'; idx: number; effect: StatusEffect }
+  | { type: 'APPLY_ENEMY_STATUS'; idx: number; effect: StatusEffect }
+  | { type: 'CLEAR_MEMBER_DEBUFFS'; idx: number }
+  | { type: 'CLEAR_ENEMY_BUFFS'; idx: number }
+  | { type: 'TICK_PARTY_STATUSES' }
   | { type: 'TICK_ENEMY_STATUSES' }
   | { type: 'EARN_RP'; amount: number }
   | { type: 'SPEND_RP'; amount: number }
   | { type: 'EARN_SP'; amount: number }
   | { type: 'SPEND_SP'; amount: number }
   | { type: 'SET_ENEMY_TAUNTED'; value: boolean }
-  | { type: 'EXPOSE_WEAKPOINT' };
+  | { type: 'EXPOSE_WEAKPOINT'; idx: number };
 
-function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode = false): BattleState {
+function buildInitialState(character: Character, enemies: EnemyDef[], simulatorMode = false): BattleState {
+  const partyDefs = buildParty(character);
+  const party: MemberState[] = partyDefs.map((def) => ({
+    def,
+    // The hero carries their current HP into battle; maestros arrive rested.
+    hp: def.isHero ? character.hp : def.maxHp,
+    maxHp: def.maxHp,
+    statuses: [],
+    defending: false,
+  }));
+  const units: EnemyUnitState[] = enemies.map((def) => ({
+    def, hp: def.maxHp, maxHp: def.maxHp, phase: 1, statuses: [], weakpointExposed: false,
+  }));
+  const introName = enemies.length === 1 ? enemies[0].name : `${enemies[0].name} ×${enemies.length}`;
   return {
-    playerHp: character.hp,
-    playerMaxHp: character.maxHp,
+    party,
+    activeIdx: 0,
+    enemies: units,
     playerRp: character.resonancePoints,
     playerSp: character.summonPoints,
-    playerStatuses: [],
-    defending: false,
-    enemy: {
-      def: enemy,
-      hp: enemy.maxHp,
-      maxHp: enemy.maxHp,
-      phase: 1,
-      statuses: [],
-    },
     enemyTaunted: false,
-    log: [
-      `Battle starts! ${enemy.name} appears!`,
-      ...(isHighlyEffective(enemy, character.instrument)
-        ? [`▲ Your ${INSTRUMENTS[character.instrument].name} resonates against ${enemy.name} — your attacks are highly effective!`]
-        : []),
-    ],
+    log: [`Battle starts! ${introName} appears!`],
     turn: 'player',
-    weakpointExposed: false,
     simulatorMode,
   };
 }
 
+const allEnemiesDown = (enemies: EnemyUnitState[]) => enemies.every((e) => e.hp <= 0);
+const allPartyDown = (party: MemberState[]) => party.every((m) => m.hp <= 0);
+
 function reducer(state: BattleState, action: BattleAction): BattleState {
   switch (action.type) {
     case 'DAMAGE_ENEMY': {
-      const newHp = Math.max(0, state.enemy.hp - action.amount);
-      const phase = state.enemy.def.phase2Threshold &&
-        newHp / state.enemy.maxHp <= state.enemy.def.phase2Threshold &&
-        state.enemy.phase === 1
-        ? (2 as const)
-        : state.enemy.phase;
-      return {
-        ...state,
-        // Taking damage wakes a sleeping enemy.
-        enemy: { ...state.enemy, hp: newHp, phase, statuses: clearStatus(state.enemy.statuses, 'sleep') },
-        turn: newHp === 0 ? 'victory' : state.turn,
-        weakpointExposed: false,
-      };
+      const enemies = state.enemies.map((u, i) => {
+        if (i !== action.idx) return u;
+        const newHp = Math.max(0, u.hp - action.amount);
+        const phase = u.def.phase2Threshold && u.phase === 1 &&
+          newHp > 0 && newHp / u.maxHp <= u.def.phase2Threshold ? (2 as const) : u.phase;
+        // Taking damage wakes a sleeping enemy; a landed hit consumes the weakpoint.
+        return { ...u, hp: newHp, phase, statuses: clearStatus(u.statuses, 'sleep'), weakpointExposed: false };
+      });
+      return { ...state, enemies, turn: allEnemiesDown(enemies) ? 'victory' : state.turn };
     }
-    case 'DAMAGE_PLAYER': {
-      const reduction = state.defending ? 0.5 : 1.0;
+    case 'DAMAGE_MEMBER': {
       const minHp = state.simulatorMode ? 1 : 0;
-      const newHp = Math.max(minHp, state.playerHp - Math.floor(action.amount * reduction));
-      return {
-        ...state,
-        playerHp: newHp,
-        // Taking damage wakes the player.
-        playerStatuses: clearStatus(state.playerStatuses, 'sleep'),
-        turn: newHp === 0 ? 'defeat' : state.turn,
-      };
+      const party = state.party.map((m, i) => {
+        if (i !== action.idx) return m;
+        const reduction = m.defending ? 0.5 : 1.0;
+        const newHp = Math.max(minHp, m.hp - Math.floor(action.amount * reduction));
+        return { ...m, hp: newHp, statuses: clearStatus(m.statuses, 'sleep') };
+      });
+      return { ...state, party, turn: allPartyDown(party) ? 'defeat' : state.turn };
     }
-    case 'HEAL_PLAYER':
-      return { ...state, playerHp: Math.min(state.playerMaxHp, state.playerHp + action.amount) };
+    case 'HEAL_MEMBER': {
+      const party = state.party.map((m, i) =>
+        i === action.idx ? { ...m, hp: Math.min(m.maxHp, m.hp + action.amount) } : m);
+      return { ...state, party };
+    }
     case 'ADD_LOG':
       return { ...state, log: [...state.log.slice(-9), action.message] };
     case 'SET_TURN':
-      // Never override a finished battle.
       if (state.turn === 'victory' || state.turn === 'defeat') return state;
-      return { ...state, turn: action.turn, ...(action.turn === 'enemy' ? { defending: false } : {}) };
-    case 'SET_DEFENDING':
-      return { ...state, defending: action.value };
-    case 'APPLY_PLAYER_STATUS':
-      return { ...state, playerStatuses: applyStatus(state.playerStatuses, action.effect).list };
-    case 'APPLY_ENEMY_STATUS':
-      return { ...state, enemy: { ...state.enemy, statuses: applyStatus(state.enemy.statuses, action.effect).list } };
-    case 'CLEAR_PLAYER_DEBUFFS':
-      return { ...state, playerStatuses: clearByKind(state.playerStatuses, 'debuff') };
-    case 'CLEAR_ENEMY_BUFFS':
-      return { ...state, enemy: { ...state.enemy, statuses: clearByKind(state.enemy.statuses, 'buff') } };
-    case 'TICK_PLAYER_STATUSES': {
-      const delta = endOfTurnHpDelta(state.playerStatuses, state.playerMaxHp);
+      return { ...state, turn: action.turn };
+    case 'SET_ACTIVE':
+      return { ...state, activeIdx: action.idx };
+    case 'SET_MEMBER_DEFENDING': {
+      const party = state.party.map((m, i) => (i === action.idx ? { ...m, defending: action.value } : m));
+      return { ...state, party };
+    }
+    case 'CLEAR_ALL_DEFENDING':
+      return { ...state, party: state.party.map((m) => ({ ...m, defending: false })) };
+    case 'APPLY_MEMBER_STATUS': {
+      const party = state.party.map((m, i) =>
+        i === action.idx ? { ...m, statuses: applyStatus(m.statuses, action.effect).list } : m);
+      return { ...state, party };
+    }
+    case 'APPLY_ENEMY_STATUS': {
+      const enemies = state.enemies.map((u, i) =>
+        i === action.idx ? { ...u, statuses: applyStatus(u.statuses, action.effect).list } : u);
+      return { ...state, enemies };
+    }
+    case 'CLEAR_MEMBER_DEBUFFS': {
+      const party = state.party.map((m, i) =>
+        i === action.idx ? { ...m, statuses: clearByKind(m.statuses, 'debuff') } : m);
+      return { ...state, party };
+    }
+    case 'CLEAR_ENEMY_BUFFS': {
+      const enemies = state.enemies.map((u, i) =>
+        i === action.idx ? { ...u, statuses: clearByKind(u.statuses, 'buff') } : u);
+      return { ...state, enemies };
+    }
+    case 'TICK_PARTY_STATUSES': {
       const minHp = state.simulatorMode ? 1 : 0;
-      const newHp = Math.max(minHp, Math.min(state.playerMaxHp, state.playerHp + delta));
-      return {
-        ...state,
-        playerHp: newHp,
-        playerStatuses: tickDurations(state.playerStatuses),
-        turn: newHp === 0 ? 'defeat' : state.turn,
-      };
+      const party = state.party.map((m) => {
+        if (m.hp <= 0) return m;
+        const delta = endOfTurnHpDelta(m.statuses, m.maxHp);
+        return {
+          ...m,
+          hp: Math.max(minHp, Math.min(m.maxHp, m.hp + delta)),
+          statuses: tickDurations(m.statuses),
+        };
+      });
+      return { ...state, party, turn: allPartyDown(party) ? 'defeat' : state.turn };
     }
     case 'TICK_ENEMY_STATUSES': {
-      const delta = endOfTurnHpDelta(state.enemy.statuses, state.enemy.maxHp);
-      const newHp = Math.max(0, Math.min(state.enemy.maxHp, state.enemy.hp + delta));
-      return {
-        ...state,
-        enemy: { ...state.enemy, hp: newHp, statuses: tickDurations(state.enemy.statuses) },
-        turn: newHp === 0 ? 'victory' : state.turn,
-      };
+      const enemies = state.enemies.map((u) => {
+        if (u.hp <= 0) return u;
+        const delta = endOfTurnHpDelta(u.statuses, u.maxHp);
+        return {
+          ...u,
+          hp: Math.max(0, Math.min(u.maxHp, u.hp + delta)),
+          statuses: tickDurations(u.statuses),
+        };
+      });
+      return { ...state, enemies, turn: allEnemiesDown(enemies) ? 'victory' : state.turn };
     }
     case 'EARN_RP':
       return { ...state, playerRp: state.playerRp + action.amount };
@@ -172,8 +202,10 @@ function reducer(state: BattleState, action: BattleAction): BattleState {
       return { ...state, playerSp: Math.max(0, state.playerSp - action.amount) };
     case 'SET_ENEMY_TAUNTED':
       return { ...state, enemyTaunted: action.value };
-    case 'EXPOSE_WEAKPOINT':
-      return { ...state, weakpointExposed: true };
+    case 'EXPOSE_WEAKPOINT': {
+      const enemies = state.enemies.map((u, i) => (i === action.idx ? { ...u, weakpointExposed: true } : u));
+      return { ...state, enemies };
+    }
     default:
       return state;
   }
@@ -196,80 +228,99 @@ const TIER_TEXT: Record<AbilityTier, string> = {
 };
 
 const RATING_COLORS: Record<Rating, string> = {
-  superior:  'text-rating-superior bg-rating-superior/10',
-  excellent: 'text-rating-excellent bg-rating-excellent/10',
-  good:      'text-rating-good bg-rating-good/10',
-  fair:      'text-rating-fair bg-rating-fair/10',
-  poor:      'text-rating-poor bg-rating-poor/10',
+  superior:  'bg-rating-superior/15 text-rating-superior',
+  excellent: 'bg-rating-excellent/15 text-rating-excellent',
+  good:      'bg-rating-good/15 text-rating-good',
+  fair:      'bg-rating-fair/15 text-rating-fair',
+  poor:      'bg-rating-poor/15 text-rating-poor',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
   character: Character;
-  enemy: EnemyDef;
+  enemies: EnemyDef[];
   onVictory: (rpEarned: number, spDelta: number) => void;
   onDefeat: () => void;
   simulatorMode?: boolean;
 }
 
-export default function BattleScreen({ character, enemy, onVictory, onDefeat, simulatorMode = false }: Props) {
-  const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemy, simulatorMode));
+type MenuState = 'actions' | 'items' | 'summons' | 'target-enemy' | 'target-ally';
+
+export default function BattleScreen({ character, enemies, onVictory, onDefeat, simulatorMode = false }: Props) {
+  const [state, dispatch] = useReducer(reducer, buildInitialState(character, enemies, simulatorMode));
   const [activeAbility, setActiveAbility] = useState<Ability | null>(null);
   const [activeBpm, setActiveBpm] = useState(60); // tempo rolled when an action is chosen
-  const [isEnemyTurnAnimating, setIsEnemyTurnAnimating] = useState(false);
-  const [playerActing, setPlayerActing] = useState(false);
+  const [enemyActingIdx, setEnemyActingIdx] = useState<number | null>(null);
+  const [actingMemberIdx, setActingMemberIdx] = useState<number | null>(null); // lunge animation
   const [lastRating, setLastRating] = useState<Rating | null>(null);
   const [perfectFlash, setPerfectFlash] = useState(false);
-  const [menu, setMenu] = useState<'actions' | 'items' | 'summons'>('actions');
+  const [menu, setMenu] = useState<MenuState>('actions');
   const [items, setItems] = useState<Record<string, number>>(() => ({ ...STARTER_KIT }));
   const [pendingSummonAllyId, setPendingSummonAllyId] = useState<AllyId | null>(null);
   const [pendingSpecialAtk, setPendingSpecialAtk] = useState<{
-    name: string; baseDmg: number; challengeType: string;
+    name: string; baseDmg: number; challengeType: string; enemyIdx: number; targetIdx: number;
   } | null>(null);
+  // Target selection: what we're picking a target for, and the picks themselves.
+  const [pendingTargeted, setPendingTargeted] = useState<{ kind: 'ability'; ability: Ability } | { kind: 'item'; item: BattleItem } | null>(null);
+  const targetEnemyRef = useRef(0);
+  const targetAllyRef = useRef(0);
+  const actorRef = useRef(0);
+
+  // FF-style transient battle FX: floating damage/heal numbers + hit flashes.
+  const [floaters, setFloaters] = useState<{ id: number; anchor: string; text: string; color: string }[]>([]);
+  const [flashes, setFlashes] = useState<Record<string, number>>({});
+  const [showFullLog, setShowFullLog] = useState(false);
+  const floaterIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement>(null);
   const rpEarnedRef = useRef(0);
   const spEarnedRef = useRef(0);
   const spSpentRef = useRef(0);
-  const playerTurnNoRef = useRef(1);        // counts player turns (slow parity)
-  const enemyTurnNoRef = useRef(0);         // counts enemy turns (slow parity)
-  const bonusActionUsedRef = useRef(false); // haste extra-action consumed this turn
-  // Always-fresh snapshot of state for use inside async (setTimeout) callbacks,
-  // where the captured `state` closure would otherwise be stale.
+  const roundNoRef = useRef(1);            // player rounds (slow parity)
+  const enemyRoundNoRef = useRef(0);       // enemy rounds (slow parity)
+  const hasteUsedRef = useRef<Set<number>>(new Set()); // members who spent their haste action this round
+  // Always-fresh snapshot of state for use inside async (setTimeout) callbacks.
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const color = getInstrumentColor(character.instrument);
-  // GDD matchup layer: the player's class counters this enemy's musical nature.
-  // Applies to the player's own abilities only — summons are other instruments.
-  const highlyEffective = isHighlyEffective(enemy, character.instrument);
-  const abilities = getAbilitiesForInstrument(character.instrument, character.level);
+  const active = state.party[state.activeIdx];
+  const activeColor = getInstrumentColor(active.def.instrument);
+  const abilities = getAbilitiesForInstrument(active.def.instrument, character.level);
   const bpmRange = battleBpmRange(character.currentZone);
-  const effectiveStats = getEffectiveStats(character);
-  const pitchTolerance = pitchToleranceCents(effectiveStats.accuracy);
 
   const addLog = useCallback((msg: string) => dispatch({ type: 'ADD_LOG', message: msg }), []);
 
-  function selectAbility(ab: Ability) {
-    setActiveBpm(battleBpm(character.currentZone)); // roll tempo once per action
-    setActiveAbility(ab);
-  }
+  const spawnFloater = useCallback((anchor: string, text: string, color = '#FFFFFF') => {
+    const id = ++floaterIdRef.current;
+    setFloaters((f) => [...f, { id, anchor, text, color }]);
+    setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 950);
+  }, []);
 
-  // score is 0–100 continuous pitch accuracy. score=0 is a miss (handled before
-  // this is called). score=100 triggers the perfect bonus (2×).
-  function computeDamage(ability: Ability, score: number): number {
-    const perfectMult = score === 100 ? 2 : 1;
-    const weakpointMult = state.weakpointExposed ? 2 : 1;
-    const offenseMult = hasStatus(state.playerStatuses, 'manic') ? MANIC_DEAL_MULT
-      : hasStatus(state.playerStatuses, 'calm') ? CALM_DEAL_MULT : 1;
-    const matchupMult = highlyEffective ? EFFECTIVENESS_MULT : 1;
-    const base = effectiveStats.power * ability.damageMultiplier * (score / 100);
-    return Math.max(1, Math.round(base * perfectMult * weakpointMult * offenseMult * matchupMult));
-  }
+  const bumpFlash = useCallback((anchor: string) => {
+    setFlashes((f) => ({ ...f, [anchor]: (f[anchor] ?? 0) + 1 }));
+  }, []);
 
-  // Target-side damage modifiers from statuses (manic/calm/vulnerable scale the
-  // hit; deflect reflects half back). Reflected damage is dispatched directly to
-  // avoid an infinite ping-pong between two deflecting combatants.
+  const lungeMember = (idx: number) => {
+    setActingMemberIdx(idx);
+    setTimeout(() => setActingMemberIdx(null), 450);
+  };
+
+  // ── Living-entity helpers (always via stateRef inside async paths) ───────────
+  const livingEnemyIdxs = (s: BattleState) => s.enemies.map((u, i) => (u.hp > 0 ? i : -1)).filter((i) => i >= 0);
+  const livingMemberIdxs = (s: BattleState) => s.party.map((m, i) => (m.hp > 0 ? i : -1)).filter((i) => i >= 0);
+  const firstLivingEnemy = (s: BattleState) => livingEnemyIdxs(s)[0] ?? -1;
+  const randomLivingMember = (s: BattleState) => {
+    const idxs = livingMemberIdxs(s);
+    return idxs[Math.floor(Math.random() * idxs.length)] ?? -1;
+  };
+  const lowestHpLivingMember = (s: BattleState) => {
+    const idxs = livingMemberIdxs(s);
+    return idxs.reduce((best, i) =>
+      best < 0 || s.party[i].hp / s.party[i].maxHp < s.party[best].hp / s.party[best].maxHp ? i : best, -1);
+  };
+
+  // ── Damage / heal / status plumbing ──────────────────────────────────────────
+
   function takenMultiplier(statuses: StatusEffect[]): number {
     let m = 1;
     if (hasStatus(statuses, 'manic')) m *= MANIC_TAKEN_MULT;
@@ -278,118 +329,330 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     return m;
   }
 
-  function dealDamageToEnemy(raw: number): number {
+  // Player-side damage to a specific enemy unit. attackerIdx receives deflect.
+  function dealDamageToEnemy(enemyIdx: number, raw: number, attackerIdx: number): number {
     const s = stateRef.current;
-    let dmg = Math.max(1, Math.round(raw * takenMultiplier(s.enemy.statuses)));
-    if (hasStatus(s.enemy.statuses, 'deflect')) {
+    const unit = s.enemies[enemyIdx];
+    if (!unit || unit.hp <= 0) return 0;
+    let dmg = Math.max(1, Math.round(raw * takenMultiplier(unit.statuses)));
+    if (hasStatus(unit.statuses, 'deflect')) {
       const reflected = Math.round(dmg * DEFLECT_PCT);
       dmg -= reflected;
       if (reflected > 0) {
-        dispatch({ type: 'DAMAGE_PLAYER', amount: reflected });
-        addLog(`🛡️ ${enemy.name} deflects ${reflected} damage back!`);
+        dispatch({ type: 'DAMAGE_MEMBER', idx: attackerIdx, amount: reflected });
+        spawnFloater(`m${attackerIdx}`, `${reflected}`, '#F87171');
+        bumpFlash(`m${attackerIdx}`);
+        addLog(`🛡️ ${unit.def.name} deflects ${reflected} damage back!`);
       }
     }
-    // Detect phase 2 transition before dispatching so we can log it immediately.
-    const newHp = Math.max(0, s.enemy.hp - dmg);
-    if (s.enemy.phase === 1 && s.enemy.def.phase2Threshold &&
-        newHp > 0 && newHp / s.enemy.maxHp <= s.enemy.def.phase2Threshold) {
-      addLog(`⚡ ${enemy.name} enters PHASE 2!`);
+    const newHp = Math.max(0, unit.hp - dmg);
+    if (unit.phase === 1 && unit.def.phase2Threshold &&
+        newHp > 0 && newHp / unit.maxHp <= unit.def.phase2Threshold) {
+      addLog(`⚡ ${unit.def.name} enters PHASE 2!`);
     }
-    dispatch({ type: 'DAMAGE_ENEMY', amount: dmg });
+    dispatch({ type: 'DAMAGE_ENEMY', idx: enemyIdx, amount: dmg });
+    const attacker = s.party[attackerIdx];
+    const effective = attacker ? unit.def.vulnerableTo.includes(attacker.def.instrument) : false;
+    spawnFloater(`e${enemyIdx}`, `${dmg}`, effective ? '#FFD700' : '#FFFFFF');
+    bumpFlash(`e${enemyIdx}`);
     return dmg;
   }
 
-  function dealDamageToPlayer(raw: number): number {
+  // Summon damage auto-targets the first living enemy (per hit, so multi-hit
+  // strings roll over to the next foe when one falls).
+  function dealSummonDamage(raw: number): number {
+    const idx = firstLivingEnemy(stateRef.current);
+    if (idx < 0) return 0;
+    return dealDamageToEnemy(idx, raw, actorRef.current);
+  }
+
+  // Enemy-side damage to a specific member. attackerEnemyIdx receives deflect.
+  function dealDamageToMember(memberIdx: number, raw: number, attackerEnemyIdx: number): number {
     const s = stateRef.current;
-    let dmg = Math.max(1, Math.round(raw * takenMultiplier(s.playerStatuses)));
-    if (hasStatus(s.playerStatuses, 'deflect')) {
+    const member = s.party[memberIdx];
+    if (!member || member.hp <= 0) return 0;
+    let dmg = Math.max(1, Math.round(raw * takenMultiplier(member.statuses)));
+    if (hasStatus(member.statuses, 'deflect')) {
       const reflected = Math.round(dmg * DEFLECT_PCT);
       dmg -= reflected;
       if (reflected > 0) {
-        dispatch({ type: 'DAMAGE_ENEMY', amount: reflected });
-        addLog(`🛡️ ${character.displayName} deflects ${reflected} damage back!`);
+        dispatch({ type: 'DAMAGE_ENEMY', idx: attackerEnemyIdx, amount: reflected });
+        spawnFloater(`e${attackerEnemyIdx}`, `${reflected}`, '#FFFFFF');
+        bumpFlash(`e${attackerEnemyIdx}`);
+        addLog(`🛡️ ${member.def.name} deflects ${reflected} damage back!`);
       }
     }
-    dispatch({ type: 'DAMAGE_PLAYER', amount: dmg });
+    dispatch({ type: 'DAMAGE_MEMBER', idx: memberIdx, amount: dmg });
+    spawnFloater(`m${memberIdx}`, `${dmg}`, '#F87171');
+    bumpFlash(`m${memberIdx}`);
     return dmg;
   }
 
-  // Apply a status with opposite-cancel feedback, then dispatch to the reducer.
-  function applyStatusToPlayer(type: StatusType, duration?: number) {
+  function healMember(idx: number, amount: number) {
+    if (amount <= 0) return;
+    dispatch({ type: 'HEAL_MEMBER', idx, amount });
+    spawnFloater(`m${idx}`, `+${amount}`, '#4ADE80');
+  }
+
+  function applyStatusToMember(idx: number, type: StatusType, duration?: number) {
+    const s = stateRef.current;
+    const member = s.party[idx];
+    if (!member || member.hp <= 0) return;
     const opp = STATUS_DEFS[type].opposite;
-    if (hasStatus(stateRef.current.playerStatuses, opp)) {
+    if (hasStatus(member.statuses, opp)) {
       addLog(`${STATUS_DEFS[type].icon} ${STATUS_DEFS[type].name} cancels ${STATUS_DEFS[opp].name}.`);
     } else {
-      addLog(`${STATUS_DEFS[type].icon} ${character.displayName}: ${STATUS_DEFS[type].name}!`);
+      addLog(`${STATUS_DEFS[type].icon} ${member.def.name}: ${STATUS_DEFS[type].name}!`);
     }
-    dispatch({ type: 'APPLY_PLAYER_STATUS', effect: newStatus(type, duration) });
+    dispatch({ type: 'APPLY_MEMBER_STATUS', idx, effect: newStatus(type, duration) });
   }
 
-  function applyStatusToEnemy(type: StatusType, duration?: number) {
+  function applyStatusToEnemyUnit(idx: number, type: StatusType, duration?: number) {
+    const s = stateRef.current;
+    const unit = s.enemies[idx];
+    if (!unit || unit.hp <= 0) return;
     const opp = STATUS_DEFS[type].opposite;
-    if (hasStatus(stateRef.current.enemy.statuses, opp)) {
-      addLog(`${STATUS_DEFS[type].icon} ${STATUS_DEFS[type].name} cancels ${enemy.name}'s ${STATUS_DEFS[opp].name}.`);
+    if (hasStatus(unit.statuses, opp)) {
+      addLog(`${STATUS_DEFS[type].icon} ${STATUS_DEFS[type].name} cancels ${unit.def.name}'s ${STATUS_DEFS[opp].name}.`);
     } else {
-      addLog(`${STATUS_DEFS[type].icon} ${enemy.name}: ${STATUS_DEFS[type].name}!`);
+      addLog(`${STATUS_DEFS[type].icon} ${unit.def.name}: ${STATUS_DEFS[type].name}!`);
     }
-    dispatch({ type: 'APPLY_ENEMY_STATUS', effect: newStatus(type, duration) });
+    dispatch({ type: 'APPLY_ENEMY_STATUS', idx, effect: newStatus(type, duration) });
   }
 
-  // End of the player's turn: poison/regen tick, then hand control to the enemy.
-  function endPlayerTurn() {
-    bonusActionUsedRef.current = false;
-    const d = endOfTurnHpDelta(stateRef.current.playerStatuses, state.playerMaxHp);
-    if (d < 0) addLog(`☠️ Poison saps ${-d} HP.`);
-    else if (d > 0) addLog(`🌿 Regen restores ${d} HP.`);
-    dispatch({ type: 'TICK_PLAYER_STATUSES' });
-    dispatch({ type: 'SET_TURN', turn: 'enemy' });
-    runEnemyTurn();
-  }
+  // ── Player round flow ─────────────────────────────────────────────────────────
+  // Every living member acts once per round, each fully user-controlled.
 
-  // After a resolved player action: take an extra action if hasted, else end turn.
-  function afterPlayerAction() {
-    if (hasStatus(state.playerStatuses, 'haste') && !bonusActionUsedRef.current) {
-      bonusActionUsedRef.current = true;
-      addLog('⚡ Haste — act again!');
-      return; // stay on the player's turn; the action menu re-appears
-    }
-    endPlayerTurn();
-  }
-
-  function handleDefend() {
-    if (hasStatus(state.playerStatuses, 'manic')) return; // manic cannot defend
-    dispatch({ type: 'SET_DEFENDING', value: true });
-    addLog(`${character.displayName} braces for impact.`);
-    endPlayerTurn();
-  }
-
-  // Player chose to pass (asleep or slowed). Still ticks statuses so they wear off.
-  function skipPlayerTurn(message: string) {
-    addLog(message);
-    endPlayerTurn();
-  }
-
-  // Use a consumable: applies its status (self/enemy), spends it, costs the turn.
-  function useItem(item: BattleItem) {
-    if ((items[item.id] ?? 0) <= 0) return;
-    setItems((prev) => ({ ...prev, [item.id]: (prev[item.id] ?? 0) - 1 }));
+  function advanceToNextMember(fromIdx: number) {
+    const s = stateRef.current;
+    if (s.turn === 'victory' || s.turn === 'defeat') return;
+    const living = livingMemberIdxs(s);
+    const next = living.find((i) => i > fromIdx);
     setMenu('actions');
-    addLog(`🎒 ${character.displayName} uses ${item.name}.`);
-    if (item.target === 'self') applyStatusToPlayer(item.applies);
-    else applyStatusToEnemy(item.applies);
-    setPlayerActing(true);
-    setTimeout(() => setPlayerActing(false), 450);
-    afterPlayerAction();
+    if (next !== undefined) {
+      dispatch({ type: 'SET_ACTIVE', idx: next });
+    } else {
+      endPlayerRound();
+    }
+  }
+
+  // After a resolved action: an extra action if hasted (once per round), else pass on.
+  function afterMemberAction(memberIdx: number) {
+    const s = stateRef.current;
+    const member = s.party[memberIdx];
+    if (member && member.hp > 0 && hasStatus(member.statuses, 'haste') && !hasteUsedRef.current.has(memberIdx)) {
+      hasteUsedRef.current.add(memberIdx);
+      addLog(`⚡ Haste — ${member.def.name} acts again!`);
+      setMenu('actions');
+      return;
+    }
+    advanceToNextMember(memberIdx);
+  }
+
+  function endPlayerRound() {
+    const s = stateRef.current;
+    for (const i of livingMemberIdxs(s)) {
+      const d = endOfTurnHpDelta(s.party[i].statuses, s.party[i].maxHp);
+      if (d < 0) addLog(`☠️ Poison saps ${-d} HP from ${s.party[i].def.name}.`);
+      else if (d > 0) addLog(`🌿 Regen restores ${d} HP to ${s.party[i].def.name}.`);
+    }
+    dispatch({ type: 'TICK_PARTY_STATUSES' });
+    dispatch({ type: 'SET_TURN', turn: 'enemy' });
+    enemyRoundNoRef.current += 1;
+    runEnemyAt(0);
+  }
+
+  // ── Enemy round: each living enemy acts in sequence ───────────────────────────
+
+  function runEnemyAt(startIdx: number) {
+    const s = stateRef.current;
+    if (s.turn === 'victory' || s.turn === 'defeat') return;
+    const idx = s.enemies.findIndex((u, i) => i >= startIdx && u.hp > 0);
+    if (idx === -1) { finishEnemyRound(); return; }
+    setEnemyActingIdx(idx);
+
+    setTimeout(() => {
+      const s2 = stateRef.current;
+      if (s2.turn === 'victory' || s2.turn === 'defeat') return;
+      const unit = s2.enemies[idx];
+      if (!unit || unit.hp <= 0) { runEnemyAt(idx + 1); return; }
+      const eStatuses = unit.statuses;
+      const name = unit.def.name;
+
+      // Sleep — skips its turn (woken only by damage).
+      if (hasStatus(eStatuses, 'sleep')) {
+        addLog(`💤 ${name} is asleep.`);
+        runEnemyAt(idx + 1);
+        return;
+      }
+      // Cramped — hard 1-turn stun, NOT cleared by damage.
+      if (hasStatus(eStatuses, 'cramped')) {
+        addLog(`🤝 ${name}'s hand seizes up — it cannot act!`);
+        runEnemyAt(idx + 1);
+        return;
+      }
+      // Slow — acts only every other round.
+      if (hasStatus(eStatuses, 'slow') && enemyRoundNoRef.current % 2 === 0) {
+        addLog(`🐌 ${name} is too slow to act.`);
+        runEnemyAt(idx + 1);
+        return;
+      }
+
+      const targetIdx = randomLivingMember(s2);
+      if (targetIdx < 0) return; // defeat already resolved
+      const target = s2.party[targetIdx];
+      const attacks = hasStatus(eStatuses, 'haste') ? 2 : 1;
+      const enemyPower = unit.def.power + (unit.phase === 2 ? 5 : 0);
+      const manicMult = hasStatus(eStatuses, 'manic') ? MANIC_DEAL_MULT : 1;
+
+      for (let i = 0; i < attacks; i++) {
+        if (hasStatus(eStatuses, 'confusion') && !hasStatus(eStatuses, 'clarity')
+            && Math.random() < CONFUSION_FAIL_CHANCE) {
+          addLog(`💫 ${name} flails in confusion.`);
+          continue;
+        }
+        if (hasStatus(eStatuses, 'blind') && !hasStatus(eStatuses, 'focus')
+            && Math.random() < BLIND_MISS_CHANCE) {
+          addLog(`🌫️ ${name}'s attack misses!`);
+          continue;
+        }
+        // Endurance mitigates damage, but never below ENEMY_DAMAGE_FLOOR of the
+        // enemy's (manic-scaled) power — so no class becomes invincible.
+        const scaledPower = enemyPower * manicMult;
+        const raw = Math.max(
+          1,
+          Math.round(Math.max(scaledPower * ENEMY_DAMAGE_FLOOR, scaledPower - target.def.stats.endurance * 0.5)),
+        );
+        const applied = dealDamageToMember(targetIdx, raw, idx);
+        addLog(`${name} attacks ${target.def.name}! ${applied} damage.${attacks > 1 ? ` (${i + 1}/${attacks})` : ''}`);
+      }
+
+      // Inflict its signature status on the same target.
+      if (unit.def.debuff && Math.random() < (unit.def.debuffChance ?? 0.4)) {
+        applyStatusToMember(targetIdx, unit.def.debuff, unit.def.debuffDuration);
+      }
+
+      // Special attack — the targeted member performs the defense challenge.
+      const specialChance = unit.phase === 2 ? 0.45 : 0.25;
+      if (!s2.enemyTaunted && unit.def.specialAttackChallengeType && Math.random() < specialChance
+          && stateRef.current.party[targetIdx].hp > 0) {
+        const atkName = unit.def.specialAttackName ?? 'Special Attack';
+        const baseDmg = Math.round(enemyPower * manicMult * 1.5);
+        addLog(`⚠️ ${name} uses ${atkName} on ${target.def.name}! DEFEND!`);
+        setPendingSpecialAtk({
+          name: atkName, baseDmg,
+          challengeType: unit.def.specialAttackChallengeType,
+          enemyIdx: idx, targetIdx,
+        });
+        // The chain resumes in handleSpecialDefenseComplete.
+        return;
+      }
+
+      runEnemyAt(idx + 1);
+    }, 900);
+  }
+
+  function finishEnemyRound() {
+    const s = stateRef.current;
+    for (const i of livingEnemyIdxs(s)) {
+      const d = endOfTurnHpDelta(s.enemies[i].statuses, s.enemies[i].maxHp);
+      if (d < 0) addLog(`☠️ Poison saps ${-d} HP from ${s.enemies[i].def.name}.`);
+      else if (d > 0) addLog(`🌿 ${s.enemies[i].def.name} regenerates ${d} HP.`);
+    }
+    dispatch({ type: 'TICK_ENEMY_STATUSES' });
+    if (s.enemyTaunted) dispatch({ type: 'SET_ENEMY_TAUNTED', value: false });
+    setEnemyActingIdx(null);
+
+    // New player round: defending wears off now (after it actually protected).
+    roundNoRef.current += 1;
+    hasteUsedRef.current.clear();
+    dispatch({ type: 'CLEAR_ALL_DEFENDING' });
+    dispatch({ type: 'SET_TURN', turn: 'player' });
+    const first = livingMemberIdxs(stateRef.current)[0];
+    if (first !== undefined) dispatch({ type: 'SET_ACTIVE', idx: first });
+  }
+
+  // ── Commands ──────────────────────────────────────────────────────────────────
+
+  function abilityNeedsEnemyTarget(ab: Ability): boolean {
+    return ab.damageMultiplier > 0 || !!ab.inflicts || !!ab.inflictsMany?.length || ab.id === 'resonant_frequency';
+  }
+
+  // Pick targets (auto when there's only one option), then start the challenge.
+  function requestAbility(ab: Ability) {
+    actorRef.current = state.activeIdx;
+    if (ab.isHealing || ab.isRevive) {
+      const s = stateRef.current;
+      const pool = ab.isRevive
+        ? s.party.map((m, i) => (m.hp <= 0 ? i : -1)).filter((i) => i >= 0)
+        : livingMemberIdxs(s);
+      if (ab.isRevive && pool.length === 0) {
+        addLog('No fallen ally to revive.');
+        return;
+      }
+      if (pool.length > 1) {
+        setPendingTargeted({ kind: 'ability', ability: ab });
+        setMenu('target-ally');
+        return;
+      }
+      targetAllyRef.current = pool[0] ?? state.activeIdx;
+      startAbility(ab);
+      return;
+    }
+    if (abilityNeedsEnemyTarget(ab)) {
+      const living = livingEnemyIdxs(stateRef.current);
+      if (living.length > 1) {
+        setPendingTargeted({ kind: 'ability', ability: ab });
+        setMenu('target-enemy');
+        return;
+      }
+      targetEnemyRef.current = living[0] ?? 0;
+    }
+    startAbility(ab);
+  }
+
+  function startAbility(ab: Ability) {
+    setActiveBpm(battleBpm(character.currentZone)); // roll tempo once per action
+    setMenu('actions');
+    setPendingTargeted(null);
+    setActiveAbility(ab);
+  }
+
+  function chooseEnemyTarget(idx: number) {
+    targetEnemyRef.current = idx;
+    if (pendingTargeted?.kind === 'ability') startAbility(pendingTargeted.ability);
+    else if (pendingTargeted?.kind === 'item') resolveItem(pendingTargeted.item, idx);
+  }
+
+  function chooseAllyTarget(idx: number) {
+    targetAllyRef.current = idx;
+    if (pendingTargeted?.kind === 'ability') startAbility(pendingTargeted.ability);
+  }
+
+  // score is 0–100 continuous pitch accuracy; 100 triggers the perfect bonus (2×).
+  function computeDamage(ability: Ability, score: number): number {
+    const s = stateRef.current;
+    const actor = s.party[actorRef.current];
+    const targetUnit = s.enemies[targetEnemyRef.current];
+    const perfectMult = score === 100 ? 2 : 1;
+    const weakpointMult = targetUnit?.weakpointExposed ? 2 : 1;
+    const offenseMult = hasStatus(actor.statuses, 'manic') ? MANIC_DEAL_MULT
+      : hasStatus(actor.statuses, 'calm') ? CALM_DEAL_MULT : 1;
+    // GDD matchup layer: the actor's class counters this enemy's musical nature.
+    const matchupMult = targetUnit && targetUnit.def.vulnerableTo.includes(actor.def.instrument)
+      ? EFFECTIVENESS_MULT : 1;
+    const base = actor.def.stats.power * ability.damageMultiplier * (score / 100);
+    return Math.max(1, Math.round(base * perfectMult * weakpointMult * offenseMult * matchupMult));
   }
 
   async function handleAbilityComplete(rating: Rating, score: number) {
     if (!activeAbility) return;
     const ability = activeAbility;
+    const actorIdx = actorRef.current;
+    const actor = stateRef.current.party[actorIdx];
     setActiveAbility(null);
     setLastRating(rating);
-
-    setPlayerActing(true);
-    setTimeout(() => setPlayerActing(false), 450);
+    lungeMember(actorIdx);
 
     const rp = RP_AWARDS[rating];
     rpEarnedRef.current += rp;
@@ -401,25 +664,25 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     }
 
     if (ability.id === 'resonant_frequency') {
-      dispatch({ type: 'EXPOSE_WEAKPOINT' });
-      addLog(`Resonant Frequency — ${enemy.name}'s weak point is exposed!`);
-      afterPlayerAction();
+      const tIdx = targetEnemyRef.current;
+      dispatch({ type: 'EXPOSE_WEAKPOINT', idx: tIdx });
+      addLog(`Resonant Frequency — ${stateRef.current.enemies[tIdx]?.def.name}'s weak point is exposed!`);
+      afterMemberAction(actorIdx);
       return;
     }
 
-    // Miss — no pitch detected during the performance window
+    // Miss — no pitch detected during the performance window.
     if (score === 0) {
       addLog(`${ability.name} — MISSED! No sound detected.`);
-      afterPlayerAction();
+      afterMemberAction(actorIdx);
       return;
     }
 
-    // Confusion — half the time the phrase scatters and the action fails
-    // (Clarity grants immunity).
-    if (hasStatus(state.playerStatuses, 'confusion') && !hasStatus(state.playerStatuses, 'clarity')
+    // Confusion — half the time the phrase scatters and the action fails.
+    if (hasStatus(actor.statuses, 'confusion') && !hasStatus(actor.statuses, 'clarity')
         && Math.random() < CONFUSION_FAIL_CHANCE) {
       addLog(`💫 Confused! ${ability.name} scatters and fails.`);
-      afterPlayerAction();
+      afterMemberAction(actorIdx);
       return;
     }
 
@@ -433,41 +696,59 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
     // Cleanses fire regardless of score so defensive utility is reliable.
     if (ability.clearsSelfDebuffs) {
-      dispatch({ type: 'CLEAR_PLAYER_DEBUFFS' });
+      dispatch({ type: 'CLEAR_MEMBER_DEBUFFS', idx: actorIdx });
       addLog(`✨ ${ability.name} — debuffs shaken loose!`);
     }
     if (ability.clearsEnemyBuffs) {
-      dispatch({ type: 'CLEAR_ENEMY_BUFFS' });
-      addLog(`✨ ${ability.name} — ${enemy.name}'s buffs stripped!`);
+      for (const i of livingEnemyIdxs(stateRef.current)) dispatch({ type: 'CLEAR_ENEMY_BUFFS', idx: i });
+      addLog(`✨ ${ability.name} — enemy buffs stripped!`);
     }
 
     // Self-buffs (regen / haste / deflect / focus / calm …) on a solid performance.
     if (goodOrBetter) {
-      if (ability.selfStatus) applyStatusToPlayer(ability.selfStatus);
-      ability.selfStatusMany?.forEach((t) => applyStatusToPlayer(t));
+      if (ability.selfStatus) applyStatusToMember(actorIdx, ability.selfStatus);
+      ability.selfStatusMany?.forEach((t) => applyStatusToMember(actorIdx, t));
     }
 
-    if (ability.isHealing && !ability.isRevive) {
-      const healAmount = Math.round(effectiveStats.endurance * 3 * (score / 100) * (isPerfect ? 2 : 1));
-      dispatch({ type: 'HEAL_PLAYER', amount: healAmount });
-      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — restored ${healAmount} HP (${score}%${isPerfect ? ' ×2' : ''})`);
-      afterPlayerAction();
+    if (ability.isRevive) {
+      const tIdx = targetAllyRef.current;
+      const target = stateRef.current.party[tIdx];
+      if (target && target.hp <= 0) {
+        const revived = Math.max(1, Math.round(target.maxHp * (score / 100)));
+        healMember(tIdx, revived);
+        addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${target.def.name} returns with ${revived} HP!`);
+      } else {
+        addLog(`${ability.name} — but there is no one to revive.`);
+      }
+      afterMemberAction(actorIdx);
       return;
     }
 
-    // Inflict statuses on the enemy, gated on a Good-or-better hit.
+    if (ability.isHealing) {
+      const tIdx = targetAllyRef.current;
+      const target = stateRef.current.party[tIdx];
+      const healAmount = Math.round(actor.def.stats.endurance * 3 * (score / 100) * (isPerfect ? 2 : 1));
+      healMember(tIdx, healAmount);
+      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — restored ${healAmount} HP to ${target?.def.name} (${score}%${isPerfect ? ' ×2' : ''})`);
+      afterMemberAction(actorIdx);
+      return;
+    }
+
+    // Inflict statuses on the target, gated on a Good-or-better hit.
+    const tIdx = targetEnemyRef.current;
     const inflictEnemyStatuses = () => {
       if (!goodOrBetter) return;
-      if (ability.inflicts) applyStatusToEnemy(ability.inflicts);
-      ability.inflictsMany?.forEach((t) => applyStatusToEnemy(t));
+      if (ability.inflicts) applyStatusToEnemyUnit(tIdx, ability.inflicts);
+      ability.inflictsMany?.forEach((t) => applyStatusToEnemyUnit(tIdx, t));
     };
 
     if (ability.damageMultiplier > 0) {
+      const targetUnit = stateRef.current.enemies[tIdx];
+      const effective = targetUnit?.def.vulnerableTo.includes(actor.def.instrument);
       const dmg = computeDamage(ability, score);
-      const applied = dealDamageToEnemy(dmg);
-      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${applied} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''}${highlyEffective ? ' ▲' : ''})`);
+      const applied = dealDamageToEnemy(tIdx, dmg, actorIdx);
+      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${applied} dmg to ${targetUnit?.def.name} (${score}%${isPerfect ? ' ×2' : ''}${effective ? ' ▲' : ''})`);
       inflictEnemyStatuses();
-      if (state.enemy.hp - applied <= 0) return; // victory handled by reducer
     } else {
       // Pure-utility ability (no direct damage): apply its statuses and resolve.
       inflictEnemyStatuses();
@@ -477,15 +758,57 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
       }
     }
 
-    afterPlayerAction();
+    afterMemberAction(actorIdx);
   }
 
-  // ── Symphony Ally Summons ─────────────────────────────────────────────────────
+  function handleDefend() {
+    const idx = state.activeIdx;
+    if (hasStatus(active.statuses, 'manic')) return; // manic cannot defend
+    dispatch({ type: 'SET_MEMBER_DEFENDING', idx, value: true });
+    addLog(`${active.def.name} braces for impact.`);
+    advanceToNextMember(idx);
+  }
 
-  // Find the one ally this character's instrument can summon.
+  function skipMemberTurn(message: string) {
+    addLog(message);
+    advanceToNextMember(state.activeIdx);
+  }
+
+  // Use a consumable: applies its status (self/enemy), spends it, costs the action.
+  function requestItem(item: BattleItem) {
+    if ((items[item.id] ?? 0) <= 0) return;
+    actorRef.current = state.activeIdx;
+    if (item.target === 'enemy') {
+      const living = livingEnemyIdxs(stateRef.current);
+      if (living.length > 1) {
+        setPendingTargeted({ kind: 'item', item });
+        setMenu('target-enemy');
+        return;
+      }
+      resolveItem(item, living[0] ?? 0);
+      return;
+    }
+    resolveItem(item, state.activeIdx);
+  }
+
+  function resolveItem(item: BattleItem, targetIdx: number) {
+    const actorIdx = actorRef.current;
+    setItems((prev) => ({ ...prev, [item.id]: (prev[item.id] ?? 0) - 1 }));
+    setMenu('actions');
+    setPendingTargeted(null);
+    addLog(`🎒 ${stateRef.current.party[actorIdx].def.name} uses ${item.name}.`);
+    if (item.target === 'self') applyStatusToMember(actorIdx, item.applies);
+    else applyStatusToEnemyUnit(targetIdx, item.applies);
+    lungeMember(actorIdx);
+    afterMemberAction(actorIdx);
+  }
+
+  // ── Symphony Ally Summons (hero only) ────────────────────────────────────────
+
   const characterAllyId = getAllyForInstrument(character.instrument);
   const canSummon = characterAllyId !== null
-    && character.freedAllies.includes(characterAllyId);
+    && character.freedAllies.includes(characterAllyId)
+    && active.def.isHero;
 
   function handleSummon(allyId: AllyId) {
     const def = ALLY_BATTLE_DEFS[allyId];
@@ -493,6 +816,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
       addLog(`Not enough SP to summon ${def.name}. (Need ${def.spCost}, have ${stateRef.current.playerSp})`);
       return;
     }
+    actorRef.current = state.activeIdx;
     dispatch({ type: 'SPEND_SP', amount: def.spCost });
     spSpentRef.current += def.spCost;
     setPendingSummonAllyId(allyId);
@@ -503,127 +827,141 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     setPendingSummonAllyId(null);
     if (!allyId) return;
 
+    const actorIdx = actorRef.current;
+    const s0 = stateRef.current;
+    const heroStats = s0.party[actorIdx].def.stats;
     const def = ALLY_BATTLE_DEFS[allyId];
     const scale = SUMMON_SCALE[rating] ?? 0.2;
     addLog(`${def.abilityName} — ${def.name} answers the call! (${rating})`);
 
+    const healTarget = () => lowestHpLivingMember(stateRef.current);
+    const debuffTarget = () => firstLivingEnemy(stateRef.current);
+
     switch (allyId) {
       // ── percival: timpani solo ── 4 small hits + big finale + vulnerable
       case 'percival': {
-        const smallHit = Math.round(effectiveStats.power * 2 * scale);
+        const smallHit = Math.round(heroStats.power * 2 * scale);
         let total = 0;
-        for (let i = 0; i < 4; i++) total += dealDamageToEnemy(smallHit);
-        const bigHit = Math.round(effectiveStats.power * 8 * scale);
-        total += dealDamageToEnemy(bigHit);
+        for (let i = 0; i < 4; i++) total += dealSummonDamage(smallHit);
+        const bigHit = Math.round(heroStats.power * 8 * scale);
+        total += dealSummonDamage(bigHit);
         addLog(`🥁 Grand Drum Roll — 4+1 strikes, ${total} total dmg!`);
-        applyStatusToEnemy('vulnerable');
+        const t = debuffTarget(); if (t >= 0) applyStatusToEnemyUnit(t, 'vulnerable');
         break;
       }
-      // ── syrinx: full heal
+      // ── syrinx: full heal (to whoever needs it most)
       case 'syrinx': {
-        const heal = Math.round(stateRef.current.playerMaxHp * scale);
-        dispatch({ type: 'HEAL_PLAYER', amount: heal });
+        const t = healTarget();
+        const heal = Math.round(stateRef.current.party[t].maxHp * scale);
+        healMember(t, heal);
         addLog(`🌬️ Ethereal Aria — ${heal} HP restored!`);
         break;
       }
       // ── salpinx: fanfare chorus — 7 escalating hits + haste + focus
       case 'salpinx': {
         const hitMults = [1, 1, 1, 1, 1.5, 1.5, 2];
-        const base = Math.round(effectiveStats.power * 2 * scale);
+        const base = Math.round(heroStats.power * 2 * scale);
         let total = 0;
-        for (const m of hitMults) total += dealDamageToEnemy(Math.round(base * m));
+        for (const m of hitMults) total += dealSummonDamage(Math.round(base * m));
         addLog(`🎺 Fanfare of Light — 7-hit chorus, ${total} total dmg!`);
-        applyStatusToPlayer('haste');
-        applyStatusToPlayer('focus');
+        applyStatusToMember(actorIdx, 'haste');
+        applyStatusToMember(actorIdx, 'focus');
         break;
       }
       // ── chalumeau: 12-hit cascade + focus
       case 'chalumeau': {
-        const hitDmg = Math.round(effectiveStats.power * 1.5 * scale);
+        const hitDmg = Math.round(heroStats.power * 1.5 * scale);
         let total = 0;
-        for (let i = 0; i < 12; i++) total += dealDamageToEnemy(hitDmg);
+        for (let i = 0; i < 12; i++) total += dealSummonDamage(hitDmg);
         addLog(`🎶 Crystalline Cascade — 12 hits, ${total} total dmg!`);
-        applyStatusToPlayer('focus');
+        applyStatusToMember(actorIdx, 'focus');
         break;
       }
-      // ── hautbois: 50% heal + clear debuffs + deflect
+      // ── hautbois: 50% heal + clear party debuffs + deflect
       case 'hautbois': {
-        const heal = Math.round(stateRef.current.playerMaxHp * 0.5 * scale);
-        dispatch({ type: 'HEAL_PLAYER', amount: heal });
+        const t = healTarget();
+        const heal = Math.round(stateRef.current.party[t].maxHp * 0.5 * scale);
+        healMember(t, heal);
         addLog(`🎼 The Tuning A — ${heal} HP restored!`);
-        dispatch({ type: 'CLEAR_PLAYER_DEBUFFS' });
-        addLog('🎼 All debuffs cleared!');
-        applyStatusToPlayer('deflect');
+        for (const i of livingMemberIdxs(stateRef.current)) dispatch({ type: 'CLEAR_MEMBER_DEBUFFS', idx: i });
+        addLog('🎼 The whole band retunes — all debuffs cleared!');
+        applyStatusToMember(actorIdx, 'deflect');
         break;
       }
       // ── waldhorn: 3 escalating echo hits + confusion or cramped
       case 'waldhorn': {
         const mults = [3, 5, 7];
         let total = 0;
-        for (const m of mults) total += dealDamageToEnemy(Math.round(effectiveStats.power * m * scale));
+        for (const m of mults) total += dealSummonDamage(Math.round(heroStats.power * m * scale));
         addLog(`📯 Mountain Echo — 3 escalating strikes, ${total} total dmg!`);
         const status = Math.random() < 0.5 ? 'confusion' : 'cramped';
-        applyStatusToEnemy(status as 'confusion' | 'cramped');
+        const t = debuffTarget(); if (t >= 0) applyStatusToEnemyUnit(t, status as 'confusion' | 'cramped');
         break;
       }
       // ── posaune: massive single hit + slow + cramped
       case 'posaune': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 12 * scale));
+        const dmg = dealSummonDamage(Math.round(heroStats.power * 12 * scale));
         addLog(`〰️ Slide into Shadow — ${dmg} dmg!`);
-        applyStatusToEnemy('slow');
-        applyStatusToEnemy('cramped');
+        const t = debuffTarget();
+        if (t >= 0) { applyStatusToEnemyUnit(t, 'slow'); applyStatusToEnemyUnit(t, 'cramped'); }
         break;
       }
       // ── cantora: euphonium = heavy damage; tuba = medium damage + deflect + taunt
       case 'cantora': {
         if (character.instrument === 'tuba') {
-          const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 5 * scale));
+          const dmg = dealSummonDamage(Math.round(heroStats.power * 5 * scale));
           addLog(`🔊 Pedal Tone Quake — ${dmg} dmg!`);
-          applyStatusToPlayer('deflect');
+          applyStatusToMember(actorIdx, 'deflect');
           dispatch({ type: 'SET_ENEMY_TAUNTED', value: true });
-          addLog(`🔊 ${enemy.name} is taunted — it can only basic-attack next turn.`);
+          addLog('🔊 The enemies are taunted — only basic attacks next round.');
         } else {
-          const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 8 * scale));
+          const dmg = dealSummonDamage(Math.round(heroStats.power * 8 * scale));
           addLog(`🔊 Pedal Tone Quake — ${dmg} dmg!`);
         }
         break;
       }
-      // ── bassanello: 30% heal + clear debuffs + regen ×5
+      // ── bassanello: 30% heal + clear party debuffs + regen ×5
       case 'bassanello': {
-        const heal = Math.round(stateRef.current.playerMaxHp * 0.3 * scale);
-        dispatch({ type: 'HEAL_PLAYER', amount: heal });
+        const t = healTarget();
+        const heal = Math.round(stateRef.current.party[t].maxHp * 0.3 * scale);
+        healMember(t, heal);
         addLog(`🍃 Cantus Antiquus — ${heal} HP restored!`);
-        dispatch({ type: 'CLEAR_PLAYER_DEBUFFS' });
+        for (const i of livingMemberIdxs(stateRef.current)) dispatch({ type: 'CLEAR_MEMBER_DEBUFFS', idx: i });
         addLog('🍃 All debuffs cleared!');
-        // Apply regen with 5-turn duration (overrides the 3-turn default).
-        applyStatusToPlayer('regen', 5);
+        applyStatusToMember(actorIdx, 'regen', 5);
         break;
       }
       // ── vela: random damage + random enemy debuff
       case 'vela': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * (5 + Math.random() * 5) * scale));
+        const dmg = dealSummonDamage(Math.round(heroStats.power * (5 + Math.random() * 5) * scale));
         addLog(`🎷 Cool Jazz Improv — improvised for ${dmg} dmg!`);
         const debuffs: Array<'slow' | 'blind' | 'confusion' | 'poison' | 'vulnerable' | 'cramped'> =
           ['slow', 'blind', 'confusion', 'poison', 'vulnerable', 'cramped'];
         const picked = debuffs[Math.floor(Math.random() * debuffs.length)];
-        applyStatusToEnemy(picked);
+        const t = debuffTarget(); if (t >= 0) applyStatusToEnemyUnit(t, picked);
         break;
       }
-      // ── grand_symphony: everything
+      // ── grand_symphony: everything, everywhere
       case 'grand_symphony': {
-        const dmg = dealDamageToEnemy(Math.round(effectiveStats.power * 15));
-        dispatch({ type: 'HEAL_PLAYER', amount: stateRef.current.playerMaxHp });
-        dispatch({ type: 'CLEAR_ENEMY_BUFFS' });
-        applyStatusToPlayer('haste');
-        applyStatusToPlayer('focus');
-        applyStatusToPlayer('regen');
-        applyStatusToPlayer('deflect');
-        addLog(`✨ SACRED SCORE — ${dmg} dmg, full heal, all buffs!`);
+        let total = 0;
+        for (const i of livingEnemyIdxs(stateRef.current)) {
+          total += dealDamageToEnemy(i, Math.round(heroStats.power * 15), actorIdx);
+          dispatch({ type: 'CLEAR_ENEMY_BUFFS', idx: i });
+        }
+        for (const i of livingMemberIdxs(stateRef.current)) {
+          const m = stateRef.current.party[i];
+          healMember(i, m.maxHp - m.hp);
+          applyStatusToMember(i, 'haste');
+          applyStatusToMember(i, 'focus');
+          applyStatusToMember(i, 'regen');
+          applyStatusToMember(i, 'deflect');
+        }
+        addLog(`✨ SACRED SCORE — ${total} dmg, the whole band restored!`);
         break;
       }
     }
 
-    afterPlayerAction();
+    afterMemberAction(actorIdx);
   }
 
   // ── Special Attack Defense ────────────────────────────────────────────────────
@@ -637,108 +975,16 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     // Good+ = 60% damage reduction (take 40%), Fair/Poor = 20% reduction (take 80%)
     const takenPct = goodOrBetter ? 0.40 : 0.80;
     const rawDmg = Math.round(atk.baseDmg * takenPct);
-    const applied = dealDamageToPlayer(rawDmg);
+    const applied = dealDamageToMember(atk.targetIdx, rawDmg, atk.enemyIdx);
+    const targetName = stateRef.current.party[atk.targetIdx]?.def.name ?? 'The band';
 
     if (goodOrBetter) {
-      addLog(`✓ Defended! ${atk.name} partially blocked — ${applied} dmg taken.`);
+      addLog(`✓ Defended! ${atk.name} partially blocked — ${targetName} takes ${applied} dmg.`);
     } else {
-      addLog(`✗ Defense failed! ${atk.name} hits hard — ${applied} dmg taken.`);
+      addLog(`✗ Defense failed! ${atk.name} hits hard — ${targetName} takes ${applied} dmg.`);
     }
 
-    finishEnemyTurn();
-  }
-
-  function runEnemyTurn() {
-    setIsEnemyTurnAnimating(true);
-    setTimeout(() => {
-      enemyTurnNoRef.current += 1;
-      const s = stateRef.current;
-      const eStatuses = s.enemy.statuses;
-
-      // Sleep — the enemy skips its whole turn (woken only by damage).
-      if (hasStatus(eStatuses, 'sleep')) {
-        addLog(`💤 ${enemy.name} is asleep.`);
-        finishEnemyTurn();
-        return;
-      }
-      // Cramped — hard 1-turn stun, NOT cleared by damage.
-      if (hasStatus(eStatuses, 'cramped')) {
-        addLog(`🤝 ${enemy.name}'s hand seizes up — it cannot act!`);
-        finishEnemyTurn();
-        return;
-      }
-      // Slow — acts only every other turn.
-      if (hasStatus(eStatuses, 'slow') && enemyTurnNoRef.current % 2 === 0) {
-        addLog(`🐌 ${enemy.name} is too slow to act.`);
-        finishEnemyTurn();
-        return;
-      }
-
-      const attacks = hasStatus(eStatuses, 'haste') ? 2 : 1;
-      const enemyPower = s.enemy.def.power + (s.enemy.phase === 2 ? 5 : 0);
-      const manicMult = hasStatus(eStatuses, 'manic') ? MANIC_DEAL_MULT : 1;
-
-      for (let i = 0; i < attacks; i++) {
-        if (hasStatus(eStatuses, 'confusion') && !hasStatus(eStatuses, 'clarity')
-            && Math.random() < CONFUSION_FAIL_CHANCE) {
-          addLog(`💫 ${enemy.name} flails in confusion.`);
-          continue;
-        }
-        if (hasStatus(eStatuses, 'blind') && !hasStatus(eStatuses, 'focus')
-            && Math.random() < BLIND_MISS_CHANCE) {
-          addLog(`🌫️ ${enemy.name}'s attack misses!`);
-          continue;
-        }
-        // Endurance mitigates damage, but never below ENEMY_DAMAGE_FLOOR of the
-        // enemy's (manic-scaled) power — so no class becomes invincible.
-        const scaledPower = enemyPower * manicMult;
-        const raw = Math.max(
-          1,
-          Math.round(Math.max(scaledPower * ENEMY_DAMAGE_FLOOR, scaledPower - effectiveStats.endurance * 0.5)),
-        );
-        const applied = dealDamageToPlayer(raw);
-        addLog(`${enemy.name} attacks! ${applied} damage.${attacks > 1 ? ` (${i + 1}/${attacks})` : ''}`);
-      }
-
-      // Inflict its signature status.
-      if (s.enemy.def.debuff && Math.random() < (s.enemy.def.debuffChance ?? 0.4)) {
-        const eff = newStatus(s.enemy.def.debuff, s.enemy.def.debuffDuration);
-        dispatch({ type: 'APPLY_PLAYER_STATUS', effect: eff });
-        addLog(`${STATUS_DEFS[s.enemy.def.debuff].icon} ${enemy.name} inflicts ${STATUS_DEFS[s.enemy.def.debuff].name}!`);
-      }
-
-      // Special attack — skipped when enemy is taunted (Tuba summon).
-      const specialChance = s.enemy.phase === 2 ? 0.45 : 0.25;
-      if (!s.enemyTaunted && s.enemy.def.specialAttackChallengeType && Math.random() < specialChance) {
-        const atkName = s.enemy.def.specialAttackName ?? 'Special Attack';
-        const baseDmg = Math.round(enemyPower * manicMult * 1.5);
-        addLog(`⚠️ ${enemy.name} uses ${atkName}! DEFEND!`);
-        setPendingSpecialAtk({
-          name: atkName,
-          baseDmg,
-          challengeType: s.enemy.def.specialAttackChallengeType,
-        });
-        // finishEnemyTurn is called by handleSpecialDefenseComplete after the modal.
-        return;
-      }
-
-      finishEnemyTurn();
-    }, 1200);
-  }
-
-  function finishEnemyTurn() {
-    const s = stateRef.current;
-    const d = endOfTurnHpDelta(s.enemy.statuses, s.enemy.maxHp);
-    if (d < 0) addLog(`☠️ Poison saps ${-d} HP from ${enemy.name}.`);
-    else if (d > 0) addLog(`🌿 ${enemy.name} regenerates ${d} HP.`);
-    dispatch({ type: 'TICK_ENEMY_STATUSES' });
-    // Clear any taunt applied by the Tuba summon.
-    if (s.enemyTaunted) dispatch({ type: 'SET_ENEMY_TAUNTED', value: false });
-
-    playerTurnNoRef.current += 1;
-    bonusActionUsedRef.current = false;
-    dispatch({ type: 'SET_TURN', turn: 'player' });
-    setIsEnemyTurnAnimating(false);
+    runEnemyAt(atk.enemyIdx + 1);
   }
 
   // ── Victory / Defeat ─────────────────────────────────────────────────────────
@@ -747,7 +993,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     const netSpDelta = spEarnedRef.current - spSpentRef.current;
     return (
       <VictoryScreen
-        enemy={enemy}
+        enemies={enemies}
         rpEarned={rpEarnedRef.current}
         spEarned={spEarnedRef.current}
         onContinue={() => onVictory(rpEarnedRef.current, netSpDelta)}
@@ -756,14 +1002,16 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   }
 
   if (state.turn === 'defeat') {
-    return <DefeatScreen enemy={enemy} onRetreat={onDefeat} />;
+    return <DefeatScreen enemies={enemies} onRetreat={onDefeat} />;
   }
 
-  const hpPercent = (state.playerHp / state.playerMaxHp) * 100;
-  const enemyHpPercent = (state.enemy.hp / state.enemy.maxHp) * 100;
-  const isBlinded = hasStatus(state.playerStatuses, 'blind');
-  const isFocused = hasStatus(state.playerStatuses, 'focus');
-  const isManic = hasStatus(state.playerStatuses, 'manic');
+  // ── Derived UI state (active member) ─────────────────────────────────────────
+
+  const activeStats = active.def.stats;
+  const pitchTolerance = pitchToleranceCents(activeStats.accuracy);
+  const isBlinded = hasStatus(active.statuses, 'blind');
+  const isFocused = hasStatus(active.statuses, 'focus');
+  const isManic = hasStatus(active.statuses, 'manic');
   const effectivePitchTolerance = isBlinded
     ? pitchTolerance * BLIND_TOLERANCE_MULT
     : isFocused
@@ -772,11 +1020,24 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         ? pitchTolerance * MANIC_TOLERANCE_MULT
         : pitchTolerance;
 
-  // The player passes automatically when asleep, cramped, or slowed on a skip turn.
-  const playerAsleep   = hasStatus(state.playerStatuses, 'sleep');
-  const playerCramped  = hasStatus(state.playerStatuses, 'cramped');
-  const playerSlowSkip = hasStatus(state.playerStatuses, 'slow') && playerTurnNoRef.current % 2 === 0;
-  const playerMustSkip = playerAsleep || playerCramped || playerSlowSkip;
+  const memberAsleep   = hasStatus(active.statuses, 'sleep');
+  const memberCramped  = hasStatus(active.statuses, 'cramped');
+  const memberSlowSkip = hasStatus(active.statuses, 'slow') && roundNoRef.current % 2 === 0;
+  const memberMustSkip = memberAsleep || memberCramped || memberSlowSkip;
+
+  const specialTarget = pendingSpecialAtk ? state.party[pendingSpecialAtk.targetIdx] : null;
+  const multiEnemy = enemies.length > 1;
+
+  const renderFloaters = (anchor: string) =>
+    floaters.filter((f) => f.anchor === anchor).map((f, i) => (
+      <div
+        key={f.id}
+        className="ff-floater absolute -top-4 z-10 font-fantasy text-xl font-bold pointer-events-none"
+        style={{ color: f.color, left: `calc(50% - 12px + ${(i % 3) * 12}px)` }}
+      >
+        {f.text}
+      </div>
+    ));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -797,149 +1058,211 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         </div>
       )}
 
-      {/* Battle arena */}
-      <div className="flex-1 relative px-4 pt-4 pb-2">
+      {/* ── FF-style message window (top) ─────────────────────────────────────── */}
+      <div className="px-3 pt-3">
+        <button
+          onClick={() => setShowFullLog((v) => !v)}
+          className="ff-window w-full text-left px-3 py-2 block"
+          title="Tap to toggle the full battle log"
+        >
+          {showFullLog ? (
+            <div className="max-h-28 overflow-y-auto">
+              {state.log.slice(-8).map((msg, i) => (
+                <p key={i} className="text-[#e8e8ff]/80 text-xs leading-relaxed">{msg}</p>
+              ))}
+              <div ref={logEndRef} />
+            </div>
+          ) : (
+            <p className="text-[#f0f0ff] text-xs leading-relaxed truncate">
+              {state.log[state.log.length - 1]}
+            </p>
+          )}
+        </button>
+      </div>
+
+      {/* ── Battlefield (FF6 orientation: enemies left · party right) ─────────── */}
+      <div className="flex-1 relative px-4 flex flex-col justify-center min-h-[240px]">
         {perfectFlash && (
-          <div className="absolute inset-x-0 top-1/3 flex items-center justify-center pointer-events-none z-10">
+          <div className="absolute inset-x-0 top-1/4 flex items-center justify-center pointer-events-none z-10">
             <div className="font-fantasy text-2xl text-academy-gold animate-pulse tracking-widest"
               style={{ textShadow: '0 0 20px #FFD70099, 0 0 40px #FFD70055' }}>
               ✨ PERFECT! ✨
             </div>
           </div>
         )}
-        {/* Enemy section */}
-        <div className="mb-4">
-          <div className="flex items-start justify-between mb-1">
-            <div>
-              <div className="fantasy-title text-sm text-rating-poor">{enemy.name}</div>
-              {state.enemy.phase === 2 && (
-                <div className="text-[10px] text-discord-crimson font-fantasy">⚡ Phase 2</div>
-              )}
-              {highlyEffective && (
-                <div className="text-[10px] text-academy-gold font-fantasy" title={`Your class counters this enemy — ability damage ×${EFFECTIVENESS_MULT}`}>
-                  ▲ Weak to {INSTRUMENTS[character.instrument].name}
-                </div>
-              )}
-            </div>
-            <div className="text-right text-xs text-academy-cream/50">
-              HP: <span className="text-rating-poor font-fantasy">{state.enemy.hp}</span>/{state.enemy.maxHp}
-            </div>
-          </div>
-          <div className="stat-bar mb-2">
-            <div
-              className="stat-bar-fill transition-all duration-500"
-              style={{ width: `${enemyHpPercent}%`, backgroundColor: '#F87171' }}
-            />
-          </div>
-          <StatusBadges statuses={state.enemy.statuses} />
 
-          {/* Battle stage — player faces off against the enemy (FFVI side-view) */}
-          <div className="flex items-end justify-between gap-2 py-5 px-1">
-            {/* Player combatant */}
-            <div className="flex flex-col items-center flex-shrink-0">
-              <div
-                className="rounded-xl overflow-hidden"
-                style={{
-                  boxShadow: `0 0 24px ${color}33`,
-                  transform: playerActing ? 'translateX(26px) scale(1.06)' : 'translateX(0) scale(1)',
-                  transition: 'transform 220ms ease-out',
-                }}
-              >
-                <Avatar appearance={character.appearance} instrument={character.instrument} size={76} />
-              </div>
-              <div className="mt-1.5 w-14 h-1.5 rounded-full bg-black/50 blur-[1px]" />
-            </div>
-
-            {/* Enemy combatant */}
-            <div className="flex flex-col items-center flex-shrink-0">
-              <div
-                className={`text-7xl transition-transform duration-200
-                  ${isEnemyTurnAnimating ? 'animate-pulse scale-110' : ''}
-                  ${playerActing ? '-translate-x-1.5' : ''}`}
-              >
-                {getEnemyEmoji(enemy.id)}
-              </div>
-              <div className="mt-1.5 w-16 h-1.5 rounded-full bg-black/50 blur-[1px]" />
-            </div>
-          </div>
-
-          {state.weakpointExposed && (
-            <div className="text-center text-xs text-rating-excellent animate-pulse mb-1">
-              ⚡ Weak point exposed — next hit ×2
-            </div>
-          )}
-        </div>
-
-        {/* Player status */}
-        <div className="card-panel py-3 mb-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="rounded-lg overflow-hidden flex-shrink-0"
-              style={{ border: `1px solid ${color}40` }}
-            >
-              <Avatar appearance={character.appearance} instrument={character.instrument} size={40} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                <span className="text-xs font-fantasy" style={{ color }}>{character.displayName}</span>
-                {state.defending && (
-                  <span className="text-[10px] text-academy-gold bg-academy-gold/10 px-1.5 rounded">GUARDING</span>
-                )}
-                <StatusBadges statuses={state.playerStatuses} />
-              </div>
-              <div className="stat-bar">
+        <div className="flex items-center justify-between gap-3 py-4">
+          {/* Enemy column (left) */}
+          <div className="flex flex-col gap-4 flex-1 min-w-0">
+            {state.enemies.map((unit, i) => {
+              const dead = unit.hp <= 0;
+              const effective = unit.def.vulnerableTo.includes(active.def.instrument);
+              return (
                 <div
-                  className="stat-bar-fill"
-                  style={{
-                    width: `${hpPercent}%`,
-                    backgroundColor: hpPercent < 25 ? '#F87171' : hpPercent < 60 ? '#FB923C' : color,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] text-academy-cream/40 mt-0.5">
-                <span>HP {state.playerHp}/{state.playerMaxHp}</span>
-                <span className="flex gap-2">
-                  <span>⟡ {state.playerRp} RP</span>
-                  {canSummon && <span className="text-academy-gold/60">◈ {state.playerSp} SP</span>}
-                </span>
-              </div>
-            </div>
+                  key={i}
+                  className={`relative flex flex-col items-start transition-all duration-500 ${dead ? 'opacity-0 scale-75 pointer-events-none' : ''}`}
+                >
+                  <div className="flex items-center gap-1.5 mb-0.5 max-w-full">
+                    <span className="text-[10px] font-fantasy text-rating-poor truncate">{unit.def.name}</span>
+                    {unit.phase === 2 && <span className="text-[9px] text-discord-crimson font-fantasy flex-shrink-0">⚡P2</span>}
+                    {effective && !dead && (
+                      <span className="text-[9px] text-academy-gold font-fantasy flex-shrink-0" title={`${active.def.name}'s class counters this enemy — ability damage ×${EFFECTIVENESS_MULT}`}>▲</span>
+                    )}
+                    {unit.weakpointExposed && <span className="text-[9px] text-rating-excellent font-fantasy flex-shrink-0">⚡×2</span>}
+                  </div>
+                  <div className="stat-bar w-24 mb-1" style={{ height: 4 }}>
+                    <div className="stat-bar-fill transition-all duration-500" style={{ width: `${(unit.hp / unit.maxHp) * 100}%`, backgroundColor: '#F87171' }} />
+                  </div>
+                  <div className="relative">
+                    {renderFloaters(`e${i}`)}
+                    <div key={`ef${flashes[`e${i}`] ?? 0}`} className={flashes[`e${i}`] ? 'ff-hit' : ''}>
+                      <div
+                        className={`${multiEnemy ? 'text-5xl' : 'text-7xl'} transition-transform duration-200`}
+                        style={{ transform: enemyActingIdx === i ? 'translateX(14px) scale(1.08)' : 'translateX(0) scale(1)' }}
+                      >
+                        {getEnemyEmoji(unit.def.id)}
+                      </div>
+                    </div>
+                    <div className={`mt-1 ${multiEnemy ? 'w-12' : 'w-16'} h-1.5 rounded-full bg-black/50 blur-[1px]`} />
+                  </div>
+                  <StatusBadges statuses={unit.statuses} />
+                </div>
+              );
+            })}
           </div>
-        </div>
 
-        {/* Battle log */}
-        <div className="bg-black/30 border border-academy-gold/10 rounded-lg p-2 mb-4 h-16 overflow-y-auto">
-          {state.log.slice(-3).map((msg, i) => (
-            <p key={i} className="text-academy-cream/60 text-xs leading-relaxed">{msg}</p>
-          ))}
-          <div ref={logEndRef} />
+          {/* Party column (right) */}
+          <div className="flex flex-col gap-2.5 items-end flex-shrink-0">
+            {state.party.map((m, i) => {
+              const dead = m.hp <= 0;
+              const isActive = state.turn === 'player' && state.activeIdx === i && !dead;
+              return (
+                <div key={m.def.key} className="relative flex flex-col items-center">
+                  {renderFloaters(`m${i}`)}
+                  <div key={`mf${flashes[`m${i}`] ?? 0}`} className={flashes[`m${i}`] ? 'ff-hit' : ''}>
+                    <div
+                      className={`rounded-lg overflow-hidden transition-all duration-200 ${dead ? 'grayscale opacity-40' : ''}`}
+                      style={{
+                        boxShadow: isActive ? `0 0 16px ${getInstrumentColor(m.def.instrument)}88` : dead ? 'none' : `0 0 10px ${getInstrumentColor(m.def.instrument)}22`,
+                        border: isActive ? `2px solid ${getInstrumentColor(m.def.instrument)}` : '2px solid transparent',
+                        transform: actingMemberIdx === i ? 'translateX(-22px) scale(1.06)' : 'translateX(0) scale(1)',
+                        transition: 'transform 220ms ease-out, box-shadow 200ms',
+                      }}
+                    >
+                      {m.def.isHero ? (
+                        <Avatar appearance={character.appearance} instrument={character.instrument} size={44} />
+                      ) : (
+                        <div
+                          className="flex items-center justify-center text-2xl"
+                          style={{ width: 44, height: 44, background: `${getInstrumentColor(m.def.instrument)}18` }}
+                        >
+                          {dead ? '💫' : m.def.emoji}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="stat-bar w-11 mt-1" style={{ height: 3 }}>
+                    <div className="stat-bar-fill" style={{ width: `${(m.hp / m.maxHp) * 100}%`, backgroundColor: m.hp / m.maxHp < 0.25 ? '#F87171' : getInstrumentColor(m.def.instrument) }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Action panel */}
-      <div className="px-4 pb-6">
-        {isEnemyTurnAnimating ? (
+      {/* ── Bottom window cluster (FF6/FF7-style) ─────────────────────────────── */}
+      <div className="px-3 pb-4 space-y-1.5">
+        {/* Party status window: one row per member */}
+        <div className="ff-window px-3 py-2">
+          {state.party.map((m, i) => {
+            const isActive = state.turn === 'player' && state.activeIdx === i && m.hp > 0;
+            const memberColor = getInstrumentColor(m.def.instrument);
+            return (
+              <div key={m.def.key} className="flex items-center gap-2 py-0.5">
+                <span className="w-3 text-[10px] flex-shrink-0" style={{ color: isActive ? '#f0f0ff' : 'transparent', textShadow: isActive ? '0 0 6px #ffffffaa' : 'none' }}>▶</span>
+                <span className={`flex-1 min-w-0 truncate text-xs font-fantasy ${m.hp <= 0 ? 'opacity-40' : ''}`} style={{ color: memberColor }}>
+                  {m.def.name}
+                </span>
+                <span className="flex items-center gap-1 flex-shrink-0">
+                  {m.defending && <span className="text-[9px]" title="Defending">🛡️</span>}
+                  <StatusBadges statuses={m.statuses} />
+                </span>
+                <span className="w-20 text-right text-[11px] font-fantasy flex-shrink-0" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: m.hp <= 0 ? '#F87171' : m.hp / m.maxHp < 0.25 ? '#F87171' : m.hp / m.maxHp < 0.6 ? '#FB923C' : '#f0f0ff' }}>{m.hp}</span>
+                  <span className="text-[#9a9ac0]">/{m.maxHp}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Command window */}
+        <div className="ff-window px-2.5 py-2.5">
+        {state.turn === 'enemy' ? (
           <div className="text-center text-academy-cream/50 font-fantasy text-sm animate-pulse py-4">
-            {enemy.name} acts…
+            {enemyActingIdx !== null && state.enemies[enemyActingIdx]
+              ? `${state.enemies[enemyActingIdx].def.name} acts…`
+              : 'The enemy acts…'}
           </div>
-        ) : playerMustSkip ? (
+        ) : memberMustSkip ? (
           <div className="text-center py-3">
             <div className="font-fantasy text-academy-cream/70 text-sm mb-2">
-              {playerAsleep   ? '💤 You are asleep…'
-               : playerCramped ? '🤝 Your hand is cramped — you cannot act.'
-               : '🐌 You are too slow to act this turn.'}
+              {memberAsleep   ? `💤 ${active.def.name} is asleep…`
+               : memberCramped ? `🤝 ${active.def.name}'s hand is cramped — they cannot act.`
+               : `🐌 ${active.def.name} is too slow to act this round.`}
             </div>
             <button
-              onClick={() => skipPlayerTurn(playerAsleep
-                ? `💤 ${character.displayName} is asleep and cannot act.`
-                : playerCramped
-                  ? `🤝 ${character.displayName}'s hand seizes up — the turn is lost.`
-                  : `🐌 ${character.displayName} is too slow and loses the turn.`)}
+              onClick={() => skipMemberTurn(memberAsleep
+                ? `💤 ${active.def.name} is asleep and cannot act.`
+                : memberCramped
+                  ? `🤝 ${active.def.name}'s hand seizes up — the turn is lost.`
+                  : `🐌 ${active.def.name} is too slow and loses the turn.`)}
               className="btn-secondary"
             >
-              {playerAsleep ? 'Snooze…' : playerCramped ? 'Seize Up…' : 'Pass Turn'} →
+              {memberAsleep ? 'Snooze…' : memberCramped ? 'Seize Up…' : 'Pass Turn'} →
             </button>
           </div>
+        ) : menu === 'target-enemy' ? (
+          <>
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy">Choose Target</span>
+              <button onClick={() => { setMenu('actions'); setPendingTargeted(null); }} className="text-academy-cream/40 hover:text-academy-cream/80 text-[10px] font-fantasy">← Back</button>
+            </div>
+            <div className="flex flex-col mb-1">
+              {state.enemies.map((u, i) => u.hp > 0 && (
+                <button key={i} onClick={() => chooseEnemyTarget(i)}
+                  className="ff-cursor w-full text-left px-2 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                  <span className="flex-1 min-w-0 text-left text-xs font-fantasy text-rating-poor truncate">{getEnemyEmoji(u.def.id)} {u.def.name}</span>
+                  <span className="text-[9px] text-[#9a9ac0]" style={{ fontVariantNumeric: 'tabular-nums' }}>{u.hp}/{u.maxHp}</span>
+                  {u.def.vulnerableTo.includes(active.def.instrument) && <span className="text-[9px] text-academy-gold">▲</span>}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : menu === 'target-ally' ? (
+          <>
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy">
+                {pendingTargeted?.kind === 'ability' && pendingTargeted.ability.isRevive ? 'Revive Whom?' : 'Heal Whom?'}
+              </span>
+              <button onClick={() => { setMenu('actions'); setPendingTargeted(null); }} className="text-academy-cream/40 hover:text-academy-cream/80 text-[10px] font-fantasy">← Back</button>
+            </div>
+            <div className="flex flex-col mb-1">
+              {state.party.map((m, i) => {
+                const isRevive = pendingTargeted?.kind === 'ability' && pendingTargeted.ability.isRevive;
+                const valid = isRevive ? m.hp <= 0 : m.hp > 0;
+                if (!valid) return null;
+                return (
+                  <button key={m.def.key} onClick={() => chooseAllyTarget(i)}
+                    className="ff-cursor w-full text-left px-2 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                    <span className="flex-1 min-w-0 text-left text-xs font-fantasy truncate" style={{ color: getInstrumentColor(m.def.instrument) }}>{m.def.emoji} {m.def.name}</span>
+                    <span className="text-[9px] text-[#9a9ac0]" style={{ fontVariantNumeric: 'tabular-nums' }}>{m.hp}/{m.maxHp}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         ) : menu === 'items' ? (
           <>
             <div className="flex items-baseline justify-between mb-2">
@@ -950,7 +1273,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                 ← Back
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            <div className="flex flex-col mb-1 max-h-56 overflow-y-auto">
               {Object.keys(items).map((id) => {
                 const item = BATTLE_ITEMS[id];
                 const count = items[id] ?? 0;
@@ -958,19 +1281,17 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                 return (
                   <button
                     key={id}
-                    onClick={() => useItem(item)}
+                    onClick={() => requestItem(item)}
                     disabled={count <= 0}
                     title={item.description}
-                    className={`card-panel py-2 px-3 text-left transition-all ${count <= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
+                    className={`ff-cursor w-full text-left px-2 py-1.5 rounded transition-colors flex items-center gap-2 ${count <= 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10'}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-fantasy text-academy-cream/90">{item.icon} {item.name}</div>
-                      <span className="text-[9px] text-academy-cream/40">×{count}</span>
-                    </div>
-                    <div className="text-[9px] mt-0.5">
+                    <span className="flex-1 min-w-0 text-left text-xs font-fantasy text-[#f0f0ff] truncate">{item.icon} {item.name}</span>
+                    <span className="flex items-center gap-1.5 flex-shrink-0 text-[9px]">
                       <span className={`px-1 rounded ${def.colorClass}`}>{def.badge}</span>
-                      <span className="text-academy-cream/35 ml-1">→ {item.target === 'self' ? 'you' : enemy.name}</span>
-                    </div>
+                      <span className="text-[#9a9ac0]">→ {item.target === 'self' ? active.def.name : 'enemy'}</span>
+                      <span className="text-[#9a9ac0]">×{count}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -996,7 +1317,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
                     <button
                       onClick={() => freed && handleSummon(characterAllyId)}
                       disabled={!freed || !canAfford}
-                      className={`w-full card-panel py-3 px-3 text-left transition-all ${(!freed || !canAfford) ? 'opacity-40 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
+                      className={`ff-cursor w-full text-left px-2 py-2 rounded transition-colors ${(!freed || !canAfford) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/10'}`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-fantasy text-academy-cream/90">{def.name}</span>
@@ -1023,74 +1344,59 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         ) : (
           <>
             <div className="flex items-baseline justify-between mb-2">
-              <span className="text-academy-cream/40 text-[10px] uppercase tracking-widest font-fantasy">
-                Choose Action
+              <span className="text-[10px] uppercase tracking-widest font-fantasy" style={{ color: activeColor }}>
+                {active.def.name} — Choose Action
               </span>
               <span className="text-academy-cream/30 text-[9px] font-fantasy">
-                ♩= {bpmRange[0]}–{bpmRange[1]}
+                ⟡{state.playerRp} {canSummon ? `· ◈${state.playerSp} ` : ''}· ♩{bpmRange[0]}–{bpmRange[1]}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-2">
+            {/* FF-style vertical command list */}
+            <div className="flex flex-col mb-1 max-h-56 overflow-y-auto">
               {abilities.map((ab) => {
                 const beats = battleBeatCount(ab.tier, character.currentZone);
                 return (
                   <button
                     key={ab.id}
-                    onClick={() => selectAbility(ab)}
-                    className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
-                    style={{ borderColor: `${color}20` }}
+                    onClick={() => requestAbility(ab)}
+                    className="ff-cursor w-full text-left px-2 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2"
                   >
-                    <div className="text-xs font-fantasy" style={{ color }}>{ab.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`text-[9px] font-fantasy uppercase tracking-wide ${TIER_TEXT[ab.tier]}`}>
-                        {ab.tier}
-                      </span>
-                      <span className="text-[9px] text-academy-cream/25">·</span>
-                      <span className="text-[9px] text-academy-cream/35">{beats}♩</span>
+                    <span className="flex-1 min-w-0 text-left text-xs font-fantasy truncate" style={{ color: activeColor }}>{ab.name}</span>
+                    <span className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`text-[9px] font-fantasy uppercase tracking-wide ${TIER_TEXT[ab.tier]}`}>{ab.tier}</span>
+                      <span className="text-[9px] text-[#9a9ac0]">{beats}♩</span>
                       {ab.inflicts && (
-                        <>
-                          <span className="text-[9px] text-academy-cream/25">·</span>
-                          <span className="text-[9px]" title={STATUS_DEFS[ab.inflicts].name}>{STATUS_DEFS[ab.inflicts].icon}</span>
-                        </>
+                        <span className="text-[9px]" title={STATUS_DEFS[ab.inflicts].name}>{STATUS_DEFS[ab.inflicts].icon}</span>
                       )}
                       {ab.selfStatus && (
-                        <>
-                          <span className="text-[9px] text-academy-cream/25">·</span>
-                          <span className="text-[9px]" title={STATUS_DEFS[ab.selfStatus].name}>{STATUS_DEFS[ab.selfStatus].icon}</span>
-                        </>
+                        <span className="text-[9px]" title={STATUS_DEFS[ab.selfStatus].name}>{STATUS_DEFS[ab.selfStatus].icon}</span>
                       )}
-                    </div>
+                    </span>
                   </button>
                 );
               })}
               <button
                 onClick={handleDefend}
                 disabled={isManic}
-                className={`card-panel py-2 px-3 text-left transition-all ${isManic ? 'opacity-40 cursor-not-allowed' : 'hover:border-academy-gold/50'}`}
+                className={`ff-cursor w-full text-left px-2 py-1.5 rounded transition-colors flex items-center gap-2 ${isManic ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/10'}`}
               >
-                <div className="text-xs font-fantasy text-academy-gold">Defend</div>
-                <div className="text-[9px] text-academy-cream/40 mt-0.5">
-                  {isManic ? 'manic — cannot defend' : 'instant · no challenge'}
-                </div>
+                <span className="flex-1 text-left text-xs font-fantasy text-academy-gold">Defend</span>
+                <span className="text-[9px] text-[#9a9ac0]">{isManic ? 'manic — cannot defend' : 'instant'}</span>
               </button>
               <button
                 onClick={() => setMenu('items')}
-                className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
+                className="ff-cursor w-full text-left px-2 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2"
               >
-                <div className="text-xs font-fantasy text-academy-gold">🎒 Items</div>
-                <div className="text-[9px] text-academy-cream/40 mt-0.5">
-                  {Object.values(items).reduce((a, b) => a + b, 0)} available
-                </div>
+                <span className="flex-1 text-left text-xs font-fantasy text-academy-gold">Item</span>
+                <span className="text-[9px] text-[#9a9ac0]">×{Object.values(items).reduce((a, b) => a + b, 0)}</span>
               </button>
               {canSummon && (
                 <button
                   onClick={() => setMenu('summons')}
-                  className="card-panel py-2 px-3 text-left hover:border-academy-gold/50 transition-all"
+                  className="ff-cursor w-full text-left px-2 py-1.5 rounded hover:bg-white/10 transition-colors flex items-center gap-2"
                 >
-                  <div className="text-xs font-fantasy text-academy-gold">◈ Summon</div>
-                  <div className="text-[9px] text-academy-cream/40 mt-0.5">
-                    {ALLY_BATTLE_DEFS[characterAllyId!].name} · {state.playerSp} SP
-                  </div>
+                  <span className="flex-1 text-left text-xs font-fantasy text-academy-gold">Summon</span>
+                  <span className="text-[9px] text-[#9a9ac0]">{ALLY_BATTLE_DEFS[characterAllyId!].name} · {state.playerSp} SP</span>
                 </button>
               )}
             </div>
@@ -1106,14 +1412,15 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
             )}
           </>
         )}
+        </div>
       </div>
 
-      {/* Ability challenge modal */}
+      {/* Ability challenge modal — performed by the acting member */}
       {activeAbility && (
         <ChallengeModal
           challenge={{
             id: `battle_${activeAbility.id}`,
-            title: activeAbility.name,
+            title: `${active.def.name}: ${activeAbility.name}`,
             type: 'prepared_performance',
             description: activeAbility.description,
             xpBase: 0,
@@ -1123,9 +1430,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
           character={character}
           pitchToleranceOverride={effectivePitchTolerance}
           challengeFlags={{
-            blind:    hasStatus(state.playerStatuses, 'blind'),
-            manic:    hasStatus(state.playerStatuses, 'manic'),
-            confused: hasStatus(state.playerStatuses, 'confusion'),
+            blind:    hasStatus(active.statuses, 'blind'),
+            manic:    hasStatus(active.statuses, 'manic'),
+            confused: hasStatus(active.statuses, 'confusion'),
           }}
           onComplete={handleAbilityComplete}
           onClose={() => setActiveAbility(null)}
@@ -1148,17 +1455,23 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
         />
       )}
 
-      {/* Enemy special attack defense challenge */}
-      {pendingSpecialAtk && (
+      {/* Enemy special attack — the targeted member defends */}
+      {pendingSpecialAtk && specialTarget && (
         <ChallengeModal
           challenge={{
-            id: `defense_${enemy.id}`,
-            title: `DEFEND: ${pendingSpecialAtk.name}!`,
+            id: `defense_${state.enemies[pendingSpecialAtk.enemyIdx]?.def.id}`,
+            title: `${specialTarget.def.name} — DEFEND: ${pendingSpecialAtk.name}!`,
             type: pendingSpecialAtk.challengeType,
-            description: `${enemy.name} launches a special attack! Good or better → 60% damage reduction. Fair or Poor → only 20% reduction.`,
+            description: `${state.enemies[pendingSpecialAtk.enemyIdx]?.def.name} launches a special attack at ${specialTarget.def.name}! Good or better → 60% damage reduction. Fair or Poor → only 20% reduction.`,
             xpBase: 0,
           }}
           character={character}
+          pitchToleranceOverride={pitchToleranceCents(specialTarget.def.stats.accuracy)}
+          challengeFlags={{
+            blind:    hasStatus(specialTarget.statuses, 'blind'),
+            manic:    hasStatus(specialTarget.statuses, 'manic'),
+            confused: hasStatus(specialTarget.statuses, 'confusion'),
+          }}
           onComplete={handleSpecialDefenseComplete}
           onClose={() => handleSpecialDefenseComplete('poor', 0)}
         />
@@ -1169,24 +1482,26 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
 
 // ── Victory / Defeat screens ──────────────────────────────────────────────────
 
-function VictoryScreen({ enemy, rpEarned, spEarned, onContinue }: {
-  enemy: EnemyDef;
+function VictoryScreen({ enemies, rpEarned, spEarned, onContinue }: {
+  enemies: EnemyDef[];
   rpEarned: number;
   spEarned: number;
   onContinue: () => void;
 }) {
+  const anyBoss = enemies.some((e) => e.isBoss);
+  const lore = enemies.find((e) => e.lore)?.lore;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       <div className="text-5xl mb-4 animate-float">⚔️</div>
       <div className="text-rating-superior font-fantasy text-3xl mb-2 text-shadow-glow">VICTORY</div>
-      <p className="text-academy-cream/70 text-sm mb-4">{enemy.isBoss
+      <p className="text-academy-cream/70 text-sm mb-4">{anyBoss
         ? 'The Composer\'s light shines a little brighter.'
-        : 'The Twisted Melody dissolves.'
+        : enemies.length > 1 ? 'The Twisted Melodies dissolve.' : 'The Twisted Melody dissolves.'
       }</p>
-      {enemy.lore && (
+      {lore && (
         <div className="card-panel mb-6 max-w-sm text-left">
           <div className="text-academy-gold/60 text-xs uppercase tracking-widest mb-2">Lore Unlocked</div>
-          <p className="text-academy-cream/70 text-sm italic">{enemy.lore}</p>
+          <p className="text-academy-cream/70 text-sm italic">{lore}</p>
         </div>
       )}
       <div className="flex gap-6 mb-8">
@@ -1208,12 +1523,13 @@ function VictoryScreen({ enemy, rpEarned, spEarned, onContinue }: {
   );
 }
 
-function DefeatScreen({ enemy, onRetreat }: { enemy: EnemyDef; onRetreat: () => void }) {
+function DefeatScreen({ enemies, onRetreat }: { enemies: EnemyDef[]; onRetreat: () => void }) {
+  const name = enemies.length > 1 ? 'The enemy' : enemies[0]?.name ?? 'The enemy';
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       <div className="text-5xl mb-4">💨</div>
       <div className="text-rating-poor font-fantasy text-3xl mb-2">RETREAT</div>
-      <p className="text-academy-cream/60 text-sm mb-8">{enemy.name} overpowers you. You fall back to the Academy.</p>
+      <p className="text-academy-cream/60 text-sm mb-8">{name} overpowers the band. You fall back to regroup.</p>
       <button onClick={onRetreat} className="btn-secondary">← Return to Zone</button>
     </div>
   );
@@ -1244,6 +1560,7 @@ function StatusBadges({ statuses }: { statuses: StatusEffect[] }) {
 
 function getEnemyEmoji(id: string): string {
   const map: Record<string, string> = {
+    // Act 1
     flatling: '😞',
     sharp_creature: '🔺',
     natural_creature: '⬜',
@@ -1253,6 +1570,38 @@ function getEnemyEmoji(id: string): string {
     enchanted_music_stand: '🎼',
     flat_dragon: '🐉',
     interval_imp: '😈',
+    shard_phantom: '👻',
+    // Act 2
+    stray_melody: '🎶',
+    aria_wraith: '🌬️',
+    war_horn_berserker: '🎺',
+    chalumeau_phantom: '🕳️',
+    clarion_phantom: '📢',
+    bassetta: '🎭',
+    caucophonus: '🥁',
+    discordian_sentry: '🛡️',
+    sound_shadow: '🎷',
+    lieutenant_contra: '🗡️',
+    sliding_chaos_knight: '📯',
+    stone_colossus: '🗿',
+    echoing_wisp: '🌫️',
+    forest_flogger: '🍃',
+    double_reed_specter: '🥀',
+    ancient_revenant: '📜',
+    // Act 3
+    wave_walker: '💧',
+    coastal_dissonance: '🌊',
+    rogue_wave: '🌊',
+    the_maelstrom: '🌀',
+    cacophony_soldier: '⚔️',
+    piano_commander: '🤫',
+    forte_commander: '💥',
+    vexian_knight: '⚜️',
+    ostinato_usher: '⚙️',
+    lieutenant_kije: '🐦',
+    commander_mesto: '🦢',
+    general_grave: '🐘',
+    vexus: '🪄',
   };
   return map[id] ?? '👾';
 }

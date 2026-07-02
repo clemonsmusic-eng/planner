@@ -12,7 +12,7 @@ export interface ZoneChallenge {
   description: string; required: boolean; xpBase: number;
 }
 export interface EncounterDef {
-  enemyKey: string; doneKey: string; icon: string; name: string; desc: string;
+  enemyKeys: string[]; doneKey: string; icon: string; name: string; desc: string;
 }
 export interface AssaultConfig {
   zoneId: number; advanceTo: ZoneId; act: number; quarter: number;
@@ -70,11 +70,11 @@ export default function AssaultZonePage({ cfg }: { cfg: AssaultConfig }) {
   }
 
   if (activeBattle) {
-    const key = activeBattle.kind === 'skirmish' ? cfg.skirmish!.enemyKey : cfg.bosses[activeBattle.idx].enemyKey;
+    const keys = activeBattle.kind === 'skirmish' ? cfg.skirmish!.enemyKeys : cfg.bosses[activeBattle.idx].enemyKeys;
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES[key]}
+        enemies={keys.map((k) => ENEMIES[k])}
         onVictory={handleVictory}
         onDefeat={() => setActiveBattle(null)}
       />

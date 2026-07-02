@@ -119,7 +119,7 @@ export default function SimulatorPage() {
     return (
       <BattleScreen
         character={character}
-        enemy={selectedEnemy}
+        enemies={[selectedEnemy]}
         simulatorMode
         onVictory={handleVictory}
         onDefeat={handleDefeat}

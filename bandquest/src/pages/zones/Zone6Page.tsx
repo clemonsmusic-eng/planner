@@ -179,15 +179,15 @@ export default function Zone6Page() {
   }
 
   if (activeBattle) {
-    const enemy =
-      activeBattle === 'phantom_low'  ? ENEMIES.chalumeau_phantom :
-      activeBattle === 'phantom_high' ? ENEMIES.clarion_phantom :
-      activeBattle === 'bassetta'     ? ENEMIES.bassetta :
-                                        ENEMIES.caucophonus;
+    const battleEnemies =
+      activeBattle === 'phantom_low'  ? [ENEMIES.chalumeau_phantom, ENEMIES.chalumeau_phantom] :
+      activeBattle === 'phantom_high' ? [ENEMIES.clarion_phantom, ENEMIES.clarion_phantom] :
+      activeBattle === 'bassetta'     ? [ENEMIES.bassetta] :
+                                        [ENEMIES.caucophonus];
     return (
       <BattleScreen
         character={character}
-        enemy={enemy}
+        enemies={battleEnemies}
         onVictory={(rp, sp) => handleVictory(activeBattle, rp, sp)}
         onDefeat={() => setActiveBattle(null)}
       />

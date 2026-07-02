@@ -180,14 +180,14 @@ export default function Zone5Page() {
   }
 
   if (activeBattle) {
-    const enemy =
-      activeBattle === 'skirmish' ? ENEMIES.stray_melody :
-      activeBattle === 'flaura'   ? ENEMIES.aria_wraith :
-                                    ENEMIES.war_horn_berserker;
+    const battleEnemies =
+      activeBattle === 'skirmish' ? [ENEMIES.stray_melody, ENEMIES.stray_melody] :
+      activeBattle === 'flaura'   ? [ENEMIES.aria_wraith] :
+                                    [ENEMIES.war_horn_berserker];
     return (
       <BattleScreen
         character={character}
-        enemy={enemy}
+        enemies={battleEnemies}
         onVictory={(rp, sp) => handleVictory(activeBattle, rp, sp)}
         onDefeat={() => setActiveBattle(null)}
       />

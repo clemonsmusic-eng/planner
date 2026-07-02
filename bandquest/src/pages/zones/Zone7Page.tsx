@@ -115,16 +115,16 @@ export default function Zone7Page() {
   }
 
   if (activeBattle) {
-    const enemy =
-      activeBattle === 'skirmish' ? ENEMIES.discordian_sentry :
-      activeBattle === 'adolpha'  ? ENEMIES.sound_shadow :
-      activeBattle === 'contra'   ? ENEMIES.lieutenant_contra :
-      activeBattle === 'sackbut'  ? ENEMIES.sliding_chaos_knight :
-                                    ENEMIES.stone_colossus;
+    const battleEnemies =
+      activeBattle === 'skirmish' ? [ENEMIES.discordian_sentry, ENEMIES.discordian_sentry] :
+      activeBattle === 'adolpha'  ? [ENEMIES.sound_shadow] :
+      activeBattle === 'contra'   ? [ENEMIES.lieutenant_contra] :
+      activeBattle === 'sackbut'  ? [ENEMIES.sliding_chaos_knight] :
+                                    [ENEMIES.stone_colossus];
     return (
       <BattleScreen
         character={character}
-        enemy={enemy}
+        enemies={battleEnemies}
         onVictory={(rp, sp) => handleVictory(activeBattle, rp, sp)}
         onDefeat={() => setActiveBattle(null)}
       />

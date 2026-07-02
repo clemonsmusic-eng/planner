@@ -174,7 +174,7 @@ export default function Zone1Page() {
     return (
       <BattleScreen
         character={character}
-        enemy={ENEMIES.enchanted_music_stand}
+        enemies={[ENEMIES.enchanted_music_stand]}
         simulatorMode
         onVictory={handleBattleVictory}
         onDefeat={() => setActiveBattle(null)}

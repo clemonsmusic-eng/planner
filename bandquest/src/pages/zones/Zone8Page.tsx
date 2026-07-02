@@ -108,15 +108,15 @@ export default function Zone8Page() {
   }
 
   if (activeBattle) {
-    const enemy =
-      activeBattle === 'skirmish' ? ENEMIES.echoing_wisp :
-      activeBattle === 'waldhorn' ? ENEMIES.forest_flogger :
-      activeBattle === 'hautbois' ? ENEMIES.double_reed_specter :
-                                    ENEMIES.ancient_revenant;
+    const battleEnemies =
+      activeBattle === 'skirmish' ? [ENEMIES.echoing_wisp, ENEMIES.echoing_wisp] :
+      activeBattle === 'waldhorn' ? [ENEMIES.forest_flogger] :
+      activeBattle === 'hautbois' ? [ENEMIES.double_reed_specter] :
+                                    [ENEMIES.ancient_revenant];
     return (
       <BattleScreen
         character={character}
-        enemy={enemy}
+        enemies={battleEnemies}
         onVictory={(rp, sp) => handleVictory(activeBattle, rp, sp)}
         onDefeat={() => setActiveBattle(null)}
       />

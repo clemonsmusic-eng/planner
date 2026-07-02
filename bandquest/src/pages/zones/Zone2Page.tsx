@@ -174,11 +174,11 @@ export default function Zone2Page() {
   }
 
   if (activeBattle) {
-    const enemy = activeBattle === 'mini_boss' ? ENEMIES.interval_imp : ENEMIES.shard_phantom;
+    const battleEnemies = activeBattle === 'mini_boss' ? [ENEMIES.interval_imp] : [ENEMIES.shard_phantom];
     return (
       <BattleScreen
         character={character}
-        enemy={enemy}
+        enemies={battleEnemies}
         simulatorMode
         onVictory={(rp, spDelta) => handleBattleVictory(activeBattle, rp, spDelta)}
         onDefeat={() => setActiveBattle(false)}
