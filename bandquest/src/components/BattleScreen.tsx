@@ -1,10 +1,11 @@
 import { useState, useReducer, useRef, useCallback } from 'react';
 import type { Character, Rating } from '../types/game';
 import type { EnemyDef } from '../lib/enemies';
+import { EFFECTIVENESS_MULT, isHighlyEffective } from '../lib/enemies';
 import type { Ability } from '../lib/abilities';
 import { getAbilitiesForInstrument, battleBeatCount, battleBpm, battleBpmRange } from '../lib/abilities';
 import type { AbilityTier } from '../lib/abilities';
-import { getInstrumentColor, pitchToleranceCents } from '../lib/instruments';
+import { getInstrumentColor, pitchToleranceCents, INSTRUMENTS } from '../lib/instruments';
 import { getEffectiveStats } from '../lib/gear';
 import {
   STATUS_DEFS, hasStatus, tickDurations, clearStatus, clearByKind, applyStatus,
@@ -82,7 +83,12 @@ function buildInitialState(character: Character, enemy: EnemyDef, simulatorMode 
       statuses: [],
     },
     enemyTaunted: false,
-    log: [`Battle starts! ${enemy.name} appears!`],
+    log: [
+      `Battle starts! ${enemy.name} appears!`,
+      ...(isHighlyEffective(enemy, character.instrument)
+        ? [`▲ Your ${INSTRUMENTS[character.instrument].name} resonates against ${enemy.name} — your attacks are highly effective!`]
+        : []),
+    ],
     turn: 'player',
     weakpointExposed: false,
     simulatorMode,
@@ -234,6 +240,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
   stateRef.current = state;
 
   const color = getInstrumentColor(character.instrument);
+  // GDD matchup layer: the player's class counters this enemy's musical nature.
+  // Applies to the player's own abilities only — summons are other instruments.
+  const highlyEffective = isHighlyEffective(enemy, character.instrument);
   const abilities = getAbilitiesForInstrument(character.instrument, character.level);
   const bpmRange = battleBpmRange(character.currentZone);
   const effectiveStats = getEffectiveStats(character);
@@ -253,8 +262,9 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     const weakpointMult = state.weakpointExposed ? 2 : 1;
     const offenseMult = hasStatus(state.playerStatuses, 'manic') ? MANIC_DEAL_MULT
       : hasStatus(state.playerStatuses, 'calm') ? CALM_DEAL_MULT : 1;
+    const matchupMult = highlyEffective ? EFFECTIVENESS_MULT : 1;
     const base = effectiveStats.power * ability.damageMultiplier * (score / 100);
-    return Math.max(1, Math.round(base * perfectMult * weakpointMult * offenseMult));
+    return Math.max(1, Math.round(base * perfectMult * weakpointMult * offenseMult * matchupMult));
   }
 
   // Target-side damage modifiers from statuses (manic/calm/vulnerable scale the
@@ -455,7 +465,7 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
     if (ability.damageMultiplier > 0) {
       const dmg = computeDamage(ability, score);
       const applied = dealDamageToEnemy(dmg);
-      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${applied} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''})`);
+      addLog(`${isPerfect ? '✨ PERFECT! ' : ''}${ability.name} — ${applied} dmg to ${enemy.name} (${score}%${isPerfect ? ' ×2' : ''}${highlyEffective ? ' ▲' : ''})`);
       inflictEnemyStatuses();
       if (state.enemy.hp - applied <= 0) return; // victory handled by reducer
     } else {
@@ -804,6 +814,11 @@ export default function BattleScreen({ character, enemy, onVictory, onDefeat, si
               <div className="fantasy-title text-sm text-rating-poor">{enemy.name}</div>
               {state.enemy.phase === 2 && (
                 <div className="text-[10px] text-discord-crimson font-fantasy">⚡ Phase 2</div>
+              )}
+              {highlyEffective && (
+                <div className="text-[10px] text-academy-gold font-fantasy" title={`Your class counters this enemy — ability damage ×${EFFECTIVENESS_MULT}`}>
+                  ▲ Weak to {INSTRUMENTS[character.instrument].name}
+                </div>
               )}
             </div>
             <div className="text-right text-xs text-academy-cream/50">

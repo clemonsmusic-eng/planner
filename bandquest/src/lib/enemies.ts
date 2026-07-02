@@ -585,6 +585,17 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
 };
 
+// ── Class effectiveness (GDD: "Highly Effective ×1.5") ─────────────────────────
+// An enemy's vulnerableTo lists the instrument classes whose stat emphasis
+// counters its musical nature. Matching classes deal bonus damage with their
+// own abilities. (Summons are the maestros' instruments, not the player's, so
+// they are unaffected.)
+export const EFFECTIVENESS_MULT = 1.5;
+
+export function isHighlyEffective(def: EnemyDef, instrument: InstrumentId): boolean {
+  return def.vulnerableTo.includes(instrument);
+}
+
 export type BattleId = string;
 
 export interface BattleConfig {
