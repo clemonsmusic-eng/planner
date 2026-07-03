@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { ALLIES } from '../lib/allies';
+import { MAESTRO_PORTRAITS } from '../lib/portraits';
+import MaestroPortrait from '../components/MaestroPortrait';
 import type { AllyId } from '../types/game';
 
 // The 10 standard ally IDs (excludes grand_symphony)
@@ -135,12 +137,17 @@ function AllyCard({
   return (
     <div className="card-panel border-rating-excellent/30 bg-rating-excellent/5">
       <div className="flex items-start justify-between mb-2">
-        <div>
-          <div className="fantasy-title text-base text-academy-gold">
-            {ally.trueName}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="rounded-lg overflow-hidden border border-academy-gold/30 flex-shrink-0">
+            <MaestroPortrait src={MAESTRO_PORTRAITS[ally.id]} emoji="🎼" size={48} />
           </div>
-          <div className="text-academy-cream/50 text-xs mt-0.5">
-            {ally.instrument}
+          <div className="min-w-0">
+            <div className="fantasy-title text-base text-academy-gold">
+              {ally.trueName}
+            </div>
+            <div className="text-academy-cream/50 text-xs mt-0.5">
+              {ally.instrument}
+            </div>
           </div>
         </div>
         <span className="flex-shrink-0 ml-2 bg-rating-excellent/20 text-rating-excellent text-[10px] font-fantasy px-2 py-0.5 rounded border border-rating-excellent/30 uppercase tracking-widest">

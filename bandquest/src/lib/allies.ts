@@ -27,7 +27,7 @@ export interface AllyBattleDef {
 
 export const ALLY_BATTLE_DEFS: Record<AllyId, AllyBattleDef> = {
   percival: {
-    id: 'percival', name: 'Percival', abilityName: 'Grand Drum Roll',
+    id: 'percival', name: 'Paige', abilityName: 'Grand Drum Roll',
     instruments: ['percussion'],
     spCost: 90,
     abilityDescription: 'A timpani solo: 4 small hits then a massive finale — leaves the enemy Vulnerable.',
@@ -39,13 +39,13 @@ export const ALLY_BATTLE_DEFS: Record<AllyId, AllyBattleDef> = {
     abilityDescription: 'Full restore — heals up to 100% of max HP.',
   },
   salpinx: {
-    id: 'salpinx', name: 'Buccina', abilityName: 'Fanfare of Light',
+    id: 'salpinx', name: 'Cornelius', abilityName: 'Fanfare of Light',
     instruments: ['trumpet'],
     spCost: 110,
     abilityDescription: 'A legendary trumpet chorus delivers 7 escalating strikes, then grants Haste and Focus.',
   },
   chalumeau: {
-    id: 'chalumeau', name: 'Claribel', abilityName: 'Crystalline Cascade',
+    id: 'chalumeau', name: 'Clarence', abilityName: 'Crystalline Cascade',
     instruments: ['clarinet'],
     spCost: 80,
     abilityDescription: '12 rapid precision strikes, then grants Focus.',
@@ -69,7 +69,7 @@ export const ALLY_BATTLE_DEFS: Record<AllyId, AllyBattleDef> = {
     abilityDescription: 'Massive single-target damage, then inflicts Slow and Cramped on the enemy.',
   },
   cantora: {
-    id: 'cantora', name: 'Euphonia', abilityName: 'Pedal Tone Quake',
+    id: 'cantora', name: 'Torbult', abilityName: 'Pedal Tone Quake',
     instruments: ['euphonium', 'tuba'],
     spCost: 90,
     abilityDescription: 'Euphonium: heavy damage to the enemy. Tuba: medium damage + Deflect + taunts enemy into basic attacks for 1 turn.',
@@ -106,7 +106,7 @@ export function getAllyForInstrument(instrument: InstrumentId): AllyId | null {
 
 export const ALLIES: Record<AllyId, SymphonyAlly> = {
   percival: {
-    id: 'percival', trueName: 'Percival', instrument: 'Percussion',
+    id: 'percival', trueName: 'Paige', instrument: 'Percussion',
     corruptedName: 'Caucophonus',
     summonAbility: 'Grand Drum Roll',
     summonEffect: 'Timpani solo — 4 small hits + massive finale + Vulnerable',
@@ -120,15 +120,15 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     rpCost: 100, freed: false, zone: 5,
   },
   salpinx: {
-    id: 'salpinx', trueName: 'Buccina', instrument: 'Trumpet',
+    id: 'salpinx', trueName: 'Cornelius', instrument: 'Trumpet',
     corruptedName: 'The War Horn Berserker',
     summonAbility: 'Fanfare of Light',
     summonEffect: '7-hit trumpet chorus + Haste + Focus',
     rpCost: 110, freed: false, zone: 5,
   },
   chalumeau: {
-    id: 'chalumeau', trueName: 'Claribel', instrument: 'Clarinet',
-    corruptedName: 'Bassetta',
+    id: 'chalumeau', trueName: 'Clarence', instrument: 'Clarinet',
+    corruptedName: 'Bassetto',
     summonAbility: 'Crystalline Cascade',
     summonEffect: '12-hit cascade + Focus',
     rpCost: 80, freed: false, zone: 6,
@@ -155,7 +155,7 @@ export const ALLIES: Record<AllyId, SymphonyAlly> = {
     rpCost: 100, freed: false, zone: 7,
   },
   cantora: {
-    id: 'cantora', trueName: 'Euphonia', instrument: 'Euphonium / Tuba',
+    id: 'cantora', trueName: 'Torbult', instrument: 'Euphonium / Tuba',
     corruptedName: 'The Stone Colossus',
     summonAbility: 'Pedal Tone Quake',
     summonEffect: 'Euphonium: heavy damage | Tuba: AoE + Deflect + taunt',

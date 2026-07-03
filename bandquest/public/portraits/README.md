@@ -1,25 +1,8 @@
-# Class portraits
+# Maestro portraits
 
-Drop AI-generated (or illustrated) class portraits here. The `Avatar` component
-automatically renders `<instrument>.png` from this folder when present, and falls
-back to the procedural SVG avatar when the file is missing.
+Retro portrait PNGs, one per ally id (`syrinx.png`, `salpinx.png`, …), generated
+by `scripts/make_portraits.py` from `docs/assets/maestros_reference.png`
+(the ten-maestro stage lineup concept image).
 
-Expected filenames (must match the instrument id exactly):
-
-```
-flute.png
-clarinet.png
-alto_sax.png
-trumpet.png
-trombone.png
-euphonium.png
-percussion.png
-french_horn.png
-tuba.png
-oboe.png
-bassoon.png
-```
-
-PNG with transparent background preferred, ~1024×1024 or larger (the app downscales).
-
-See `docs/PORTRAIT_PROMPTS.md` for ready-to-use generation prompts per class.
+Until the assets exist, the game falls back to instrument-emoji tiles.
+Higher-quality art can replace these files later with no code changes.

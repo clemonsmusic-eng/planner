@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, AllyId } from '../../types/game';
 
@@ -20,21 +21,21 @@ const SCENES: Record<'waldhorn' | 'hautbois' | 'fagotto', Scene> = {
     ally: 'waldhorn', key: 'z8_waldhorn_freed',
     beats: [
       { emoji: '📯', text: "The Forest Flogger's endless calls falter as your blows land — and the fog begins to thin. The shape sinks down, and Maestro Waldhorn, your french horn professor, lifts his head." },
-      { emoji: '🎺', text: "\"Waldhorn!\" Buccina is past you before you can blink, hauling her brother up into a fierce embrace. \"I told you. I told you I'd find you.\" He holds her like he isn't sure she's real. The fog lifts from the forest. You can summon Waldhorn in battle." },
+      { emoji: '🎺', image: MAESTRO_PORTRAITS.waldhorn, text: "\"Waldhorn!\" Cornelius is past you before you can blink, hauling his brother up into a fierce embrace. \"I told you. I told you I'd find you.\" He holds him like he isn't sure he's real. The fog lifts from the forest. You can summon Waldhorn in battle." },
     ],
   },
   hautbois: {
     ally: 'hautbois', key: 'z8_hautbois_freed', doneLabel: 'Walk on →',
     beats: [
       { emoji: '🎵', text: "The Double-Reed Specter's saw goes still. Maestra Hautbois — your oboe professor — comes back to herself amid the felled trees… and goes very quiet at the sight of them." },
-      { emoji: '🌲', text: "\"I did this. With my own hands.\" She will not pick the reed back up. \"I'll come with you. I'll help any way I can. But I won't fight again — not after this.\" Hautbois joins you as a guide." },
+      { emoji: '🌲', image: MAESTRO_PORTRAITS.hautbois, text: "\"I did this. With my own hands.\" She will not pick the reed back up. \"I'll come with you. I'll help any way I can. But I won't fight again — not after this.\" Hautbois joins you as a guide." },
     ],
   },
   fagotto: {
     ally: 'bassanello', key: 'z8_fagotto_freed', title: 'The Symphony Reunited', doneLabel: 'To the coast →',
     beats: [
       { emoji: '🎵', text: "The Ancient Revenant stops its grinding drone. The last shard falls, and Maestro Fagotto — your bassoon professor, eldest of the Maestros — straightens with the slow dignity of someone very old and very tired." },
-      { emoji: '📜', text: "\"The last of us, freed.\" He gathers the Composer's oldest pages from the ruined camp. \"This corruption flows from one place — west, across the sea, to Discordia. I'll take what I've learned to the Library. The rest of the road is yours.\"" },
+      { emoji: '📜', image: MAESTRO_PORTRAITS.bassanello, text: "\"The last of us, freed.\" He gathers the Composer's oldest pages from the ruined camp. \"This corruption flows from one place — west, across the sea, to Discordia. I'll take what I've learned to the Library. The rest of the road is yours.\"" },
       { emoji: '🎼', text: "And then — for the first time since the Renewal — all ten of your professors stand together and play. A fragment of the true Score rolls out across the Forgotten Forest, and far to the west a shaft of light splits the clouds above the Hall of Discord. Act II is over. The Fourth Wind waits at the coast." },
     ],
   },
@@ -153,9 +154,9 @@ export default function Zone8Page() {
         <div className="card-panel mb-6 border-emerald-900/40 bg-emerald-950/20">
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Story</div>
           <p className="text-academy-cream/70 text-sm leading-relaxed italic">
-            Buccina walks at the front now, jaw set, listening hard through the fog. Somewhere ahead a
-            french horn is calling — the same call, over and over, turned wrong. "That's him," she says,
-            not slowing. "That's my brother. Whatever's left of him." She doesn't wait for you. "Come on."
+            Cornelius walks at the front now, jaw set, listening hard through the fog. Somewhere ahead a
+            french horn is calling — the same call, over and over, turned wrong. "That's him," he says,
+            not slowing. "That's my brother. Whatever's left of him." He doesn't wait for you. "Come on."
           </p>
         </div>
 
@@ -180,17 +181,17 @@ export default function Zone8Page() {
           </div>
         </div>
 
-        {/* Waldhorn — Buccina's brother */}
+        {/* Waldhorn — Cornelius's brother */}
         <div className={`card-panel mb-2 ${waldhornUnlocked ? 'border-discord-crimson/40' : 'border-discord-crimson/15 opacity-60'}`}>
           <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">Corrupted Maestro</div>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="text-academy-cream/80 text-sm font-semibold mb-1">📯 The Forest Flogger</div>
               <div className="text-academy-cream/50 text-xs">
-                Your french horn professor — and Buccina's lost brother, Maestro Waldhorn. His endless calls are the fog itself.
+                Your french horn professor — and Cornelius's lost brother, Maestro Waldhorn. His endless calls are the fog itself.
                 {!waldhornUnlocked && <span className="text-academy-gold/50"> (Complete 3 required challenges to track him)</span>}
               </div>
-              {waldhornFreed && (<div className="text-rating-good text-xs mt-1.5 italic">Freed. The fog has lifted — Buccina has her brother back. Waldhorn answers your summons.</div>)}
+              {waldhornFreed && (<div className="text-rating-good text-xs mt-1.5 italic">Freed. The fog has lifted — Cornelius has his brother back. Waldhorn answers your summons.</div>)}
             </div>
             {waldhornUnlocked && !waldhornFreed && (<button onClick={() => setActiveBattle('waldhorn')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>)}
             {waldhornFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}

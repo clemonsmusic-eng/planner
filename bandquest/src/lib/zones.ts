@@ -43,14 +43,14 @@ export const ZONES: ZoneMeta[] = [
   {
     id: 5, name: 'Melodious Meadows', act: 2, quarter: 5,
     emoji: '🌾',
-    flavor: 'Warm, golden farmland where music rides the wind. Your first corrupted professors are scattered here — and Buccina is hunting for her lost brother.',
+    flavor: 'Warm, golden farmland where music rides the wind. Your first corrupted professors are scattered here — and Cornelius is hunting for his lost brother.',
     boss: 'The Aria Wraith (Flaura)',
   },
   {
     id: 6, name: 'Sands of Time', act: 2, quarter: 6,
     emoji: '🏜️',
     flavor: 'A desert of shifting dunes and slippery time — the Octoasis, the echoing Chaconne Caves, and a trading post peddling discord.',
-    boss: 'Caucophonus (Percival)',
+    boss: 'Caucophonus (Paige)',
   },
   {
     id: 7, name: 'Clef Cliffs', act: 2, quarter: 7,

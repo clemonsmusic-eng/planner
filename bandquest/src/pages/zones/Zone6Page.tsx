@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
 
@@ -11,21 +12,21 @@ const LIBERATION_BEATS: Record<'bassetta' | 'caucophonus', LibBeat[]> = {
   bassetta: [
     {
       emoji: '🎵',
-      text: "Bassetta's three registers collapse into one and fall still. The shard drops from the air, and Maestra Claribel — your clarinet professor — lands lightly on the cave floor, scowling… then softening as she recognizes you.",
+      text: "Bassetto's three registers collapse into one and fall still. The shard drops from the air, and Maestro Clarence — your clarinet professor — lands lightly on the cave floor, scowling… then softening as he recognizes you.",
     },
     {
       emoji: '🎶',
-      text: "\"Took you long enough.\" The scowl breaks into a crooked grin. \"…thank you. I could hear myself the whole time and couldn't stop.\" She falls into step beside you. From now on, you can summon Claribel in battle.",
+      image: MAESTRO_PORTRAITS.chalumeau, text: "\"Took you long enough.\" The scowl breaks into a crooked grin. \"…thank you. I could hear myself the whole time and couldn't stop.\" He falls into step beside you. From now on, you can summon Clarence in battle.",
     },
   ],
   caucophonus: [
     {
       emoji: '🥁',
-      text: "Caucophonus's hammering stutters, skips a beat — and stops. The shard sputters out, and Maestro Percival blinks at the workshop of cursed goods around him with dawning horror.",
+      text: "Caucophonus's hammering stutters, skips a beat — and stops. The shard sputters out, and Maestra Paige blinks at the workshop of cursed goods around her with dawning horror.",
     },
     {
       emoji: '🛠️',
-      text: "\"…I made all this?\" He sweeps the bench clean. \"Right. I'm headed back to Crotchet to set up properly — a real forge, the Grand Artificer's workshop. Bring me what you scavenge and I'll make it worth your while.\" You can summon Percival in battle.",
+      image: MAESTRO_PORTRAITS.percival, text: "\"…I made all this?\" She sweeps the bench clean. \"Right. I'm headed back to Crotchet to set up properly — a real forge, the Grand Artificer's workshop. Bring me what you scavenge and I'll make it worth your while.\" You can summon Paige in battle.",
     },
   ],
 };
@@ -147,10 +148,10 @@ export default function Zone6Page() {
 
   const lowDone = character.completedChallenges.includes('z6_caves_low');
   const highDone = character.completedChallenges.includes('z6_caves_high');
-  const claribelFreed = character.freedAllies.includes('chalumeau');
-  const percivalFreed = character.freedAllies.includes('percival');
+  const clarenceFreed = character.freedAllies.includes('chalumeau');
+  const paigeFreed = character.freedAllies.includes('percival');
   const bassettaUnlocked = completedRequired >= 3;
-  const canAdvance = claribelFreed && percivalFreed && allRequiredDone;
+  const canAdvance = clarenceFreed && paigeFreed && allRequiredDone;
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -288,54 +289,54 @@ export default function Zone6Page() {
           </div>
         </div>
 
-        {/* Bassetta — Claribel */}
+        {/* Bassetto — Clarence */}
         <div className={`card-panel mb-2 mt-3 ${bassettaUnlocked ? 'border-discord-crimson/40' : 'border-discord-crimson/15 opacity-60'}`}>
           <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">Corrupted Maestro</div>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎶 Bassetta</div>
+              <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎶 Bassetto</div>
               <div className="text-academy-cream/50 text-xs">
-                Deep in the caves — your clarinet professor, Maestra Claribel, scattered across every
+                Deep in the caves — your clarinet professor, Maestro Clarence, scattered across every
                 register, lashing out at anyone who nears.
                 {!bassettaUnlocked && <span className="text-academy-gold/50"> (Complete 3 required challenges to track her)</span>}
               </div>
-              {claribelFreed && (
-                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Claribel travels with you — and answers your summons.</div>
+              {clarenceFreed && (
+                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Clarence travels with you — and answers your summons.</div>
               )}
             </div>
-            {bassettaUnlocked && !claribelFreed && (
+            {bassettaUnlocked && !clarenceFreed && (
               <button onClick={() => setActiveBattle('bassetta')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>
             )}
-            {claribelFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
+            {clarenceFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
-        {/* Caucophonus — Percival */}
+        {/* Caucophonus — Paige */}
         <h2 className="fantasy-title text-sm text-discord-crimson/70 uppercase tracking-widest mb-1 mt-6">The Caesura Crossing</h2>
         <p className="text-academy-cream/40 text-xs mb-3">The desert's far edge — a trading post that should not still be running.</p>
-        <div className={`card-panel mb-2 ${claribelFreed ? 'border-discord-crimson/40' : 'border-discord-crimson/15 opacity-60'}`}>
+        <div className={`card-panel mb-2 ${clarenceFreed ? 'border-discord-crimson/40' : 'border-discord-crimson/15 opacity-60'}`}>
           <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">Corrupted Maestro</div>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="text-academy-cream/80 text-sm font-semibold mb-1">🥁 Caucophonus</div>
               <div className="text-academy-cream/50 text-xs">
-                Your percussion professor, Maestro Percival, chained to a workbench by his own rhythm,
+                Your percussion professor, Maestra Paige, chained to a workbench by her own rhythm,
                 stamping out discord-laced goods without end.
-                {!claribelFreed && <span className="text-academy-gold/50"> (Free Claribel first — follow the shards)</span>}
+                {!clarenceFreed && <span className="text-academy-gold/50"> (Free Clarence first — follow the shards)</span>}
               </div>
-              {percivalFreed && (
-                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Percival heads to Crotchet to become the Grand Artificer — and answers your summons.</div>
+              {paigeFreed && (
+                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Paige heads to Crotchet to become the Grand Artificer — and answers your summons.</div>
               )}
             </div>
-            {claribelFreed && !percivalFreed && (
+            {clarenceFreed && !paigeFreed && (
               <button onClick={() => setActiveBattle('caucophonus')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>
             )}
-            {percivalFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
+            {paigeFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
         {/* Advance */}
-        {(claribelFreed && percivalFreed) && (
+        {(clarenceFreed && paigeFreed) && (
           <div className={`card-panel mt-4 ${canAdvance ? 'border-academy-gold/50' : 'border-academy-gold/20'}`}>
             <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">Quarter's End</div>
             <div className="flex items-start justify-between gap-4">

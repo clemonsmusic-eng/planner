@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import MaestroPortrait from './MaestroPortrait';
 
 export interface LibBeat {
   emoji: string;
   text: string;
+  image?: string;   // retro portrait shown instead of the emoji when available
 }
 
 // Stepped "a maestro is freed" cutscene, shared by the Act 2 liberation zones.
@@ -21,7 +23,13 @@ export default function LiberationScene({ beats, onDone, title = 'A Maestro Free
       <div className="text-academy-gold/60 text-[10px] uppercase tracking-[0.4em] font-fantasy mb-4">
         {title}
       </div>
-      <div className="text-6xl mb-6" style={{ filter: 'drop-shadow(0 0 24px #FFD70066)' }}>{b.emoji}</div>
+      {b.image ? (
+        <div className="mb-6 rounded-lg overflow-hidden border-2 border-academy-gold/50" style={{ boxShadow: '0 0 24px #FFD70044' }}>
+          <MaestroPortrait src={b.image} emoji={b.emoji} size={112} />
+        </div>
+      ) : (
+        <div className="text-6xl mb-6" style={{ filter: 'drop-shadow(0 0 24px #FFD70066)' }}>{b.emoji}</div>
+      )}
       <div className="card-panel max-w-md w-full mb-8 border-rating-superior/40">
         <p className="text-academy-cream/85 text-sm leading-relaxed">{b.text}</p>
       </div>

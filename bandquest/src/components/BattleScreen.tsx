@@ -21,6 +21,7 @@ import type { BattleItem } from '../lib/battleItems';
 import { ALLY_BATTLE_DEFS, getAllyForInstrument, SUMMON_SCALE } from '../lib/allies';
 import type { AllyId } from '../types/game';
 import ChallengeModal from './ChallengeModal';
+import MaestroPortrait from './MaestroPortrait';
 import Avatar from './Avatar';
 
 // ── State types ───────────────────────────────────────────────────────────────
@@ -1152,12 +1153,12 @@ export default function BattleScreen({ character, enemies, onVictory, onDefeat, 
                       {m.def.isHero ? (
                         <Avatar appearance={character.appearance} instrument={character.instrument} size={44} />
                       ) : (
-                        <div
-                          className="flex items-center justify-center text-2xl"
-                          style={{ width: 44, height: 44, background: `${getInstrumentColor(m.def.instrument)}18` }}
-                        >
-                          {dead ? '💫' : m.def.emoji}
-                        </div>
+                        <MaestroPortrait
+                          src={m.def.portrait}
+                          emoji={dead ? '💫' : m.def.emoji}
+                          size={44}
+                          color={getInstrumentColor(m.def.instrument)}
+                        />
                       )}
                     </div>
                   </div>

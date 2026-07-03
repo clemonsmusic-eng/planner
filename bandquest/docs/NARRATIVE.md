@@ -86,12 +86,12 @@ life" is one of these player-less constructs.
 | Maestro | Function reduced to… | Manifestation |
 |--------|----------------------|---------------|
 | Flaura (Flute) | *sustain* | The Aria Wraith keeps long-dead crops standing forever |
-| Buccina (Trumpet) | *signal / rally* | The War Horn Berserker sounds an endless charge |
-| Claribel (Clarinet) | *agility across registers* | Bassetta strikes from every register, short-tempered |
-| Percival (Percussion) | *produce / craft* | Caucophonus manufactures discord-laced goods |
+| Cornelius (Trumpet) | *signal / rally* | The War Horn Berserker sounds an endless charge |
+| Clarence (Clarinet) | *agility across registers* | Bassetto strikes from every register, short-tempered |
+| Paige (Percussion) | *produce / craft* | Caucophonus manufactures discord-laced goods |
 | Adolpha (Alto Sax) | *mimic / shadow* | The Sound Shadow, a shapeshifter with no self |
 | Sackbut (Trombone) | *sweep / AoE force* | The Sliding Chaos Knight, pure destructive glissando |
-| Euphonia (Euph/Tuba) | *foundation* | The Stone Colossus, an immovable ground-tone |
+| Torbult (Euph/Tuba) | *foundation* | The Stone Colossus, an immovable ground-tone |
 | Waldhorn (French Horn) | *echo / call* | The Forest Flogger; calls that never stop, spreading fog |
 | Hautbois (Oboe) | *make reeds* | A Double-Reed Specter felling the forest for cane |
 | Fagotto (Bassoon) | *preserve knowledge* | The Ancient Revenant, hoarding what it cannot use |
@@ -180,12 +180,12 @@ what her hands did to the forest, and the reset can't mend that.
 | # | Maestro → Corrupted Form | Instrument | Zone · Location | Map? | Post-freeing role |
 |---|--------------------------|-----------|------------------|------|-------------------|
 | 1 | Flaura → The Aria Wraith | Flute | 5 · Legato farmstead | ✅ Confirmed | Summon |
-| 2 | Buccina → The War Horn Berserker | Trumpet | 5 · Monument of the Fallen March | ✅ Confirmed | **Playable guest** (Z5–8), then Summon |
-| 3 | Claribel → Bassetta | Clarinet | 6 · Chaconne Caves | Incidental | Summon |
-| 4 | Percival → Caucophonus | Percussion | 6 · Caesura Crossing | Incidental | **Grand Artificer** (Crotchet shop) |
+| 2 | Cornelius → The War Horn Berserker | Trumpet | 5 · Monument of the Fallen March | ✅ Confirmed | **Playable guest** (Z5–8), then Summon |
+| 3 | Clarence → Bassetto | Clarinet | 6 · Chaconne Caves | Incidental | Summon |
+| 4 | Paige → Caucophonus | Percussion | 6 · Caesura Crossing | Incidental | **Grand Artificer** (Crotchet shop) |
 | 5 | Adolpha → The Sound Shadow | Alto Sax | 7 · Player's Pass | Incidental | Summon |
 | 6 | Sackbut → The Sliding Chaos Knight | Trombone | 7 · Discordian Outpost | Incidental | Summon |
-| 7 | Euphonia → The Stone Colossus | Euph/Tuba | 7 · Discordian Outpost | Incidental | Summon |
+| 7 | Torbult → The Stone Colossus | Euph/Tuba | 7 · Discordian Outpost | Incidental | Summon |
 | 8 | Waldhorn → The Forest Flogger | French Horn | 8 · Forgotten Forest | ✅ Confirmed | Summon |
 | 9 | Hautbois → The Double-Reed Specter | Oboe | 8 · Forgotten Forest | ✅ Confirmed | **Non-combat guide** (won't fight) |
 | 10 | Fagotto → The Ancient Revenant | Bassoon | 8 · Forgotten Forest (finale) | Incidental | **Library** keeper |
@@ -197,26 +197,26 @@ unfreed**, drawing the party to them.
 
 **Restored selves (who they are once freed):**
 - **Flaura** (Flute) — gentle and nurturing; the ensemble's heart and only true healer.
-- **Buccina** (Trumpet) — bold and fiercely loyal; the rallying spark, devoted younger sister to Waldhorn.
-- **Claribel** (Clarinet) — quick, free-spirited wanderer; warm beneath a sharp wit.
-- **Percival** (Percussion) — gruff, big-hearted tinkerer who builds for others → the Grand Artificer.
+- **Cornelius** (Trumpet) — bold and fiercely loyal; the rallying spark, devoted younger brother to Waldhorn.
+- **Clarence** (Clarinet) — quick, free-spirited wanderer; warm beneath a sharp wit.
+- **Paige** (Percussion) — gruff, big-hearted tinkerer who builds for others → the Grand Artificer.
 - **Adolpha** (Alto Sax) — cool, charismatic improviser; adapts to anyone yet stays herself.
 - **Sackbut** (Trombone) — broad, jovial powerhouse; a gentle giant with an enormous sound.
-- **Euphonia** (Euph/Tuba) — warm, steady, grounding; the foundation everyone leans on.
-- **Waldhorn** (French Horn) — thoughtful and far-seeing, a touch melancholy; the wandering caller, Buccina's older brother.
+- **Torbult** (Euph/Tuba) — warm, steady, grounding; the foundation everyone leans on.
+- **Waldhorn** (French Horn) — thoughtful and far-seeing, a touch melancholy; the wandering caller, Cornelius's older brother.
 - **Hautbois** (Oboe) — exacting and deeply sensitive; gives the ensemble its tuning A → the one the reset can't fully heal.
 - **Fagotto** (Bassoon) — wise, dry-witted scholar; keeper of old knowledge → retires to the Library.
 
 The Maestros exist as plot-fixed NPCs **regardless of which instruments a classroom enables** —
 a Base-Six-only class still meets Waldhorn, Hautbois, and Fagotto. Once the world is restored,
-the freed Maestros **resume their professorships** (Fagotto as the Library-keeper, Percival as the
+the freed Maestros **resume their professorships** (Fagotto as the Library-keeper, Paige as the
 Grand Artificer).
 
 ### Companion subplots
-- **Buccina & Waldhorn (siblings).** Both professors before the Shattering. Freed in Zone 5,
-  Buccina searches for her **brother Waldhorn — scattered and lost when the Score shattered.**
-  The map confirms a Maestro in the Zone 8 Forest, so she **travels with the party as a playable
-  guest** (Z5–8). Finding and freeing him resolves her arc; only then does she convert to a summon.
+- **Cornelius & Waldhorn (brothers).** Both professors before the Shattering. Freed in Zone 5,
+  Cornelius searches for his **brother Waldhorn — scattered and lost when the Score shattered.**
+  The map confirms a Maestro in the Zone 8 Forest, so he **travels with the party as a playable
+  guest** (Z5–8). Finding and freeing him resolves his arc; only then does he convert to a summon.
 - **Hautbois (the guide who won't fight).** Freed in Zone 8 and unable to forgive what her
   corruption did to the forest, she lays down her instrument and travels with the party through
   Act 3 offering **guidance only.**
@@ -270,17 +270,17 @@ Warm farmland where music rides the wind — sweeter the breeze, safer; the more
 nearer a corrupted Maestro (**navigation-by-ear**). Hub: the **Village of Legato**.
 - **Flaura → The Aria Wraith** *(Flute, confirmed)* — endlessly sustaining a field of dead crops.
   First freed; explains the Noteshard infection from the inside.
-- **Buccina → The War Horn Berserker** *(Trumpet, confirmed)* — at the **Monument of the Fallen
-  March**. Freed, she searches for her scattered brother **Waldhorn** and **joins as a playable guest.**
+- **Cornelius → The War Horn Berserker** *(Trumpet, confirmed)* — at the **Monument of the Fallen
+  March**. Freed, he searches for his scattered brother **Waldhorn** and **joins as a playable guest.**
 
 ### Zone 6 — Sands of Time
 A desert, crossed edge-to-heart:
 1. **The Octoasis** — eight small pools (an octave of water); rest/hub, a scale-degree puzzle.
 2. **The Chaconne Caves** — caverns over a repeating ground-bass drone, infested with **Register
-   Phantoms** (Chalumeau, Throat-Tone, Clarion, Altissimo). Deep within: **Bassetta** *(Claribel,
+   Phantoms** (Chalumeau, Throat-Tone, Clarion, Altissimo). Deep within: **Bassetto** *(Clarence,
    Clarinet)*, a short-tempered nomad whose wail spans every register.
-3. **The Caesura Crossing** *(desert's end)* — a trading post run by **Caucophonus** *(Percival,
-   Percussion)*, manufacturing discord-laced goods. Freed, he later returns to **Crotchet** as the
+3. **The Caesura Crossing** *(desert's end)* — a trading post run by **Caucophonus** *(Paige,
+   Percussion)*, manufacturing discord-laced goods. Freed, she later returns to **Crotchet** as the
    **Grand Artificer** and takes over the gear shop.
 
 ### Zone 7 — Clef Cliffs
@@ -290,15 +290,15 @@ points the way.
    the descent.
 2. **The Discordian Outpost** — commanded by **Lieutenant Contra** (contrabass clarinet automaton),
    the first of Vexus's created lieutenants. The two low-brass Maestros — **Sackbut → The Sliding
-   Chaos Knight** *(Trombone)* and **Euphonia → The Stone Colossus** *(Euph/Tuba)* — are held in his
+   Chaos Knight** *(Trombone)* and **Torbult → The Stone Colossus** *(Euph/Tuba)* — are held in his
    thrall until the party breaks it and frees them.
 
 ### Zone 8 — Forgotten Forest
 At the **base of the mountains**, drowned in **thick fog**; the only way through is to **follow the
 tritones**.
 1. **The Forest Flogger** *(Waldhorn, French Horn, confirmed)* — found first; his endless echoing
-   calls *are* the fog. **Buccina confronts the brother she's sought**; freeing him resolves her arc
-   and she converts to a summon.
+   calls *are* the fog. **Cornelius confronts the brother he's sought**; freeing him resolves his arc
+   and he converts to a summon.
 2. **The double-reed loggers** — **Hautbois → The Double-Reed Specter** *(Oboe, confirmed)* and
    **Fagotto → The Ancient Revenant** *(Bassoon)*, felling the forest for cane. **Hautbois**, freed
    and shattered by what she did, **lays down her instrument** and becomes a non-combat guide.

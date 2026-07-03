@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
 
@@ -15,17 +16,17 @@ const LIBERATION_BEATS: Record<'flaura' | 'buccina', LibBeat[]> = {
     },
     {
       emoji: '🎶',
-      text: "\"Oh, child… what did he do to us.\" She folds the spent shard into your hand. \"Each of us is carrying one. It rides our music and twists it — but free us, and it comes loose, just like this. Find the others. Please.\" From now on, you can summon Flaura in battle.",
+      image: MAESTRO_PORTRAITS.syrinx, text: "\"Oh, child… what did he do to us.\" She folds the spent shard into your hand. \"Each of us is carrying one. It rides our music and twists it — but free us, and it comes loose, just like this. Find the others. Please.\" From now on, you can summon Flaura in battle.",
     },
   ],
   buccina: [
     {
       emoji: '🎺',
-      text: "The War Horn Berserker's charge collapses mid-blast. Maestra Buccina staggers, blinking, the shard burning out in your palm.",
+      text: "The War Horn Berserker's charge collapses mid-blast. Maestro Cornelius staggers, blinking, the shard burning out in your palm.",
     },
     {
       emoji: '🥁',
-      text: "\"You're one of mine — good.\" She shoulders her trumpet and looks west. \"I'm not staying behind. My brother Waldhorn was on that stage too, and I'm going to find him.\" Buccina joins you on the road — and answers your summons in battle.",
+      image: MAESTRO_PORTRAITS.salpinx, text: "\"You're one of mine — good.\" He shoulders his trumpet and looks west. \"I'm not staying behind. My brother Waldhorn was on that stage too, and I'm going to find him.\" Cornelius joins you on the road — and answers your summons in battle.",
     },
   ],
 };
@@ -147,9 +148,9 @@ export default function Zone5Page() {
 
   const skirmishDone = character.completedChallenges.includes('z5_skirmish');
   const flauraFreed = character.freedAllies.includes('syrinx');
-  const buccinaFreed = character.freedAllies.includes('salpinx');
+  const corneliusFreed = character.freedAllies.includes('salpinx');
   const flauraUnlocked = completedRequired >= 3;
-  const canAdvance = flauraFreed && buccinaFreed && allRequiredDone;
+  const canAdvance = flauraFreed && corneliusFreed && allRequiredDone;
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -307,32 +308,32 @@ export default function Zone5Page() {
           </div>
         </div>
 
-        {/* Buccina — The War Horn Berserker */}
+        {/* Cornelius — The War Horn Berserker */}
         <div className={`card-panel mb-2 ${flauraFreed ? 'border-discord-crimson/40' : 'border-discord-crimson/15 opacity-60'}`}>
           <div className="text-xs text-discord-crimson uppercase tracking-widest font-fantasy mb-2">Corrupted Maestro</div>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎺 The War Horn Berserker</div>
               <div className="text-academy-cream/50 text-xs">
-                At the Monument of the Fallen March — your trumpet professor, Maestra Buccina, sounding
+                At the Monument of the Fallen March — your trumpet professor, Maestro Cornelius, sounding
                 an endless charge.
                 {!flauraFreed && <span className="text-academy-gold/50"> (Free Flaura first — follow the sound)</span>}
               </div>
-              {buccinaFreed && (
+              {corneliusFreed && (
                 <div className="text-rating-good text-xs mt-1.5 italic">
-                  Freed. Buccina joins you on the road, searching for her brother — and answers your summons.
+                  Freed. Cornelius joins you on the road, searching for his brother — and answers your summons.
                 </div>
               )}
             </div>
-            {flauraFreed && !buccinaFreed && (
+            {flauraFreed && !corneliusFreed && (
               <button onClick={() => setActiveBattle('buccina')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>
             )}
-            {buccinaFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
+            {corneliusFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
         {/* Advance */}
-        {(flauraFreed && buccinaFreed) && (
+        {(flauraFreed && corneliusFreed) && (
           <div className={`card-panel mt-4 ${canAdvance ? 'border-academy-gold/50' : 'border-academy-gold/20'}`}>
             <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">Quarter's End</div>
             <div className="flex items-start justify-between gap-4">

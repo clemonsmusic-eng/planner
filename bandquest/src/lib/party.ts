@@ -6,6 +6,7 @@
 
 import type { AllyId, Character, InstrumentId, StatBlock } from '../types/game';
 import { INSTRUMENTS, getInstrumentEmoji } from './instruments';
+import { MAESTRO_PORTRAITS } from './portraits';
 import { ALLY_BATTLE_DEFS } from './allies';
 import { getEffectiveStats } from './gear';
 
@@ -16,13 +17,14 @@ export interface PartyMemberDef {
   name: string;
   instrument: InstrumentId;
   isHero: boolean;
-  emoji: string;               // battlefield sprite for maestros
+  emoji: string;               // battlefield sprite fallback
+  portrait?: string;           // retro portrait asset (public/portraits)
   stats: StatBlock;
   maxHp: number;
 }
 
 // The freed maestros who fight. Hautbois (guide), Fagotto (library) and
-// Percival (artificer) follow the story instead of the party.
+// Paige (artificer) follow the story instead of the party.
 const COMBAT_ALLY_INSTRUMENT: Partial<Record<AllyId, InstrumentId>> = {
   syrinx: 'flute',
   salpinx: 'trumpet',
@@ -67,6 +69,7 @@ export function buildParty(character: Character): PartyMemberDef[] {
       instrument,
       isHero: false,
       emoji: getInstrumentEmoji(instrument),
+      portrait: MAESTRO_PORTRAITS[allyId as AllyId],
       stats,
       maxHp: stats.endurance * 5,
     });

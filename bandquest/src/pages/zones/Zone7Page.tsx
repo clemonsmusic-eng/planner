@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, AllyId } from '../../types/game';
 
@@ -20,7 +21,7 @@ const SCENES: Record<'adolpha' | 'contra' | 'sackbut' | 'euphonia', Scene> = {
     ally: 'vela', key: 'z7_adolpha_freed',
     beats: [
       { emoji: '🎷', text: "The Sound Shadow's borrowed shapes peel away one by one, and Maestra Adolpha — your saxophone professor — stands at the top of Player's Pass, breathing hard, herself again." },
-      { emoji: '🎶', text: "\"Whoo. Strange dream to wake from.\" She rolls her shoulders, cool as ever. \"I saw a lot from up here while I was… not me. There's an outpost below, and the thing running it was never one of us. Watch yourself.\" You can summon Adolpha in battle." },
+      { emoji: '🎶', image: MAESTRO_PORTRAITS.vela, text: "\"Whoo. Strange dream to wake from.\" She rolls her shoulders, cool as ever. \"I saw a lot from up here while I was… not me. There's an outpost below, and the thing running it was never one of us. Watch yourself.\" You can summon Adolpha in battle." },
     ],
   },
   contra: {
@@ -34,14 +35,14 @@ const SCENES: Record<'adolpha' | 'contra' | 'sackbut' | 'euphonia', Scene> = {
     ally: 'posaune', key: 'z7_sackbut_freed',
     beats: [
       { emoji: '📯', text: "The Sliding Chaos Knight's wild glissando finally lands true, and the shape resolves into Maestro Sackbut — your trombone professor — flat on his back, laughing in relief." },
-      { emoji: '🎶', text: "\"Ha! Knew one of mine would come.\" He clambers up, broad and beaming. \"Felt like swinging that slide at the whole world. Glad it's over.\" You can summon Sackbut in battle." },
+      { emoji: '🎶', image: MAESTRO_PORTRAITS.posaune, text: "\"Ha! Knew one of mine would come.\" He clambers up, broad and beaming. \"Felt like swinging that slide at the whole world. Glad it's over.\" You can summon Sackbut in battle." },
     ],
   },
   euphonia: {
     ally: 'cantora', key: 'z7_euphonia_freed',
     beats: [
-      { emoji: '🎵', text: "The Stone Colossus's endless low tone cracks and crumbles, and Maestra Euphonia — your euphonium professor — steps out of the rubble, steady as ever." },
-      { emoji: '🎶', text: "\"There you are.\" She rests a warm hand on your shoulder. \"I had the strangest feeling I was holding the whole mountain up. Come — let's not keep the others waiting.\" You can summon Euphonia in battle." },
+      { emoji: '🎵', text: "The Stone Colossus's endless low tone cracks and crumbles, and Maestro Torbult — your euphonium professor — steps out of the rubble, steady as ever." },
+      { emoji: '🎶', image: MAESTRO_PORTRAITS.cantora, text: "\"There you are.\" He rests a warm hand on your shoulder. \"I had the strangest feeling I was holding the whole mountain up. Come — let's not keep the others waiting.\" You can summon Torbult in battle." },
     ],
   },
 };
@@ -88,9 +89,9 @@ export default function Zone7Page() {
   const contraDefeated = character.completedChallenges.includes('z7_contra_defeated');
   const adolphaFreed = character.freedAllies.includes('vela');
   const sackbutFreed = character.freedAllies.includes('posaune');
-  const euphoniaFreed = character.freedAllies.includes('cantora');
+  const torbultFreed = character.freedAllies.includes('cantora');
   const adolphaUnlocked = completedRequired >= 3;
-  const canAdvance = adolphaFreed && sackbutFreed && euphoniaFreed && allRequiredDone;
+  const canAdvance = adolphaFreed && sackbutFreed && torbultFreed && allRequiredDone;
 
   async function handleChallengeComplete(rating: Rating, score: number) {
     if (!activeChallenge) return;
@@ -249,18 +250,18 @@ export default function Zone7Page() {
             <div className="flex-1">
               <div className="text-academy-cream/80 text-sm font-semibold mb-1">🎵 The Stone Colossus</div>
               <div className="text-academy-cream/50 text-xs">
-                Your euphonium professor, Maestra Euphonia — an immovable low tone holding up nothing.
+                Your euphonium professor, Maestro Torbult — an immovable low tone holding up nothing.
                 {!contraDefeated && <span className="text-academy-gold/50"> (Break Contra's hold first)</span>}
               </div>
-              {euphoniaFreed && (<div className="text-rating-good text-xs mt-1.5 italic">Freed. Euphonia answers your summons.</div>)}
+              {torbultFreed && (<div className="text-rating-good text-xs mt-1.5 italic">Freed. Torbult answers your summons.</div>)}
             </div>
-            {contraDefeated && !euphoniaFreed && (<button onClick={() => setActiveBattle('euphonia')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>)}
-            {euphoniaFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
+            {contraDefeated && !torbultFreed && (<button onClick={() => setActiveBattle('euphonia')} className="btn-danger text-xs py-2 px-3 flex-shrink-0">Battle</button>)}
+            {torbultFreed && <span className="text-rating-superior text-lg flex-shrink-0">✓</span>}
           </div>
         </div>
 
         {/* Advance */}
-        {(adolphaFreed && sackbutFreed && euphoniaFreed) && (
+        {(adolphaFreed && sackbutFreed && torbultFreed) && (
           <div className={`card-panel mt-4 ${canAdvance ? 'border-academy-gold/50' : 'border-academy-gold/20'}`}>
             <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-2">Quarter's End</div>
             <div className="flex items-start justify-between gap-4">
