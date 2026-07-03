@@ -34,16 +34,16 @@ except ImportError:
 # allyId -> (display label, cx, y_top, y_bottom) as fractions of (W, H).
 # The crop is a square of side (y_bottom - y_top) * H centered on cx * W.
 CROPS: dict[str, tuple[str, float, float, float]] = {
-    'bassanello': ('Fagotto · bassoon',    0.062, 0.330, 0.630),
-    'chalumeau':  ('Clarence · clarinet',  0.152, 0.350, 0.620),
-    'salpinx':    ('Cornelius · trumpet',  0.247, 0.335, 0.600),
-    'vela':       ('Adolpha · alto sax',   0.318, 0.385, 0.630),
-    'waldhorn':   ('Waldhorn · fr. horn',  0.392, 0.340, 0.600),
-    'cantora':    ('Torbult · tuba',       0.500, 0.270, 0.560),
-    'posaune':    ('Sackbut · trombone',   0.607, 0.400, 0.680),
-    'percival':   ('Paige · percussion',   0.723, 0.360, 0.630),
-    'syrinx':     ('Flaura · flute',       0.813, 0.365, 0.630),
-    'hautbois':   ('Hautbois · oboe',      0.916, 0.340, 0.610),
+    'bassanello': ('Fagotto · bassoon',    0.063, 0.325, 0.525),
+    'chalumeau':  ('Clarence · clarinet',  0.160, 0.350, 0.545),
+    'salpinx':    ('Cornelius · trumpet',  0.254, 0.340, 0.535),
+    'vela':       ('Adolpha · alto sax',   0.326, 0.400, 0.590),
+    'waldhorn':   ('Waldhorn · fr. horn',  0.407, 0.335, 0.530),
+    'cantora':    ('Torbult · tuba',       0.504, 0.262, 0.470),
+    'posaune':    ('Sackbut · trombone',   0.616, 0.400, 0.600),
+    'percival':   ('Paige · percussion',   0.728, 0.365, 0.560),
+    'syrinx':     ('Flaura · flute',       0.828, 0.360, 0.555),
+    'hautbois':   ('Hautbois · oboe',      0.915, 0.340, 0.535),
 }
 
 PIXEL_GRID = 64    # the effective "sprite" resolution
