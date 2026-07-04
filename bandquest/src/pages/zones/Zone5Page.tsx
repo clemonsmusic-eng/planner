@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { useClassmateRecruitment } from '../../components/ClassmateRecruitment';
 import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating } from '../../types/game';
@@ -137,8 +138,10 @@ export default function Zone5Page() {
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
   const [activeBattle, setActiveBattle] = useState<BattleKind | null>(null);
   const [liberation, setLiberation] = useState<'flaura' | 'buccina' | null>(null);
+  const recruitment = useClassmateRecruitment(5);
 
   if (!character) return null;
+  if (recruitment) return recruitment;
 
   const challenges = buildChallenges(character.completedChallenges);
   const required = challenges.filter((c) => c.required);

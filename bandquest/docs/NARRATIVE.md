@@ -142,12 +142,29 @@ exclude their instruments (a clarinet hero with a real flutist friend has three
 NPC slots left, none of them flute or clarinet). The freed Maestros are summons,
 not party members.
 
-Classmates join on a fixed schedule (names nod to real players for the Hall of
-Fame): **Piper** (flute) & **Reed** (bassoon) in Zone 2; **Benny** (clarinet),
-**Miles** (trumpet), **Tommy** (trombone) & **Gene** (percussion) in Zone 3;
-**Otto** (tuba) & **Zoot** (alto sax) in Zone 4; **Obie** (oboe) & **Cora**
-(french horn) in Zone 5. There is no euphonium classmate — that chair is the
-hero's to claim.
+Classmates join on a fixed schedule, each with a recruitment scene on first
+visit to their zone (names nod to real players for the Hall of Fame). There is
+no euphonium classmate — that chair is the hero's to claim.
+
+| Zone | Classmate | Instrument | Why they join |
+|------|-----------|-----------|----------------|
+| 2 | **Piper** | Flute | Practices alone after hours; wants a duet partner who'll push her — "duets beat solos." |
+| 2 | **Reed** | Bassoon | The only student who reads the old clefs; you find things, he tells you what they mean. |
+| 3 | **Benny** | Clarinet | Heard your sound at the Invitational and refuses to be outrun by it alone. |
+| 3 | **Miles** | Trumpet | Watched your set from the wings; respects that you don't rush. |
+| 3 | **Tommy** | Trombone | Carried the Academy banner all contest; wants to hold the section together too. |
+| 3 | **Gene** | Percussion | "Everything's a drum if you're brave enough." Your band needs a pulse. |
+| 4 | **Otto** | Tuba | Foundations first — sections, buildings, bands. He'll hold yours up. |
+| 4 | **Zoot** | Alto Sax | Tired of detention for sneaking swing into chorales; wants a band that improvises. |
+| 5 | **Obie** | Oboe | Chases the caravan down: a world out of tune will not go unanswered — someone must give the expedition its A. |
+| 5 | **Cora** | French Horn | Followed the sound of the one band still in tune; she can hear where the corruption runs thin. |
+
+**The same-instrument farewell.** When the hero plays a classmate's instrument,
+that student follows the same story beat — then chooses their own path and
+wishes the hero well (Piper leads the Chamber Winds, Benny takes first chair in
+the second band, Gene captains the drumline, Obie stays to retune Legato, and
+so on). That farewell is also why they never appear in that hero's party: the
+chair is already covered.
 
 ### The Hall of Fame (educational easter-egg)
 The legendary **past masters** of Symphonica — studied in the Library, with recordings and

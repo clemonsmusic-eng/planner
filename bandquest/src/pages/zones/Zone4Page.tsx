@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../store/gameStore';
 import { getBossGearDrop } from '../../lib/gear';
 import ChallengeModal from '../../components/ChallengeModal';
+import { useClassmateRecruitment } from '../../components/ClassmateRecruitment';
 import type { Rating, GearItem } from '../../types/game';
 
 interface Challenge {
@@ -116,9 +117,11 @@ export default function Zone4Page() {
   const [shatterRating, setShatterRating] = useState<Rating>('good');
   const [pendingGear, setPendingGear] = useState<GearItem | null>(null);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
+  const recruitment = useClassmateRecruitment(4);
 
   if (!character) return null;
   const char = character;
+  if (recruitment) return recruitment;
 
   const challenges = buildChallenges(character.completedChallenges);
   const required = challenges.filter((c) => c.required);

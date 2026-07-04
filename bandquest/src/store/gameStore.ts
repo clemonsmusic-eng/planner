@@ -41,6 +41,8 @@ interface GameState {
   completeBootCampStep: (stepId: string) => Promise<void>;
   saveAppearance: (appearance: Appearance) => Promise<void>;
   addSummonPoints: (delta: number) => Promise<void>;
+  // Mark story moments seen (e.g. classmate recruitment) — no XP, just keys.
+  recordStoryKeys: (keys: string[]) => Promise<void>;
   setCharacter: (character: Character | null) => void;
 
   // Guest Mode (no account; character persists to localStorage)
@@ -320,6 +322,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updated = { ...character, summonPoints: newSp };
     set({ character: updated });
     await persistChar(updated, { summon_points: newSp });
+  },
+
+  recordStoryKeys: async (keys) => {
+    const { character } = get();
+    if (!character) return;
+    const add = keys.filter((k) => !character.completedChallenges.includes(k));
+    if (add.length === 0) return;
+    const completedChallenges = [...character.completedChallenges, ...add];
+    const updated = { ...character, completedChallenges };
+    set({ character: updated });
+    await persistChar(updated, { completed_challenges: completedChallenges });
   },
 
   // ── Guest Mode ────────────────────────────────────────────────────────────────

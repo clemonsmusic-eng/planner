@@ -133,7 +133,7 @@ export default function PartyPage() {
                   {dupInstrument && recruited && (
                     <div className="text-academy-gold/50 text-[10px] mt-0.5">
                       {s.instrument === character.instrument
-                        ? 'You already cover this part.'
+                        ? 'Went their own way — but wished you well.'
                         : 'That chair is already filled.'}
                     </div>
                   )}
