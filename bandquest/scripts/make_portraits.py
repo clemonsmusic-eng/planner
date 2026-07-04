@@ -53,9 +53,9 @@ COLORS = 28               # palette size after quantization
 SCALE = 3                 # nearest-neighbor upscale factor (output 120x288)
 
 # The lineup is lit like a dark stage; pull it up to bright 16-bit colors.
-BRIGHTNESS = 1.45
-SATURATION = 1.75
-CONTRAST = 1.25
+BRIGHTNESS = 1.55
+SATURATION = 2.4
+CONTRAST = 1.3
 
 
 def demake(img: Image.Image) -> Image.Image:
