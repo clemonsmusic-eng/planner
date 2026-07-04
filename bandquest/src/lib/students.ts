@@ -28,6 +28,18 @@ export interface StudentDef {
   farewellScene: string;
 }
 
+// Non-recruiting story cameos: brief encounters that seed a character before
+// their real recruitment beat (e.g. Gene, met twice before he buys in).
+export interface CameoDef {
+  id: string;                 // unique; persisted as cameo_<id>
+  zone: number;
+  key?: string;
+  progress?: number;
+  emoji: string;
+  title: string;
+  text: string;
+}
+
 export const STUDENTS: StudentDef[] = [
   // ── Zone 2 — The Theory Wing ──
   {
@@ -44,12 +56,6 @@ export const STUDENTS: StudentDef[] = [
     farewellScene: "After the Interval Imp scatters, Reed emerges from behind the theory shelves where he's been watching the whole fight, three spare reeds tucked behind one ear. \"Another bassoon in the class,\" he says, almost smiling. \"Then the low reeds are in good hands — and the archive needs a keeper more than the stage needs two of us.\" Reed wishes you well and goes his own way.",
   },
   // ── Zone 3 — The Town of Crotchet ──
-  {
-    id: 'gene', name: 'Gene', instrument: 'percussion', recruitZone: 3,
-    blurb: 'The heartbeat. Counts a band in through any chaos.',
-    joinScene: "The staging yard at the Invitational is bedlam — four schools warming up over each other, schedules slipping, a tuba fighting a soprano for the same air. Then a snare cracks through the noise: four sharp counts, and somehow every Academy player lands on the same downbeat. Gene spins a stick and catches it. \"A band isn't the melody,\" he says. \"It's the heartbeat. Want one that never misses?\" Gene joins the band!",
-    farewellScene: "The staging yard at the Invitational is bedlam — four schools warming up over each other, schedules slipping, a tuba fighting a soprano for the same air. Then a snare cracks through the noise: four sharp counts, and somehow every Academy player lands on the same downbeat. Gene spins a stick, catches it, and points it at you. \"You've already got the heartbeat covered.\" He presses the stick into your hand like a medal. \"Drumline needs a captain, and someone has to keep the second band honest. Keep the tempo true.\" Gene wishes you well and goes his own way.",
-  },
   {
     id: 'tommy', name: 'Tommy', instrument: 'trombone', recruitZone: 3,
     recruitProgress: 3,
@@ -70,6 +76,13 @@ export const STUDENTS: StudentDef[] = [
     blurb: 'Cool under pressure; plays louder than he talks.',
     joinScene: "Miles watched the final from the wings without a word, all the way to the trophy. Afterward he just nods. \"You don't rush. Not even with the whole town listening. Need a lead trumpet who shows up?\" It's the longest speech anyone at the Academy has heard from him. Miles joins the band!",
     farewellScene: "Miles watched the final from the wings without a word, all the way to the trophy. Afterward he just nods. \"You don't rush. I like that. But two leads fight over the melody — it's yours.\" He taps his bell against yours, the quietest handshake in Symphonica, and heads off to anchor the second band's section. Miles wishes you well and goes his own way.",
+  },
+  {
+    id: 'gene', name: 'Gene', instrument: 'percussion', recruitZone: 3,
+    recruitKey: 'z3_contest_won',
+    blurb: 'Second-generation drummer, finally playing for himself.',
+    joinScene: "When the trophy goes up and the whole town starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that—\" he nods at the crowd, still humming, \"—that was a hundred people breathing together. I want in. For real this time.\" Gene joins the band!",
+    farewellScene: "When the trophy goes up and the whole town starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that was a hundred people breathing together — and you already speak drum better than I ever cared to.\" He pockets his sticks, thoughtful. \"I'm going home to ask my dad to actually teach me. From the top. Like I mean it.\" Gene wishes you well and goes his own way.",
   },
   // ── Zone 4 — The Grand Auditorium ──
   {
@@ -104,20 +117,47 @@ export const STUDENTS: StudentDef[] = [
 export const STUDENT_BY_ID: Record<string, StudentDef> =
   Object.fromEntries(STUDENTS.map((s) => [s.id, s]));
 
+export const CAMEOS: CameoDef[] = [
+  {
+    id: 'gene_hall', zone: 2, progress: 2,
+    emoji: '🥁', title: 'In Passing',
+    text: "Between classes you pass a kid drumming a lazy paradiddle on the radiator pipes — perfectly in time, completely bored. \"Gene,\" he offers, when you nod at the rhythm. \"Dad's a drummer, so I'm a drummer. His idea, not mine. I just like hitting things.\" He wanders off before the phrase resolves.",
+  },
+  {
+    id: 'gene_contest', zone: 3, progress: 3,
+    emoji: '🥁', title: 'In Passing',
+    text: "Gene turns up at the Invitational behind the Academy drum kit — his father's name engraved on the rim. He plays every note right and never once looks up. \"Dad entered me,\" he shrugs between rounds. \"Hit thing, get grade, keep him happy.\" And yet, somewhere under all that boredom, his foot never stops keeping your warm-up in time.",
+  },
+];
+
 export const metKey = (studentId: string) => `met_${studentId}`;
+export const cameoKey = (cameoId: string) => `cameo_${cameoId}`;
+
+// Shared moment predicate: has this zone-anchored beat's trigger arrived?
+function momentDue(zone: number, key: string | undefined, progress: number | undefined, character: Character): boolean {
+  if (character.currentZone < zone) return false;
+  // Past the zone entirely → due regardless (catch-up for skipped beats).
+  if (character.currentZone > zone) return true;
+  if (key && !character.completedChallenges.includes(key)) return false;
+  if (progress) {
+    const prefix = `z${zone}_`;
+    const done = character.completedChallenges.filter((k) => k.startsWith(prefix)).length;
+    if (done < progress) return false;
+  }
+  return true;
+}
 
 // The student's recruitment moment has arrived (scene may not have played yet).
 export function recruitmentDue(s: StudentDef, character: Character): boolean {
-  if (character.currentZone < s.recruitZone) return false;
-  // Past their zone entirely → due regardless (catch-up for skipped beats).
-  if (character.currentZone > s.recruitZone) return true;
-  if (s.recruitKey && !character.completedChallenges.includes(s.recruitKey)) return false;
-  if (s.recruitProgress) {
-    const prefix = `z${s.recruitZone}_`;
-    const done = character.completedChallenges.filter((k) => k.startsWith(prefix)).length;
-    if (done < s.recruitProgress) return false;
-  }
-  return true;
+  return momentDue(s.recruitZone, s.recruitKey, s.recruitProgress, character);
+}
+
+export function cameoDue(c: CameoDef, character: Character): boolean {
+  return momentDue(c.zone, c.key, c.progress, character);
+}
+
+export function hasSeenCameo(c: CameoDef, character: Character): boolean {
+  return character.completedChallenges.includes(cameoKey(c.id));
 }
 
 // Met = the recruitment scene has played; only then are they pickable.

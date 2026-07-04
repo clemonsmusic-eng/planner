@@ -151,7 +151,7 @@ classmate — that chair is the hero's to claim.
 |------|-----------|-----------|------|----------------|
 | 2 | **Piper** | Flute | Arrival | Practices alone after hours; wants a duet partner who'll push her — "duets beat solos." |
 | 2 | **Reed** | Bassoon | After the Interval Imp | Watched the fight from the theory shelves; the only student who reads the old clefs. You find things, he tells you what they mean. |
-| 3 | **Gene** | Percussion | Arrival | The staging yard is bedlam until his snare counts every Academy player onto the same downbeat. "A band isn't the melody — it's the heartbeat." |
+| 3 | **Gene** | Percussion | Trophy won *(cameos in Zone 2 and mid-tournament)* | A second-generation drummer pushed into it by his father — indifferent, though he does like hitting things. Met twice in passing; only when the whole town sings the final piece back does he understand what music is for, and buy in. |
 | 3 | **Tommy** | Trombone | 3 events in | Still carrying the Academy banner everywhere; wants to hold the section together too. |
 | 3 | **Benny** | Clarinet | Semifinal won | Catches you stepping off the semifinal stage — refuses to let that sound reach the final without him. |
 | 3 | **Miles** | Trumpet | Trophy won | Watched the final from the wings; you didn't rush, even with the whole town listening. |
