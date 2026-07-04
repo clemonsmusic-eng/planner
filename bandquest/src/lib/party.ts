@@ -16,7 +16,7 @@
 
 import type { Character, InstrumentId, StatBlock } from '../types/game';
 import { INSTRUMENTS, getInstrumentEmoji } from './instruments';
-import { STUDENTS, STUDENT_BY_ID } from './students';
+import { STUDENTS, STUDENT_BY_ID, hasMet } from './students';
 import { getEffectiveStats } from './gear';
 
 export const MAX_PARTY_SIZE = 5;
@@ -76,7 +76,7 @@ export function sanitizeSelection(
   for (const id of ids) {
     const s = STUDENT_BY_ID[id];
     if (!s) continue;
-    if (character.currentZone < s.recruitZone) continue;
+    if (!hasMet(s, character)) continue;
     if (taken.has(s.instrument)) continue;
     taken.add(s.instrument);
     out.push(id);

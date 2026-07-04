@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { STUDENTS, metKey } from '../lib/students';
+import { STUDENTS, metKey, recruitmentDue, hasMet } from '../lib/students';
 import { getInstrumentEmoji } from '../lib/instruments';
 import LiberationScene from './LiberationScene';
 
@@ -16,7 +16,7 @@ export function useClassmateRecruitment(zoneId: number): ReactElement | null {
   if (!character) return null;
 
   const unmet = STUDENTS.filter(
-    (s) => s.recruitZone === zoneId && !character.completedChallenges.includes(metKey(s.id)),
+    (s) => s.recruitZone === zoneId && recruitmentDue(s, character) && !hasMet(s, character),
   );
   if (unmet.length === 0) return null;
 

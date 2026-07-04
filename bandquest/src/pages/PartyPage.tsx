@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
-import { STUDENTS } from '../lib/students';
+import { STUDENTS, recruitmentDue, hasMet } from '../lib/students';
 import {
   MAX_PARTY_SIZE, getPartySelection, savePartySelection, sanitizeSelection,
 } from '../lib/party';
@@ -105,7 +105,8 @@ export default function PartyPage() {
         <div className="space-y-2">
           {STUDENTS.map((s) => {
             const color = getInstrumentColor(s.instrument);
-            const recruited = character.currentZone >= s.recruitZone;
+            const recruited = hasMet(s, character);
+            const due = recruitmentDue(s, character);
             const inParty = selection.includes(s.id);
             const dupInstrument = !inParty && takenInstruments.has(s.instrument);
             const full = !inParty && selection.length >= npcSlots;
@@ -128,7 +129,9 @@ export default function PartyPage() {
                     <span className="text-academy-cream/40 text-xs">{INSTRUMENTS[s.instrument].name}</span>
                   </div>
                   <div className="text-academy-cream/45 text-xs mt-0.5">
-                    {recruited ? s.blurb : `Joins the band in Zone ${s.recruitZone}.`}
+                    {recruited ? s.blurb
+                      : due ? `Waiting to meet you — revisit Zone ${s.recruitZone}.`
+                      : `Joins the band during Zone ${s.recruitZone}.`}
                   </div>
                   {dupInstrument && recruited && (
                     <div className="text-academy-gold/50 text-[10px] mt-0.5">

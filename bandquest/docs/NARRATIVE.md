@@ -142,22 +142,23 @@ exclude their instruments (a clarinet hero with a real flutist friend has three
 NPC slots left, none of them flute or clarinet). The freed Maestros are summons,
 not party members.
 
-Classmates join on a fixed schedule, each with a recruitment scene on first
-visit to their zone (names nod to real players for the Hall of Fame). There is
-no euphonium classmate — that chair is the hero's to claim.
+Classmates join on a **staggered schedule**, each with a recruitment scene tied
+to a moment inside their zone — zone arrival, a mid-zone milestone, or a story
+beat (names nod to real players for the Hall of Fame). There is no euphonium
+classmate — that chair is the hero's to claim.
 
-| Zone | Classmate | Instrument | Why they join |
-|------|-----------|-----------|----------------|
-| 2 | **Piper** | Flute | Practices alone after hours; wants a duet partner who'll push her — "duets beat solos." |
-| 2 | **Reed** | Bassoon | The only student who reads the old clefs; you find things, he tells you what they mean. |
-| 3 | **Benny** | Clarinet | Heard your sound at the Invitational and refuses to be outrun by it alone. |
-| 3 | **Miles** | Trumpet | Watched your set from the wings; respects that you don't rush. |
-| 3 | **Tommy** | Trombone | Carried the Academy banner all contest; wants to hold the section together too. |
-| 3 | **Gene** | Percussion | "Everything's a drum if you're brave enough." Your band needs a pulse. |
-| 4 | **Otto** | Tuba | Foundations first — sections, buildings, bands. He'll hold yours up. |
-| 4 | **Zoot** | Alto Sax | Tired of detention for sneaking swing into chorales; wants a band that improvises. |
-| 5 | **Obie** | Oboe | Chases the caravan down: a world out of tune will not go unanswered — someone must give the expedition its A. |
-| 5 | **Cora** | French Horn | Followed the sound of the one band still in tune; she can hear where the corruption runs thin. |
+| Zone | Classmate | Instrument | When | Why they join |
+|------|-----------|-----------|------|----------------|
+| 2 | **Piper** | Flute | Arrival | Practices alone after hours; wants a duet partner who'll push her — "duets beat solos." |
+| 2 | **Reed** | Bassoon | After the Interval Imp | Watched the fight from the theory shelves; the only student who reads the old clefs. You find things, he tells you what they mean. |
+| 3 | **Gene** | Percussion | Arrival | The staging yard is bedlam until his snare counts every Academy player onto the same downbeat. "A band isn't the melody — it's the heartbeat." |
+| 3 | **Tommy** | Trombone | 3 events in | Still carrying the Academy banner everywhere; wants to hold the section together too. |
+| 3 | **Benny** | Clarinet | Semifinal won | Catches you stepping off the semifinal stage — refuses to let that sound reach the final without him. |
+| 3 | **Miles** | Trumpet | Trophy won | Watched the final from the wings; you didn't rush, even with the whole town listening. |
+| 4 | **Otto** | Tuba | Arrival | Foundations first — sections, buildings, bands. He'll hold yours up. |
+| 4 | **Zoot** | Alto Sax | 2 rehearsals in | Caught sneaking swing into the chorale again; wants a band that improvises. |
+| 5 | **Obie** | Oboe | Arrival | Chases the caravan down: a world out of tune will not go unanswered — someone must give the expedition its A. |
+| 5 | **Cora** | French Horn | Flaura freed | Waldhorn's star pupil. She's been calling into the valleys since the Shattering, and every echo came back wrong — until the night the Wraith fell silent and one came back true. She can find her teacher by ear. |
 
 **The same-instrument farewell.** When the hero plays a classmate's instrument,
 that student follows the same story beat — then chooses their own path and
