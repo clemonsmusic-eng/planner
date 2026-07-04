@@ -140,6 +140,7 @@ export default function HubPage() {
             <NavCard icon="🎵" label="Fingering Charts" sublabel="All instruments" onClick={() => navigate('/fingering')} />
             <NavCard icon="🏆" label="Leaderboard" sublabel="Class standings" onClick={() => navigate('/leaderboard')} />
             <NavCard icon="🎶" label="Symphony Allies" sublabel={`${character.freedAllies.length}/10 freed`} onClick={() => navigate('/allies')} />
+            <NavCard icon="🎼" label="Your Band" sublabel="Choose your party" onClick={() => navigate('/party')} />
             <NavCard icon="⚙️" label="Equipment" sublabel="Gear & effective stats" onClick={() => navigate('/gear')} />
             <NavCard icon="🪙" label="Gear Shop" sublabel={`${character.resonanceCoins} coins`} onClick={() => navigate('/shop')} />
             <NavCard icon="🎨" label="Customize Avatar" sublabel="Your look & colors" onClick={() => navigate('/customize')} />

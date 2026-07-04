@@ -24,6 +24,7 @@ import ShopPage from './pages/ShopPage';
 import WorldMapPage from './pages/WorldMapPage';
 import CustomizePage from './pages/CustomizePage';
 import FingeringChartPage from './pages/FingeringChartPage';
+import PartyPage from './pages/PartyPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -150,6 +151,10 @@ export default function App() {
       } />
 
       {/* Equipment / Gear */}
+      <Route path="/party" element={
+        <RequireCharacter><PartyPage /></RequireCharacter>
+      } />
+
       <Route path="/gear" element={
         <RequireCharacter><GearPage /></RequireCharacter>
       } />

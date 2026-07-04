@@ -1,19 +1,28 @@
 // ── Party building ──────────────────────────────────────────────────────────────
-// Battles are FF6-style party battles: the hero plus up to four freed combat
-// maestros, every one of them user-controlled. The party is derived from
-// character.freedAllies (in the order they were freed), so it grows naturally
-// through Act 2 with zero extra persistence.
+// Battles are FF6-style party battles: the hero plus up to four student
+// classmates, every one of them user-controlled. Classmates are recruited on a
+// fixed zone schedule (see lib/students.ts) and the player chooses their lineup
+// on the Party page.
+//
+// Rules:
+// - Up to MAX_PARTY_SIZE members including the hero.
+// - One instrument per party: the hero's instrument excludes that classmate.
+// - Co-op: real players occupy slots and exclude their instruments too — pass
+//   their instruments via realPlayerInstruments and the NPC lineup shrinks and
+//   dedupes around them. (Live co-op sessions plug in through this hook.)
+//
+// The freed maestros are NOT party members — they are summons (GF-style), as
+// the design doc always intended.
 
-import type { AllyId, Character, InstrumentId, StatBlock } from '../types/game';
+import type { Character, InstrumentId, StatBlock } from '../types/game';
 import { INSTRUMENTS, getInstrumentEmoji } from './instruments';
-import { MAESTRO_PORTRAITS } from './portraits';
-import { ALLY_BATTLE_DEFS } from './allies';
+import { STUDENTS, STUDENT_BY_ID } from './students';
 import { getEffectiveStats } from './gear';
 
 export const MAX_PARTY_SIZE = 5;
 
 export interface PartyMemberDef {
-  key: string;                 // 'hero' or the AllyId
+  key: string;                 // 'hero' or the student id
   name: string;
   instrument: InstrumentId;
   isHero: boolean;
@@ -22,18 +31,6 @@ export interface PartyMemberDef {
   stats: StatBlock;
   maxHp: number;
 }
-
-// The freed maestros who fight. Hautbois (guide), Fagotto (library) and
-// Paige (artificer) follow the story instead of the party.
-const COMBAT_ALLY_INSTRUMENT: Partial<Record<AllyId, InstrumentId>> = {
-  syrinx: 'flute',
-  salpinx: 'trumpet',
-  chalumeau: 'clarinet',
-  vela: 'alto_sax',
-  posaune: 'trombone',
-  cantora: 'euphonium',
-  waldhorn: 'french_horn',
-};
 
 function statsAtLevel(instrument: InstrumentId, level: number): StatBlock {
   const def = INSTRUMENTS[instrument];
@@ -46,7 +43,72 @@ function statsAtLevel(instrument: InstrumentId, level: number): StatBlock {
   };
 }
 
-export function buildParty(character: Character): PartyMemberDef[] {
+// ── Party selection persistence (per character, client-side) ────────────────────
+
+const partyKey = (characterId: string) => `bq_party_${characterId}`;
+
+export function loadPartySelection(characterId: string): string[] {
+  try {
+    const raw = localStorage.getItem(partyKey(characterId));
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function hasSavedSelection(characterId: string): boolean {
+  try { return localStorage.getItem(partyKey(characterId)) !== null; } catch { return false; }
+}
+
+export function savePartySelection(characterId: string, studentIds: string[]) {
+  try { localStorage.setItem(partyKey(characterId), JSON.stringify(studentIds)); } catch { /* ignore */ }
+}
+
+// Drop unknown/unrecruited/duplicate-instrument picks; cap the roster size.
+export function sanitizeSelection(
+  ids: string[],
+  character: Character,
+  realPlayerInstruments: InstrumentId[] = [],
+): string[] {
+  const npcSlots = Math.max(0, MAX_PARTY_SIZE - 1 - realPlayerInstruments.length);
+  const taken = new Set<InstrumentId>([character.instrument, ...realPlayerInstruments]);
+  const out: string[] = [];
+  for (const id of ids) {
+    const s = STUDENT_BY_ID[id];
+    if (!s) continue;
+    if (character.currentZone < s.recruitZone) continue;
+    if (taken.has(s.instrument)) continue;
+    taken.add(s.instrument);
+    out.push(id);
+    if (out.length >= npcSlots) break;
+  }
+  return out;
+}
+
+// Default lineup when the player hasn't picked one: first recruits, in
+// recruitment order, respecting the one-instrument rule.
+function defaultSelection(character: Character, realPlayerInstruments: InstrumentId[]): string[] {
+  return sanitizeSelection(STUDENTS.map((s) => s.id), character, realPlayerInstruments);
+}
+
+export function getPartySelection(
+  character: Character,
+  realPlayerInstruments: InstrumentId[] = [],
+): string[] {
+  // An explicitly saved lineup is respected (even an empty one = solo run);
+  // players who never touched the Party page get a sensible default.
+  if (hasSavedSelection(character.id)) {
+    return sanitizeSelection(loadPartySelection(character.id), character, realPlayerInstruments);
+  }
+  return defaultSelection(character, realPlayerInstruments);
+}
+
+// ── Party assembly ────────────────────────────────────────────────────────────
+
+export function buildParty(
+  character: Character,
+  realPlayerInstruments: InstrumentId[] = [],
+): PartyMemberDef[] {
   const heroStats = getEffectiveStats(character);
   const party: PartyMemberDef[] = [{
     key: 'hero',
@@ -58,18 +120,15 @@ export function buildParty(character: Character): PartyMemberDef[] {
     maxHp: character.maxHp,
   }];
 
-  for (const allyId of character.freedAllies) {
-    if (party.length >= MAX_PARTY_SIZE) break;
-    const instrument = COMBAT_ALLY_INSTRUMENT[allyId as AllyId];
-    if (!instrument) continue; // non-combat maestro (or grand_symphony)
-    const stats = statsAtLevel(instrument, character.level);
+  for (const id of getPartySelection(character, realPlayerInstruments)) {
+    const s = STUDENT_BY_ID[id];
+    const stats = statsAtLevel(s.instrument, character.level);
     party.push({
-      key: allyId,
-      name: ALLY_BATTLE_DEFS[allyId as AllyId].name,
-      instrument,
+      key: s.id,
+      name: s.name,
+      instrument: s.instrument,
       isHero: false,
-      emoji: getInstrumentEmoji(instrument),
-      portrait: MAESTRO_PORTRAITS[allyId as AllyId],
+      emoji: getInstrumentEmoji(s.instrument),
       stats,
       maxHp: stats.endurance * 5,
     });

@@ -134,6 +134,21 @@ Vexus denied** — that living musicians matter — by saving the very professor
 - **Captain André** — veteran trumpeter; leads the cliff militia at the Clef Cliffs.
 - **Elder Rampal** — hermit flutist; meets the heroes on the Chromatic Coasts to steel them.
 
+### The Classmates (the player's party)
+Battles are party battles: the hero plus up to four **student classmates**, all
+user-controlled, chosen on the Party page. One player per instrument — the hero's
+own part is always covered, and in **co-op, real players take these slots** and
+exclude their instruments (a clarinet hero with a real flutist friend has three
+NPC slots left, none of them flute or clarinet). The freed Maestros are summons,
+not party members.
+
+Classmates join on a fixed schedule (names nod to real players for the Hall of
+Fame): **Piper** (flute) & **Reed** (bassoon) in Zone 2; **Benny** (clarinet),
+**Miles** (trumpet), **Tommy** (trombone) & **Gene** (percussion) in Zone 3;
+**Otto** (tuba) & **Zoot** (alto sax) in Zone 4; **Obie** (oboe) & **Cora**
+(french horn) in Zone 5. There is no euphonium classmate — that chair is the
+hero's to claim.
+
 ### The Hall of Fame (educational easter-egg)
 The legendary **past masters** of Symphonica — studied in the Library, with recordings and
 biographies that unlock as lore. These are the real-musician homages: **Galwaynius** (Galway),
@@ -180,7 +195,7 @@ what her hands did to the forest, and the reset can't mend that.
 | # | Maestro → Corrupted Form | Instrument | Zone · Location | Map? | Post-freeing role |
 |---|--------------------------|-----------|------------------|------|-------------------|
 | 1 | Flaura → The Aria Wraith | Flute | 5 · Legato farmstead | ✅ Confirmed | Summon |
-| 2 | Cornelius → The War Horn Berserker | Trumpet | 5 · Monument of the Fallen March | ✅ Confirmed | **Playable guest** (Z5–8), then Summon |
+| 2 | Cornelius → The War Horn Berserker | Trumpet | 5 · Monument of the Fallen March | ✅ Confirmed | Summon *(travels with the caravan, Z5–8)* |
 | 3 | Clarence → Bassetto | Clarinet | 6 · Chaconne Caves | Incidental | Summon |
 | 4 | Paige → Caucophonus | Percussion | 6 · Caesura Crossing | Incidental | **Grand Artificer** (Crotchet shop) |
 | 5 | Adolpha → The Sound Shadow | Alto Sax | 7 · Player's Pass | Incidental | Summon |
@@ -215,8 +230,7 @@ Grand Artificer).
 ### Companion subplots
 - **Cornelius & Waldhorn (brothers).** Both professors before the Shattering. Freed in Zone 5,
   Cornelius searches for his **brother Waldhorn — scattered and lost when the Score shattered.**
-  The map confirms a Maestro in the Zone 8 Forest, so he **travels with the party as a playable
-  guest** (Z5–8). Finding and freeing him resolves his arc; only then does he convert to a summon.
+  The map confirms a Maestro in the Zone 8 Forest, so he **travels with the caravan** (Z5–8). Finding and freeing him resolves his arc; only then does he convert to a summon.
 - **Hautbois (the guide who won't fight).** Freed in Zone 8 and unable to forgive what her
   corruption did to the forest, she lays down her instrument and travels with the party through
   Act 3 offering **guidance only.**
@@ -271,7 +285,7 @@ nearer a corrupted Maestro (**navigation-by-ear**). Hub: the **Village of Legato
 - **Flaura → The Aria Wraith** *(Flute, confirmed)* — endlessly sustaining a field of dead crops.
   First freed; explains the Noteshard infection from the inside.
 - **Cornelius → The War Horn Berserker** *(Trumpet, confirmed)* — at the **Monument of the Fallen
-  March**. Freed, he searches for his scattered brother **Waldhorn** and **joins as a playable guest.**
+  March**. Freed, he searches for his scattered brother **Waldhorn** and **travels with the caravan.**
 
 ### Zone 6 — Sands of Time
 A desert, crossed edge-to-heart:
