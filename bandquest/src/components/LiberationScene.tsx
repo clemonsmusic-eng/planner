@@ -25,7 +25,7 @@ export default function LiberationScene({ beats, onDone, title = 'A Maestro Free
       </div>
       {b.image ? (
         <div className="mb-6 rounded-lg overflow-hidden border-2 border-academy-gold/50" style={{ boxShadow: '0 0 24px #FFD70044' }}>
-          <MaestroPortrait src={b.image} emoji={b.emoji} size={112} />
+          <MaestroPortrait src={b.image} emoji={b.emoji} size={216} full />
         </div>
       ) : (
         <div className="text-6xl mb-6" style={{ filter: 'drop-shadow(0 0 24px #FFD70066)' }}>{b.emoji}</div>

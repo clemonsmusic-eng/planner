@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate retro (FF6-flavored) maestro portraits from the concept lineup.
+"""Generate retro (FF6-flavored) full-body maestro sprites from the concept lineup.
 
 Usage:
     pip install pillow          # once
@@ -8,18 +8,19 @@ Usage:
         [--out public/portraits] \
         [--sheet docs/assets/portrait_sheet.png]
 
-Pipeline per character: crop a square bust from the lineup → downscale to
-64×64 (the "pixel grid") → quantize to a 24-color palette (the 16-bit look) →
-nearest-neighbor upscale to 192×192 → save as public/portraits/<allyId>.png.
+Pipeline per character: crop a tall full-body slice from the lineup →
+brighten / saturate / add contrast (the source is dark sepia stage lighting) →
+downscale to a 40×96 pixel grid → quantize to a 28-color palette → nearest-
+neighbor upscale ×3 (120×288) → save as public/portraits/<allyId>.png.
 
-A labeled contact sheet is written for review. If a crop is off, adjust the
-fractional CROPS box for that character (fractions of image width/height) and
-re-run — the script is idempotent.
+The UI shows these two ways: square tiles use object-position: top (face and
+shoulders); liberation scenes show the full figure. A labeled contact sheet is
+written for review — tweak the fractional CROPS and re-run (idempotent).
 
-The source image is the ten-maestro stage lineup. Character order, left→right:
-Fagotto (bassoon), Clarence (clarinet), Cornelius (trumpet), Adolpha (alto sax),
-Waldhorn (french horn), Torbult (tuba), Sackbut (trombone), Paige (percussion),
-Flaura (flute), Hautbois (oboe).
+Character order in the lineup, left→right: Fagotto (bassoon), Clarence
+(clarinet), Cornelius (trumpet), Adolpha (alto sax), Waldhorn (french horn),
+Torbult (tuba), Sackbut (trombone), Paige (percussion), Flaura (flute),
+Hautbois (oboe).
 """
 
 import argparse
@@ -27,34 +28,45 @@ import sys
 from pathlib import Path
 
 try:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 except ImportError:
     sys.exit("Pillow is required: pip install pillow")
 
-# allyId -> (display label, cx, y_top, y_bottom) as fractions of (W, H).
-# The crop is a square of side (y_bottom - y_top) * H centered on cx * W.
+# allyId -> (label, cx, y_head, y_feet) as fractions of (W, H).
+# Crop width is WIDTH_RATIO * body height, centered on cx.
 CROPS: dict[str, tuple[str, float, float, float]] = {
-    'bassanello': ('Fagotto · bassoon',    0.063, 0.325, 0.525),
-    'chalumeau':  ('Clarence · clarinet',  0.160, 0.350, 0.545),
-    'salpinx':    ('Cornelius · trumpet',  0.254, 0.340, 0.535),
-    'vela':       ('Adolpha · alto sax',   0.326, 0.400, 0.590),
-    'waldhorn':   ('Waldhorn · fr. horn',  0.407, 0.335, 0.530),
-    'cantora':    ('Torbult · tuba',       0.504, 0.262, 0.470),
-    'posaune':    ('Sackbut · trombone',   0.616, 0.400, 0.600),
-    'percival':   ('Paige · percussion',   0.728, 0.365, 0.560),
-    'syrinx':     ('Flaura · flute',       0.828, 0.360, 0.555),
-    'hautbois':   ('Hautbois · oboe',      0.915, 0.340, 0.535),
+    'bassanello': ('Fagotto · bassoon',    0.063, 0.320, 0.825),
+    'chalumeau':  ('Clarence · clarinet',  0.160, 0.345, 0.820),
+    'salpinx':    ('Cornelius · trumpet',  0.254, 0.335, 0.820),
+    'vela':       ('Adolpha · alto sax',   0.326, 0.395, 0.820),
+    'waldhorn':   ('Waldhorn · fr. horn',  0.407, 0.330, 0.820),
+    'cantora':    ('Torbult · tuba',       0.504, 0.258, 0.810),
+    'posaune':    ('Sackbut · trombone',   0.616, 0.395, 0.810),
+    'percival':   ('Paige · percussion',   0.728, 0.360, 0.820),
+    'syrinx':     ('Flaura · flute',       0.828, 0.355, 0.820),
+    'hautbois':   ('Hautbois · oboe',      0.915, 0.335, 0.820),
 }
 
-PIXEL_GRID = 64    # the effective "sprite" resolution
-COLORS = 24        # palette size after quantization
-OUT_SIZE = 192     # nearest-neighbor upscaled output
+WIDTH_RATIO = 0.40   # crop width as a fraction of body height (FF6-ish sprite aspect)
+GRID_W, GRID_H = 40, 96   # the effective "sprite" resolution
+COLORS = 28               # palette size after quantization
+SCALE = 3                 # nearest-neighbor upscale factor (output 120x288)
+
+# The lineup is lit like a dark stage; pull it up to bright 16-bit colors.
+BRIGHTNESS = 1.45
+SATURATION = 1.75
+CONTRAST = 1.25
 
 
 def demake(img: Image.Image) -> Image.Image:
-    small = img.resize((PIXEL_GRID, PIXEL_GRID), Image.LANCZOS)
-    quant = small.convert('RGB').quantize(colors=COLORS, method=Image.MEDIANCUT)
-    return quant.convert('RGB').resize((OUT_SIZE, OUT_SIZE), Image.NEAREST)
+    img = img.convert('RGB')
+    img = ImageOps.autocontrast(img, cutoff=1)
+    img = ImageEnhance.Brightness(img).enhance(BRIGHTNESS)
+    img = ImageEnhance.Color(img).enhance(SATURATION)
+    img = ImageEnhance.Contrast(img).enhance(CONTRAST)
+    small = img.resize((GRID_W, GRID_H), Image.LANCZOS)
+    quant = small.quantize(colors=COLORS, method=Image.MEDIANCUT)
+    return quant.convert('RGB').resize((GRID_W * SCALE, GRID_H * SCALE), Image.NEAREST)
 
 
 def main() -> None:
@@ -76,22 +88,23 @@ def main() -> None:
     W, H = img.size
     print(f"source {src} ({W}x{H})")
 
-    sheet = Image.new('RGB', (OUT_SIZE * 5, (OUT_SIZE + 22) * 2), (12, 12, 24))
+    out_w, out_h = GRID_W * SCALE, GRID_H * SCALE
+    sheet = Image.new('RGB', (out_w * 10 + 9 * 6, out_h + 22), (12, 12, 24))
     draw = ImageDraw.Draw(sheet)
 
     for i, (ally_id, (label, cx, y0, y1)) in enumerate(CROPS.items()):
-        side = (y1 - y0) * H
-        x0 = cx * W - side / 2
-        box = (int(max(0, x0)), int(y0 * H), int(min(W, x0 + side)), int(y1 * H))
-        portrait = demake(img.crop(box))
+        body_h = (y1 - y0) * H
+        crop_w = body_h * WIDTH_RATIO
+        x0 = cx * W - crop_w / 2
+        box = (int(max(0, x0)), int(y0 * H), int(min(W, x0 + crop_w)), int(y1 * H))
+        sprite = demake(img.crop(box))
         out = out_dir / f"{ally_id}.png"
-        portrait.save(out)
+        sprite.save(out)
         print(f"  wrote {out}  (crop {box})")
 
-        col, row = i % 5, i // 5
-        px, py = col * OUT_SIZE, row * (OUT_SIZE + 22)
-        sheet.paste(portrait, (px, py))
-        draw.text((px + 4, py + OUT_SIZE + 4), f"{ally_id} — {label}", fill=(230, 230, 245))
+        px = i * (out_w + 6)
+        sheet.paste(sprite, (px, 0))
+        draw.text((px + 2, out_h + 4), ally_id, fill=(230, 230, 245))
 
     sheet_path = Path(args.sheet)
     sheet_path.parent.mkdir(parents=True, exist_ok=True)
