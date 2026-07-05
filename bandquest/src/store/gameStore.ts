@@ -43,6 +43,9 @@ interface GameState {
   addSummonPoints: (delta: number) => Promise<void>;
   // Mark story moments seen (e.g. classmate recruitment) — no XP, just keys.
   recordStoryKeys: (keys: string[]) => Promise<void>;
+  // Turn in a side quest: award its reward-tier XP/coins and record it in
+  // completedQuests (distinct from challenge completion).
+  completeSideQuest: (questId: string, rewardType: string, score: number, rating: Rating) => Promise<void>;
   setCharacter: (character: Character | null) => void;
 
   // Guest Mode (no account; character persists to localStorage)
@@ -333,6 +336,68 @@ export const useGameStore = create<GameState>((set, get) => ({
     const updated = { ...character, completedChallenges };
     set({ character: updated });
     await persistChar(updated, { completed_challenges: completedChallenges });
+  },
+
+  completeSideQuest: async (questId, rewardType, _score, rating) => {
+    const { character } = get();
+    if (!character) return;
+    if (character.completedQuests.includes(questId)) return;
+
+    // XP/coins mirror awardChallenge, keyed off the quest's reward tier.
+    const baseXp = BASE_XP[rewardType] ?? BASE_XP.side_quest_short;
+    const xpAwarded = Math.round(baseXp * RATING_XP_MULTIPLIERS[rating]);
+    const rpAwarded = RATING_RP_AWARD[rating];
+    const coinsAwarded = COIN_PER_RATING[rating];
+
+    const newXp = character.xp + xpAwarded;
+    let newLevel = character.level;
+    let remainingXp = newXp;
+    while (remainingXp >= xpToNextLevel(newLevel)) {
+      remainingXp -= xpToNextLevel(newLevel);
+      newLevel = Math.min(100, newLevel + 1);
+    }
+    const didLevelUp = newLevel > character.level;
+    const newStats = didLevelUp
+      ? computeStatsAtLevel(character.instrument, newLevel)
+      : character.stats;
+    const newMaxHp = newStats.endurance * 5;
+    const newHp = didLevelUp
+      ? Math.min(newMaxHp, Math.round((character.hp / character.maxHp) * newMaxHp))
+      : character.hp;
+
+    const completedQuests = [...character.completedQuests, questId];
+    const updated: Character = {
+      ...character,
+      xp: remainingXp,
+      xpToNextLevel: xpToNextLevel(newLevel),
+      level: newLevel,
+      resonancePoints: character.resonancePoints + rpAwarded,
+      resonanceCoins: character.resonanceCoins + coinsAwarded,
+      stats: newStats,
+      hp: newHp,
+      maxHp: newMaxHp,
+      completedQuests,
+      totalAttempts: character.totalAttempts + 1,
+      weeklyXp: character.weeklyXp + xpAwarded,
+    };
+    set({ character: updated });
+    await persistChar(updated, {
+      xp: remainingXp,
+      level: newLevel,
+      resonance_points: updated.resonancePoints,
+      resonance_coins: updated.resonanceCoins,
+      completed_quests: completedQuests,
+      total_attempts: updated.totalAttempts,
+      weekly_xp: updated.weeklyXp,
+      ...(didLevelUp ? {
+        power: newStats.power,
+        accuracy: newStats.accuracy,
+        technique: newStats.technique,
+        endurance: newStats.endurance,
+        max_hp: newMaxHp,
+        hp: newHp,
+      } : {}),
+    });
   },
 
   // ── Guest Mode ────────────────────────────────────────────────────────────────

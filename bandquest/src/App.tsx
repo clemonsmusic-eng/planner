@@ -25,6 +25,7 @@ import WorldMapPage from './pages/WorldMapPage';
 import CustomizePage from './pages/CustomizePage';
 import FingeringChartPage from './pages/FingeringChartPage';
 import PartyPage from './pages/PartyPage';
+import SideQuestsPage from './pages/SideQuestsPage';
 import LoadingScreen from './components/LoadingScreen';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -157,6 +158,11 @@ export default function App() {
 
       <Route path="/gear" element={
         <RequireCharacter><GearPage /></RequireCharacter>
+      } />
+
+      {/* Side Quests */}
+      <Route path="/quests" element={
+        <RequireCharacter><SideQuestsPage /></RequireCharacter>
       } />
 
       {/* Gear Shop */}
