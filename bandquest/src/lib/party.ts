@@ -17,6 +17,7 @@
 import type { Character, InstrumentId, StatBlock } from '../types/game';
 import { INSTRUMENTS, getInstrumentEmoji } from './instruments';
 import { STUDENTS, STUDENT_BY_ID, hasMet } from './students';
+import { STUDENT_PORTRAITS } from './portraits';
 import { getEffectiveStats } from './gear';
 
 export const MAX_PARTY_SIZE = 5;
@@ -129,6 +130,7 @@ export function buildParty(
       instrument: s.instrument,
       isHero: false,
       emoji: getInstrumentEmoji(s.instrument),
+      portrait: STUDENT_PORTRAITS[s.id],
       stats,
       maxHp: stats.endurance * 5,
     });

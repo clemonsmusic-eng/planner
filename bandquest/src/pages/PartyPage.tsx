@@ -6,7 +6,9 @@ import {
   MAX_PARTY_SIZE, getPartySelection, savePartySelection, sanitizeSelection,
 } from '../lib/party';
 import { INSTRUMENTS, getInstrumentColor, getInstrumentEmoji } from '../lib/instruments';
+import { STUDENT_PORTRAITS } from '../lib/portraits';
 import Avatar from '../components/Avatar';
+import MaestroPortrait from '../components/MaestroPortrait';
 
 // Party picker: the hero plus up to four classmates, one instrument per party.
 // (In co-op, real players will occupy slots and exclude their instruments the
@@ -76,10 +78,15 @@ export default function PartyPage() {
             return (
               <div key={id} className="flex items-center gap-3 py-1.5 border-t border-white/5">
                 <div
-                  className="flex items-center justify-center text-xl rounded-lg flex-shrink-0"
-                  style={{ width: 40, height: 40, background: `${color}18`, border: `1px solid ${color}40` }}
+                  className="rounded-lg overflow-hidden flex-shrink-0"
+                  style={{ background: `${color}18`, border: `1px solid ${color}40` }}
                 >
-                  {getInstrumentEmoji(s.instrument)}
+                  <MaestroPortrait
+                    src={STUDENT_PORTRAITS[s.id]}
+                    emoji={getInstrumentEmoji(s.instrument)}
+                    size={40}
+                    color={color}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-fantasy" style={{ color }}>{s.name}</span>
@@ -118,10 +125,15 @@ export default function PartyPage() {
                 style={inParty ? { borderColor: `${color}66` } : undefined}
               >
                 <div
-                  className="flex items-center justify-center text-2xl rounded-lg flex-shrink-0"
-                  style={{ width: 48, height: 48, background: `${color}18`, border: `1px solid ${color}40`, filter: recruited ? 'none' : 'grayscale(1)' }}
+                  className="rounded-lg overflow-hidden flex-shrink-0"
+                  style={{ background: `${color}18`, border: `1px solid ${color}40`, filter: recruited ? 'none' : 'grayscale(1)' }}
                 >
-                  {getInstrumentEmoji(s.instrument)}
+                  <MaestroPortrait
+                    src={STUDENT_PORTRAITS[s.id]}
+                    emoji={getInstrumentEmoji(s.instrument)}
+                    size={48}
+                    color={color}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

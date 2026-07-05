@@ -5,6 +5,7 @@ import {
   recruitmentDue, hasMet, cameoDue, hasSeenCameo,
 } from '../lib/students';
 import { getInstrumentEmoji } from '../lib/instruments';
+import { STUDENT_PORTRAITS } from '../lib/portraits';
 import LiberationScene from './LiberationScene';
 
 // Zone story beats for the classmates: brief cameos (non-recruiting encounters,
@@ -31,6 +32,7 @@ export function useClassmateRecruitment(zoneId: number): ReactElement | null {
     ...dueCameos.map((c) => ({ emoji: c.emoji, text: c.text })),
     ...dueRecruits.map((s) => ({
       emoji: getInstrumentEmoji(s.instrument),
+      image: STUDENT_PORTRAITS[s.id],
       text: character.instrument === s.instrument ? s.farewellScene : s.joinScene,
     })),
   ];
