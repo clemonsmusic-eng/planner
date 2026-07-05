@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { RATING_XP_MULTIPLIERS, type Rating } from '../types/game';
 import {
-  SIDE_QUESTS, questReached, isQuestDone, availableQuests,
-  type SideQuest,
+  SIDE_QUESTS, isQuestDone, activeQuests, questIsLead,
+  SOURCE_LABEL, type SideQuest,
 } from '../lib/sidequests';
 import { ZONES } from '../lib/zones';
 import ChallengeModal from '../components/ChallengeModal';
@@ -22,9 +22,9 @@ export default function SideQuestsPage() {
 
   if (!character) return null;
 
-  const open = availableQuests(character);
+  const open = activeQuests(character);
   const done = SIDE_QUESTS.filter((q) => isQuestDone(q, character));
-  const upcoming = SIDE_QUESTS.filter((q) => !questReached(q, character) && !isQuestDone(q, character));
+  const leads = SIDE_QUESTS.filter((q) => questIsLead(q, character));
 
   async function handleComplete(rating: Rating, score: number) {
     if (!active) return;
@@ -44,17 +44,18 @@ export default function SideQuestsPage() {
         </button>
         <h1 className="fantasy-title text-2xl text-academy-cream mb-2">The Quest Board</h1>
         <p className="text-academy-cream/60 text-sm leading-relaxed">
-          Townsfolk and travelers with small troubles that music can mend. Optional errands —
-          take them in any order for extra XP and coins. New ones open as you reach new zones.
+          Errands you've picked up along the way — favors from NPCs you've met, job postings on
+          town boards, and openings unlocked by your deeds. Optional, but they pay in XP and coins.
         </p>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4">
         {/* Open quests */}
-        <SectionHeader label={`Open Quests · ${open.length}`} />
+        <SectionHeader label={`Active · ${open.length}`} />
         {open.length === 0 ? (
           <div className="card-panel text-center py-8 text-academy-cream/40 text-sm italic mb-8">
-            No open quests right now — reach a new zone to find more work.
+            Nothing active. Meet townsfolk, check job boards after graduation, and keep freeing
+            maestros — new quests will find their way here.
           </div>
         ) : (
           <div className="space-y-3 mb-8">
@@ -83,19 +84,19 @@ export default function SideQuestsPage() {
           </>
         )}
 
-        {/* Upcoming (locked) */}
-        {upcoming.length > 0 && (
+        {/* Leads & rumors (known but not yet triggered) */}
+        {leads.length > 0 && (
           <>
-            <SectionHeader label={`On the Road Ahead · ${upcoming.length}`} />
+            <SectionHeader label={`Leads & Rumors · ${leads.length}`} />
             <div className="space-y-2">
-              {upcoming.map((q) => (
-                <div key={q.id} className="card-panel py-3 px-4 flex items-center gap-3 opacity-40">
+              {leads.map((q) => (
+                <div key={q.id} className="card-panel py-3 px-4 flex items-center gap-3 opacity-45">
                   <div className="text-xl flex-shrink-0 grayscale">{q.giverEmoji}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-fantasy text-academy-cream/70">???</div>
-                    <div className="text-academy-cream/40 text-xs">Opens in {zoneName(q.zone)}</div>
+                    <div className="text-sm font-fantasy text-academy-cream/70">{leadTitle(q)}</div>
+                    <div className="text-academy-cream/40 text-xs">{leadHint(q)}</div>
                   </div>
-                  <div className="text-academy-cream/30 text-xs flex-shrink-0">🔒</div>
+                  <div className="text-academy-cream/30 text-[10px] flex-shrink-0">{SOURCE_LABEL[q.source]}</div>
                 </div>
               ))}
             </div>
@@ -147,6 +148,7 @@ function QuestCard({ quest, onTake }: { quest: SideQuest; onTake: () => void }) 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-fantasy text-academy-cream/90">{quest.title}</span>
+            <span className="text-[9px] uppercase tracking-widest text-academy-cream/50 border border-white/15 rounded px-1.5 py-0.5">{SOURCE_LABEL[quest.source]}</span>
             {isLong && (
               <span className="text-[9px] uppercase tracking-widest text-academy-gold/80 border border-academy-gold/40 rounded px-1.5 py-0.5">Major</span>
             )}
@@ -194,4 +196,19 @@ function TurnInDialog({ quest, rating, onClose }: { quest: SideQuest; rating: Ra
 
 function zoneName(zoneId: number): string {
   return ZONES.find((z) => z.id === zoneId)?.name ?? `Zone ${zoneId}`;
+}
+
+// Leads are known-but-not-triggered quests — shown vaguely so they read as
+// rumors, not a checklist. Unlock quests can surface their own hint.
+function leadTitle(q: SideQuest): string {
+  if (q.source === 'unlock') return q.title;
+  return '???';
+}
+
+function leadHint(q: SideQuest): string {
+  switch (q.source) {
+    case 'npc': return `Someone in ${zoneName(q.zone)} may need a hand — pay them a visit.`;
+    case 'job': return `A job board in ${zoneName(q.zone)} opens after graduation.`;
+    case 'unlock': return q.unlockHint ?? 'Locked by a deed not yet done.';
+  }
 }

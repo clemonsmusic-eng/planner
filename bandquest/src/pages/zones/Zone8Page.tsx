@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import LiberationScene, { type LibBeat } from '../../components/LiberationScene';
+import { useNpcQuestOffers } from '../../components/NpcQuestOffer';
 import { MAESTRO_PORTRAITS } from '../../lib/portraits';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, AllyId } from '../../types/game';
@@ -70,8 +71,10 @@ export default function Zone8Page() {
   const [lastRating, setLastRating] = useState<{ id: string; rating: Rating } | null>(null);
   const [activeBattle, setActiveBattle] = useState<BattleKind | null>(null);
   const [scene, setScene] = useState<SceneKey | null>(null);
+  const npcOffers = useNpcQuestOffers(8);
 
   if (!character) return null;
+  if (npcOffers) return npcOffers;
 
   const challenges = buildChallenges(character.completedChallenges);
   const required = challenges.filter((c) => c.required);

@@ -5,6 +5,7 @@ import { INSTRUMENTS } from '../../lib/instruments';
 import { getBossGearDrop } from '../../lib/gear';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
+import { useNpcQuestOffers } from '../../components/NpcQuestOffer';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, GearItem } from '../../types/game';
 
@@ -127,8 +128,10 @@ export default function Zone1Page() {
   const [graduationOpen, setGraduationOpen] = useState(false);
   const [graduationFailed, setGraduationFailed] = useState(false);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
+  const npcOffers = useNpcQuestOffers(1);
 
   if (!character) return null;
+  if (npcOffers) return npcOffers;
   const char = character; // stable ref for async callbacks
 
   const challenges = buildChallenges(character.completedChallenges);

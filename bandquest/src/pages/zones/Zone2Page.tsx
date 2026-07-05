@@ -5,6 +5,7 @@ import { getBossGearDrop } from '../../lib/gear';
 import ChallengeModal from '../../components/ChallengeModal';
 import BattleScreen from '../../components/BattleScreen';
 import { useClassmateRecruitment } from '../../components/ClassmateRecruitment';
+import { useNpcQuestOffers } from '../../components/NpcQuestOffer';
 import { ENEMIES } from '../../lib/enemies';
 import type { Rating, GearItem } from '../../types/game';
 
@@ -128,10 +129,12 @@ export default function Zone2Page() {
   const [concertFailed, setConcertFailed] = useState(false);
   const [gearDrop, setGearDrop] = useState<GearItem | null>(null);
   const recruitment = useClassmateRecruitment(2);
+  const npcOffers = useNpcQuestOffers(2);
 
   if (!character) return null;
   const char = character;
   if (recruitment) return recruitment;
+  if (npcOffers) return npcOffers;
 
   const challenges = buildChallenges(character.completedChallenges);
   const required = challenges.filter((c) => c.required);
