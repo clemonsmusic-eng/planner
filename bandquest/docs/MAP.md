@@ -67,7 +67,9 @@ coast and island. The Cadence River springs from the north end of the range and 
 SE through Concerta into the Concord Sea on the southern coast.
 
 ### The five cities (4 schools + 1 metropolis)
-- **Concerta** — central metropolis; all musical backgrounds gather here.
+- **Concerta** — central metropolis; all musical backgrounds gather here. Hosts the regional
+  inter-school contest (**the Concerta Invitational**, Zone 3) and, later, Paige's **Grand
+  Artificer** forge/shop.
 - **Fairwind** — far SE; the **Wind Academy** sits just NE on its outskirts.
 - **Coralis** — far south on the Concord Sea; **Choral College** at the foot of riser cliffs.
 - **Clavier** — N-NW canyon country; the **Piano Institute**.

@@ -26,7 +26,7 @@ const LIBERATION_BEATS: Record<'bassetta' | 'caucophonus', LibBeat[]> = {
     },
     {
       emoji: '🛠️',
-      image: MAESTRO_PORTRAITS.percival, text: "\"…I made all this?\" She sweeps the bench clean. \"Right. I'm headed back to Crotchet to set up properly — a real forge, the Grand Artificer's workshop. Bring me what you scavenge and I'll make it worth your while.\" You can summon Paige in battle.",
+      image: MAESTRO_PORTRAITS.percival, text: "\"…I made all this?\" She sweeps the bench clean. \"Right. I'm headed back to Concerta to set up properly — a real forge, the Grand Artificer's workshop. Bring me what you scavenge and I'll make it worth your while.\" You can summon Paige in battle.",
     },
   ],
 };
@@ -325,7 +325,7 @@ export default function Zone6Page() {
                 {!clarenceFreed && <span className="text-academy-gold/50"> (Free Clarence first — follow the shards)</span>}
               </div>
               {paigeFreed && (
-                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Paige heads to Crotchet to become the Grand Artificer — and answers your summons.</div>
+                <div className="text-rating-good text-xs mt-1.5 italic">Freed. Paige heads to Concerta to become the Grand Artificer — and answers your summons.</div>
               )}
             </div>
             {clarenceFreed && !paigeFreed && (

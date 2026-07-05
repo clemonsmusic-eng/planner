@@ -226,7 +226,7 @@ export default function Zone1Page() {
         <div className="card-panel mb-6 border-amber-700/30 bg-amber-900/10">
           <div className="text-xs text-academy-gold/60 uppercase tracking-widest font-fantasy mb-2">Story</div>
           <p className="text-academy-cream/70 text-sm leading-relaxed italic">
-            From the Academy's high windows, the town of Crotchet glows gold in the valley below,
+            From the Academy's high windows, the city of Concerta glows gold in the valley below,
             and somewhere a street band is playing. Maestro Barenboimi enters the practice room,
             baton in hand. "A whole world runs on music," he says, "and one day it will run on
             yours. So — again, from the top. Your scales matter more than you know."

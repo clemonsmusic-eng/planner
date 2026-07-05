@@ -92,12 +92,12 @@ function buildChallenges(completed: string[]): Challenge[] {
   ];
 }
 
-// ── The Crotchet Invitational (bracket) ─────────────────────────────────────────
+// ── The Concerta Invitational (bracket) ─────────────────────────────────────────
 const SEMIFINAL_CHALLENGE: Challenge = {
   id: 'z3_semifinal',
   title: 'Semifinal — vs Piano Preparatory',
   type: 'prepared_performance',
-  uilStandard: 'The Crotchet Invitational · Semifinal',
+  uilStandard: 'The Concerta Invitational · Semifinal',
   description:
     'Perform your prepared piece for the judges. Piano Preparatory just played a crisp, ' +
     'confident set — match or beat them (Good or better) to reach the final.',
@@ -110,7 +110,7 @@ const FINAL_CHALLENGE: Challenge = {
   id: 'z3_final',
   title: 'Final — vs The String School',
   type: 'prepared_performance',
-  uilStandard: 'The Crotchet Invitational · Final',
+  uilStandard: 'The Concerta Invitational · Final',
   description:
     'The whole town has packed the square. The String School are the favorites — perform a ' +
     'Sacred Score fragment and take the trophy (Good or better).',
@@ -183,11 +183,11 @@ export default function Zone3Page() {
         <div className="text-academy-gold/60 text-xs tracking-[0.4em] uppercase font-fantasy mb-1">
           Zone 3 · Act I · Quarter 3
         </div>
-        <h1 className="fantasy-title text-2xl text-academy-cream mb-2">The Town of Crotchet</h1>
+        <h1 className="fantasy-title text-2xl text-academy-cream mb-2">The City of Concerta</h1>
         <p className="text-academy-cream/60 text-sm leading-relaxed">
-          Your first field trip beyond the Academy walls. Crotchet is bright and bustling — banners
-          strung between the rooftops, every guild hall flying its colors. The regional inter-school
-          contest has come to town, and the Academy has entered you.
+          Your first field trip beyond the Academy walls. Concerta — the great central metropolis —
+          is bright and bustling — banners strung between the rooftops, every guild hall flying its
+          colors. The regional inter-school contest has come to the city, and the Academy has entered you.
         </p>
       </div>
 
@@ -202,7 +202,7 @@ export default function Zone3Page() {
           </div>
           {allRequiredDone && !contestWon && (
             <div className="mt-3 text-center text-rating-superior text-sm font-fantasy animate-pulse">
-              🏆 The Crotchet Invitational is open
+              🏆 The Concerta Invitational is open
             </div>
           )}
         </div>
@@ -237,7 +237,7 @@ export default function Zone3Page() {
         {/* The bracket */}
         <div className="card-panel mt-4 border-academy-gold/30">
           <div className="text-xs text-academy-gold uppercase tracking-widest font-fantasy mb-1">
-            🏆 The Crotchet Invitational
+            🏆 The Concerta Invitational
           </div>
           <div className="text-academy-cream/40 text-xs mb-4">
             Single-elimination. Win your semifinal, then take the final to claim the trophy and advance to Quarter 4.
@@ -285,7 +285,7 @@ export default function Zone3Page() {
           {contestWon && (
             <div className="mt-3 text-academy-cream/60 text-xs italic leading-relaxed border-t border-white/5 pt-3">
               The square erupts. The String School's first chair shakes your hand, grinning. The
-              Academy's banner rises over Crotchet, and for one bright afternoon the whole town sings
+              Academy's banner rises over Concerta, and for one bright afternoon the whole city sings
               along. You've earned your colors.
             </div>
           )}

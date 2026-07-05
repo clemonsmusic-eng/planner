@@ -55,7 +55,7 @@ export const STUDENTS: StudentDef[] = [
     joinScene: "After the Interval Imp scatters, Reed emerges from behind the theory shelves where he's been watching the whole fight, three spare reeds tucked behind one ear. \"A tritone sprite in the classroom, and a humming page in the stacks. Someone here should read the old clefs.\" He closes his book. \"You find things — I'll tell you what they mean.\" Reed joins the band!",
     farewellScene: "After the Interval Imp scatters, Reed emerges from behind the theory shelves where he's been watching the whole fight, three spare reeds tucked behind one ear. \"Another bassoon in the class,\" he says, almost smiling. \"Then the low reeds are in good hands — and the archive needs a keeper more than the stage needs two of us.\" Reed wishes you well and goes his own way.",
   },
-  // ── Zone 3 — The Town of Crotchet ──
+  // ── Zone 3 — The City of Concerta ──
   {
     id: 'tommy', name: 'Tommy', instrument: 'trombone', recruitZone: 3,
     recruitProgress: 3,
@@ -74,15 +74,15 @@ export const STUDENTS: StudentDef[] = [
     id: 'miles', name: 'Miles', instrument: 'trumpet', recruitZone: 3,
     recruitKey: 'z3_contest_won',
     blurb: 'Cool under pressure; plays louder than he talks.',
-    joinScene: "Miles watched the final from the wings without a word, all the way to the trophy. Afterward he just nods. \"You don't rush. Not even with the whole town listening. Need a lead trumpet who shows up?\" It's the longest speech anyone at the Academy has heard from him. Miles joins the band!",
+    joinScene: "Miles watched the final from the wings without a word, all the way to the trophy. Afterward he just nods. \"You don't rush. Not even with the whole crowd listening. Need a lead trumpet who shows up?\" It's the longest speech anyone at the Academy has heard from him. Miles joins the band!",
     farewellScene: "Miles watched the final from the wings without a word, all the way to the trophy. Afterward he just nods. \"You don't rush. I like that. But two leads fight over the melody — it's yours.\" He taps his bell against yours, the quietest handshake in Symphonica, and heads off to anchor the second band's section. Miles wishes you well and goes his own way.",
   },
   {
     id: 'gene', name: 'Gene', instrument: 'percussion', recruitZone: 3,
     recruitKey: 'z3_contest_won',
     blurb: 'Second-generation drummer, finally playing for himself.',
-    joinScene: "When the trophy goes up and the whole town starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that—\" he nods at the crowd, still humming, \"—that was a hundred people breathing together. I want in. For real this time.\" Gene joins the band!",
-    farewellScene: "When the trophy goes up and the whole town starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that was a hundred people breathing together — and you already speak drum better than I ever cared to.\" He pockets his sticks, thoughtful. \"I'm going home to ask my dad to actually teach me. From the top. Like I mean it.\" Gene wishes you well and goes his own way.",
+    joinScene: "When the trophy goes up and the whole crowd starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that—\" he nods at the crowd, still humming, \"—that was a hundred people breathing together. I want in. For real this time.\" Gene joins the band!",
+    farewellScene: "When the trophy goes up and the whole crowd starts singing your final piece back at you, you spot Gene at the edge of the square — sticks still, for once, just listening. \"I always thought it was just hitting things,\" he says at last. \"Dad's thing. A grade. But that was a hundred people breathing together — and you already speak drum better than I ever cared to.\" He pockets his sticks, thoughtful. \"I'm going home to ask my dad to actually teach me. From the top. Like I mean it.\" Gene wishes you well and goes his own way.",
   },
   // ── Zone 4 — The Grand Auditorium ──
   {

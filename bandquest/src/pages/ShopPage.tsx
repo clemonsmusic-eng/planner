@@ -54,7 +54,7 @@ export default function ShopPage() {
             <div className="text-4xl mb-4">🔒</div>
             <div className="fantasy-title text-base text-academy-gold mb-2">Shop Locked</div>
             <div className="text-academy-cream/50 text-sm">
-              The Town of Crotchet opens in Quarter 3 (Zone 3).
+              Concerta opens in Quarter 3 (Zone 3).
             </div>
             <div className="text-academy-cream/30 text-xs mt-2">
               Complete Zone 2 to unlock the shop.

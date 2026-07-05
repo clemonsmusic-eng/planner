@@ -27,10 +27,10 @@ export const ZONES: ZoneMeta[] = [
     boss: 'The Winter Concert',
   },
   {
-    id: 3, name: 'The Town of Crotchet', act: 1, quarter: 3, season: 'Spring',
-    emoji: '🏘️',
-    flavor: 'A bright market town hosting the regional inter-school contest — banners, crowds, and four schools chasing one trophy.',
-    boss: 'The Crotchet Invitational',
+    id: 3, name: 'The City of Concerta', act: 1, quarter: 3, season: 'Spring',
+    emoji: '🏙️',
+    flavor: 'The great central metropolis, hosting the regional inter-school contest — banners, crowds, and four schools chasing one trophy.',
+    boss: 'The Concerta Invitational',
   },
   {
     id: 4, name: 'The Grand Auditorium', act: 1, quarter: 4, season: 'End of Year',

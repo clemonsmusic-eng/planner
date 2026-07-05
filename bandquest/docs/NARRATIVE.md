@@ -151,10 +151,10 @@ classmate — that chair is the hero's to claim.
 |------|-----------|-----------|------|----------------|
 | 2 | **Piper** | Flute | Arrival | Practices alone after hours; wants a duet partner who'll push her — "duets beat solos." |
 | 2 | **Reed** | Bassoon | After the Interval Imp | Watched the fight from the theory shelves; the only student who reads the old clefs. You find things, he tells you what they mean. |
-| 3 | **Gene** | Percussion | Trophy won *(cameos in Zone 2 and mid-tournament)* | A second-generation drummer pushed into it by his father — indifferent, though he does like hitting things. Met twice in passing; only when the whole town sings the final piece back does he understand what music is for, and buy in. |
+| 3 | **Gene** | Percussion | Trophy won *(cameos in Zone 2 and mid-tournament)* | A second-generation drummer pushed into it by his father — indifferent, though he does like hitting things. Met twice in passing; only when the whole crowd sings the final piece back does he understand what music is for, and buy in. |
 | 3 | **Tommy** | Trombone | 3 events in | Still carrying the Academy banner everywhere; wants to hold the section together too. |
 | 3 | **Benny** | Clarinet | Semifinal won | Catches you stepping off the semifinal stage — refuses to let that sound reach the final without him. |
-| 3 | **Miles** | Trumpet | Trophy won | Watched the final from the wings; you didn't rush, even with the whole town listening. |
+| 3 | **Miles** | Trumpet | Trophy won | Watched the final from the wings; you didn't rush, even with the whole crowd listening. |
 | 4 | **Otto** | Tuba | Arrival | Foundations first — sections, buildings, bands. He'll hold yours up. |
 | 4 | **Zoot** | Alto Sax | 2 rehearsals in | Caught sneaking swing into the chorale again; wants a band that improvises. |
 | 5 | **Obie** | Oboe | Arrival | Chases the caravan down: a world out of tune will not go unanswered — someone must give the expedition its A. |
@@ -215,7 +215,7 @@ what her hands did to the forest, and the reset can't mend that.
 | 1 | Flaura → The Aria Wraith | Flute | 5 · Legato farmstead | ✅ Confirmed | Summon |
 | 2 | Cornelius → The War Horn Berserker | Trumpet | 5 · Monument of the Fallen March | ✅ Confirmed | Summon *(travels with the caravan, Z5–8)* |
 | 3 | Clarence → Bassetto | Clarinet | 6 · Chaconne Caves | Incidental | Summon |
-| 4 | Paige → Caucophonus | Percussion | 6 · Caesura Crossing | Incidental | **Grand Artificer** (Crotchet shop) |
+| 4 | Paige → Caucophonus | Percussion | 6 · Caesura Crossing | Incidental | **Grand Artificer** (Concerta shop) |
 | 5 | Adolpha → The Sound Shadow | Alto Sax | 7 · Player's Pass | Incidental | Summon |
 | 6 | Sackbut → The Sliding Chaos Knight | Trombone | 7 · Discordian Outpost | Incidental | Summon |
 | 7 | Torbult → The Stone Colossus | Euph/Tuba | 7 · Discordian Outpost | Incidental | Summon |
@@ -275,8 +275,8 @@ mischievous training-hall sprite. **Ends with the Winter Concert** — crashed b
 concert-sprite drawn to the music's energy** (the former "Shard Phantom," reframed: no Noteshards
 exist yet). Drive it off, then perform. *(Implemented; lore reframe needed.)*
 
-**Zone 3 — The Town of Crotchet** *(Q3).* First field trips into a bright, bustling town. **Ends
-with The Crotchet Invitational** — a single-elimination bracket against **Choral College**, **Piano
+**Zone 3 — The City of Concerta** *(Q3).* First field trips into the bright, bustling central
+metropolis. **Ends with The Concerta Invitational** — a single-elimination bracket against **Choral College**, **Piano
 Preparatory**, and **The String School** (friendly rivals; the String School carries only a light
 outsider's edge). You play your semifinal (vs Piano Preparatory) and, if you win, the final (vs The
 String School, who advance from the other semifinal); taking the trophy earns your Ensemble Colors
@@ -312,7 +312,7 @@ A desert, crossed edge-to-heart:
    Phantoms** (Chalumeau, Throat-Tone, Clarion, Altissimo). Deep within: **Bassetto** *(Clarence,
    Clarinet)*, a short-tempered nomad whose wail spans every register.
 3. **The Caesura Crossing** *(desert's end)* — a trading post run by **Caucophonus** *(Paige,
-   Percussion)*, manufacturing discord-laced goods. Freed, she later returns to **Crotchet** as the
+   Percussion)*, manufacturing discord-laced goods. Freed, she later returns to **Concerta** as the
    **Grand Artificer** and takes over the gear shop.
 
 ### Zone 7 — Clef Cliffs
