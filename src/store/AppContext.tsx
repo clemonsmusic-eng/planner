@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, ChecklistState } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -14,6 +14,7 @@ import {
   loadPhaseTemplates, savePhaseTemplates,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
+import { toggleChecklistItem, setManyChecklistItems } from '../lib/checklist';
 import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
@@ -64,6 +65,7 @@ type Action =
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
+  | { type: 'SET_CHECKLIST'; id: string; checklist: ChecklistState }
   | { type: 'LOAD_STATE'; state: Partial<AppState> };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -140,6 +142,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, phaseTemplates: action.phaseTemplates };
     }
 
+    case 'SET_CHECKLIST': {
+      const projects = state.projects.map((p) =>
+        p.id === action.id
+          ? { ...p, checklist: action.checklist, updatedAt: new Date().toISOString() }
+          : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -168,6 +180,8 @@ interface AppContextValue {
   activeProject: Project | null;
   generateAndSaveSchedule: (projectId: string) => void;
   setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
+  setChecklistItem: (projectId: string, itemId: string, done: boolean) => void;
+  setChecklistItems: (projectId: string, itemIds: string[], done: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -255,8 +269,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
   }
 
+  function setChecklistItem(projectId: string, itemId: string, done: boolean) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const checklist = toggleChecklistItem(project.checklist ?? {}, itemId, done);
+    dispatch({ type: 'SET_CHECKLIST', id: projectId, checklist });
+  }
+
+  function setChecklistItems(projectId: string, itemIds: string[], done: boolean) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project || itemIds.length === 0) return;
+    const checklist = setManyChecklistItems(project.checklist ?? {}, itemIds, done);
+    dispatch({ type: 'SET_CHECKLIST', id: projectId, checklist });
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride }}>
+    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, setChecklistItem, setChecklistItems }}>
       {children}
     </AppContext.Provider>
   );

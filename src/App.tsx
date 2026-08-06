@@ -7,6 +7,7 @@ import { PlanPage } from './pages/PlanPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { ChecklistPage } from './pages/ChecklistPage';
 
 function AppContent() {
   const { state } = useApp();
@@ -19,6 +20,7 @@ function AppContent() {
       case 'schedule':  return <SchedulePage />;
       case 'settings':  return <SettingsPage />;
       case 'calendar':  return <CalendarPage />;
+      case 'checklist': return <ChecklistPage />;
     }
   })();
 

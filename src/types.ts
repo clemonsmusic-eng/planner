@@ -177,6 +177,106 @@ export interface SuggestedDates {
   auctionPickup: string | null;
 }
 
+// ─── Checklist ────────────────────────────────────────────────────────────────
+// The checklist is a *derived* view: its sections and items come from the
+// checklist template, and every due date is anchored to a date the move plan
+// builder produced (SuggestedDates) or the user entered (ProjectInputs).
+// Only completion state is stored per project.
+
+/** A named date on the move plan that checklist due dates hang off of. */
+export type ChecklistAnchor =
+  | 'earliestStart'
+  | 'firstVisit'
+  | 'secondVisit'
+  | 'sortDayFirst'
+  | 'sortDayLast'
+  | 'finalPackDay'
+  | 'moveDay'
+  | 'cleanoutDay'
+  | 'auctionLotOrg'
+  | 'auctionStart'
+  | 'auctionPickup'
+  | 'hardDeadline';
+
+/** 'workday' offsets skip weekends; 'calendar' counts every day. */
+export type OffsetMode = 'calendar' | 'workday';
+
+/** Gates an item or section to jobs that actually include the work. */
+export interface ChecklistRequirement {
+  cleanout?: boolean;
+  auction?: boolean;
+  moveTypes?: MoveType[];
+}
+
+export interface ChecklistItemTemplate {
+  id: string;
+  label: string;
+  detail?: string;
+  /** Which move-plan date this item's due date is measured from. */
+  anchor: ChecklistAnchor;
+  /** Days before (negative) or after (positive) the anchor. */
+  offsetDays: number;
+  /** Defaults to 'workday'. */
+  offsetMode?: OffsetMode;
+  /** Who typically owns the item — display only, not used for assignment. */
+  owner?: RoleType;
+  requires?: ChecklistRequirement;
+}
+
+export interface ChecklistSectionTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  requires?: ChecklistRequirement;
+  items: ChecklistItemTemplate[];
+}
+
+/** Per-item completion state — the only part that is persisted. */
+export interface ChecklistItemState {
+  done: boolean;
+  completedAt: string | null;
+}
+
+export type ChecklistState = Record<string, ChecklistItemState>;
+
+export type ChecklistItemStatus = 'done' | 'overdue' | 'due-soon' | 'upcoming' | 'unscheduled';
+
+export interface ChecklistItem extends ChecklistItemTemplate {
+  sectionId: string;
+  sectionTitle: string;
+  /** null when the anchoring date doesn't exist on this job. */
+  dueDate: string | null;
+  done: boolean;
+  completedAt: string | null;
+  status: ChecklistItemStatus;
+}
+
+export interface ChecklistSection {
+  id: string;
+  title: string;
+  description?: string;
+  items: ChecklistItem[];
+  doneCount: number;
+  overdueCount: number;
+}
+
+export interface ChecklistProgress {
+  total: number;
+  done: number;
+  overdue: number;
+  dueSoon: number;
+  percent: number;
+}
+
+export interface ChecklistResult {
+  sections: ChecklistSection[];
+  /** Flat, sorted by due date (unscheduled last). */
+  items: ChecklistItem[];
+  progress: ChecklistProgress;
+  /** Resolved anchor → ISO date, for display and debugging. */
+  anchorDates: Record<ChecklistAnchor, string | null>;
+}
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
@@ -184,10 +284,12 @@ export interface Project {
   updatedAt: string;
   inputs: ProjectInputs;
   schedule: ScheduleResult | null;
+  /** Completion state only — items and due dates are always re-derived. */
+  checklist?: ChecklistState;
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
+export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar' | 'checklist';
 
 export interface AppState {
   projects: Project[];
