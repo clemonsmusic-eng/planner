@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - claude/move-plan-builder-iphone-pNs6g
+      - claude/move-plan-checklist-app-rfmznn
 
 permissions:
   contents: read

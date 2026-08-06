@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { HamburgerButton } from '../components/HamburgerMenu';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
-import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest } from '../types';
+import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
+import { ANCHOR_LABELS, CHECKLIST_OWNERS, DEFAULT_CHECKLIST_TEMPLATE } from '../lib/checklistData';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1092,7 +1093,167 @@ function ListCategoryCard({
 
 // ─── Settings Page ─────────────────────────────────────────────────────────────
 
-type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'communities' | 'auctionDefaults' | 'teamExperience';
+// ─── Checklist Template Card ──────────────────────────────────────────────────
+
+/**
+ * Edits one checklist section and its items. Items carry an anchor + offset
+ * rather than a date — the checklist resolves those against each project's
+ * generated plan, so a template edit re-dates every project at once.
+ */
+function ChecklistSectionCard({
+  section,
+  onChange,
+  onDelete,
+}: {
+  section: ChecklistTemplateSection;
+  onChange: (updated: ChecklistTemplateSection) => void;
+  onDelete: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  function updateItem(index: number, patch: Partial<ChecklistTemplateItem>) {
+    onChange({ ...section, items: section.items.map((item, i) => (i === index ? { ...item, ...patch } : item)) });
+  }
+
+  function addItem() {
+    onChange({
+      ...section,
+      items: [
+        ...section.items,
+        {
+          id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          text: 'New task',
+          anchor: 'move-day' as ChecklistAnchor,
+          offsetDays: 0,
+          offsetMode: 'calendar' as const,
+          owner: 'PM' as ChecklistOwner,
+        },
+      ],
+    });
+  }
+
+  function removeItem(index: number) {
+    onChange({ ...section, items: section.items.filter((_, i) => i !== index) });
+  }
+
+  return (
+    <div className="border border-ios-gray-200 rounded-2xl overflow-hidden bg-white">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center gap-2 px-3 py-3 min-h-[52px] text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900 truncate">{section.name}</p>
+          <p className="text-xs text-ios-gray-500">
+            {section.items.length} item{section.items.length === 1 ? '' : 's'}
+            {section.requires && ` · needs ${section.requires}`}
+          </p>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-ios-gray-100 px-3 py-3 space-y-3">
+          <div>
+            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1">
+              Section Name
+            </label>
+            <input
+              value={section.name}
+              onChange={(e) => onChange({ ...section, name: e.target.value })}
+              className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 py-2 text-sm bg-white"
+            />
+          </div>
+
+          <div className="space-y-2">
+            {section.items.map((item, i) => (
+              <div key={item.id} className="bg-ios-gray-50 rounded-xl p-2.5 space-y-2">
+                <div className="flex items-start gap-2">
+                  <textarea
+                    value={item.text}
+                    onChange={(e) => updateItem(i, { text: e.target.value })}
+                    rows={2}
+                    className="flex-1 rounded-lg border border-ios-gray-300 px-2.5 py-1.5 text-sm bg-white resize-none"
+                  />
+                  <button
+                    onClick={() => removeItem(i)}
+                    className="w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 rounded-lg flex-shrink-0"
+                    aria-label="Remove item"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <select
+                    value={item.anchor}
+                    onChange={(e) => updateItem(i, { anchor: e.target.value as ChecklistAnchor })}
+                    className="rounded-lg border border-ios-gray-300 px-2 py-1.5 text-xs bg-white min-h-[36px]"
+                  >
+                    {Object.entries(ANCHOR_LABELS).map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    value={item.offsetDays}
+                    onChange={(e) => updateItem(i, { offsetDays: parseInt(e.target.value, 10) || 0 })}
+                    className="w-16 rounded-lg border border-ios-gray-300 px-2 py-1.5 text-xs bg-white min-h-[36px]"
+                    aria-label="Offset in days"
+                  />
+
+                  <button
+                    onClick={() => updateItem(i, { offsetMode: item.offsetMode === 'calendar' ? 'workday' : 'calendar' })}
+                    className="rounded-lg border border-ios-gray-300 px-2 py-1.5 text-xs bg-white min-h-[36px] font-medium text-ios-gray-700"
+                  >
+                    {item.offsetMode === 'workday' ? 'workdays' : 'days'}
+                  </button>
+
+                  <select
+                    value={item.owner}
+                    onChange={(e) => updateItem(i, { owner: e.target.value as ChecklistOwner })}
+                    className="rounded-lg border border-ios-gray-300 px-2 py-1.5 text-xs bg-white min-h-[36px]"
+                  >
+                    {CHECKLIST_OWNERS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={addItem}
+              className="flex-1 py-2.5 border-2 border-dashed border-ios-gray-300 rounded-xl text-ios-gray-500 text-xs font-semibold min-h-[44px]"
+            >
+              + Add Item
+            </button>
+            <button
+              onClick={onDelete}
+              className="px-3 py-2.5 rounded-xl text-xs font-semibold text-red-600 border border-red-200 min-h-[44px]"
+            >
+              Delete Section
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'checklist' | 'communities' | 'auctionDefaults' | 'teamExperience';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -1106,6 +1267,9 @@ export function SettingsPage() {
     state.phaseTemplates.map((t) => ({ ...t }))
   );
   const [auctionSettings, setAuctionSettings] = useState<AuctionAppSettings>({ ...state.auctionSettings });
+  const [checklistTemplate, setChecklistTemplate] = useState<ChecklistTemplateSection[]>(
+    state.checklistTemplate.map((sec) => ({ ...sec, items: sec.items.map((i) => ({ ...i })) }))
+  );
   const [newCommunity, setNewCommunity] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
@@ -1165,6 +1329,30 @@ export function SettingsPage() {
     setIsDirty(true);
   }
 
+  function updateChecklistSection(index: number, updated: ChecklistTemplateSection) {
+    setChecklistTemplate((prev) => prev.map((sec, i) => (i === index ? updated : sec)));
+    setIsDirty(true);
+  }
+
+  function deleteChecklistSection(index: number) {
+    setChecklistTemplate((prev) => prev.filter((_, i) => i !== index));
+    setIsDirty(true);
+  }
+
+  function addChecklistSection() {
+    setChecklistTemplate((prev) => [
+      ...prev,
+      { id: `sec-${Date.now()}`, name: 'New Section', order: prev.length + 1, items: [] },
+    ]);
+    setIsDirty(true);
+  }
+
+  function restoreDefaultChecklist() {
+    if (!confirm('Replace the checklist template with the built-in default? Section and item edits will be lost. Per-project progress is kept.')) return;
+    setChecklistTemplate(DEFAULT_CHECKLIST_TEMPLATE.map((sec) => ({ ...sec, items: sec.items.map((i) => ({ ...i })) })));
+    setIsDirty(true);
+  }
+
   function updateList(listIdx: number, updated: ListCategory) {
     setLists((prev) => prev.map((l, i) => (i === listIdx ? updated : l)));
     setIsDirty(true);
@@ -1181,6 +1369,7 @@ export function SettingsPage() {
     dispatch({ type: 'UPDATE_LISTS', lists });
     dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
     dispatch({ type: 'UPDATE_AUCTION_SETTINGS', settings: auctionSettings });
+    dispatch({ type: 'UPDATE_CHECKLIST_TEMPLATE', checklistTemplate });
     setIsDirty(false);
   }
 
@@ -1320,6 +1509,46 @@ export function SettingsPage() {
         </AccordionSection>
 
         {/* ── Communities ───────────────────────────────────────────────── */}
+        {/* ── Checklist Template ────────────────────────────────────────── */}
+        <AccordionSection
+          title="Checklist Template"
+          subtitle={`${checklistTemplate.length} sections · ${checklistTemplate.reduce((n, s) => n + s.items.length, 0)} items`}
+          open={openSections.has('checklist')}
+          onToggle={() => toggleSection('checklist')}
+        >
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Items are dated relative to a milestone from the move plan, not by fixed date — so
+              every project's checklist re-dates itself when its plan changes.
+            </p>
+            <div className="space-y-2">
+              {checklistTemplate.map((section, i) => (
+                <ChecklistSectionCard
+                  key={section.id}
+                  section={section}
+                  onChange={(updated) => updateChecklistSection(i, updated)}
+                  onDelete={() => deleteChecklistSection(i)}
+                />
+              ))}
+            </div>
+            <button
+              onClick={addChecklistSection}
+              className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              Add Section
+            </button>
+            <button
+              onClick={restoreDefaultChecklist}
+              className="w-full py-2.5 text-xs font-semibold text-ios-gray-500"
+            >
+              Restore Default Template
+            </button>
+          </div>
+        </AccordionSection>
+
         <AccordionSection
           title="Communities"
           subtitle="Senior communities in the project dropdown"

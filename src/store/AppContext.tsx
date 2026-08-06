@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -13,9 +13,11 @@ import {
   loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
   loadAuctionSettings, saveAuctionSettings,
+  loadChecklistTemplate, saveChecklistTemplate,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
+import { emptyChecklist, normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
 
 // ─── Example / Seed project ───────────────────────────────────────────────────
 
@@ -48,6 +50,7 @@ function createExampleProject(teamMembers: TeamMember[], lists: ListCategory[] =
     updatedAt: new Date().toISOString(),
     inputs,
     schedule: null,
+    checklist: emptyChecklist(),
   };
   project.schedule = generateSchedule(inputs, teamMembers, DEFAULT_PHASE_TEMPLATES, lists);
   return project;
@@ -69,6 +72,8 @@ type Action =
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
   | { type: 'UPDATE_AUCTION_SETTINGS'; settings: AuctionAppSettings }
+  | { type: 'UPDATE_CHECKLIST_TEMPLATE'; checklistTemplate: ChecklistTemplateSection[] }
+  | { type: 'UPDATE_CHECKLIST'; id: string; checklist: ProjectChecklist }
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
   | { type: 'TOGGLE_LOCK'; id: string }
   | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string }
@@ -156,6 +161,19 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, auctionSettings: action.settings };
     }
 
+    case 'UPDATE_CHECKLIST_TEMPLATE': {
+      saveChecklistTemplate(action.checklistTemplate);
+      return { ...state, checklistTemplate: action.checklistTemplate };
+    }
+
+    case 'UPDATE_CHECKLIST': {
+      const projects = state.projects.map((p) =>
+        p.id === action.id ? { ...p, checklist: action.checklist } : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -227,6 +245,7 @@ const initialState: AppState = {
   phaseTemplates: [],
   auctionSettings: { hourlyRate: 95, performanceLevel: 'Average' },
   projectListFilter: 'all',
+  checklistTemplate: [],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -238,6 +257,13 @@ interface AppContextValue {
   generateAndSaveSchedule: (projectId: string) => void;
   setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
   movePhaseDate: (projectId: string, phaseId: string, originalDate: string, newDate: string) => ScheduleResult;
+  toggleChecklistItem: (projectId: string, itemId: string) => void;
+  setChecklistDueDate: (projectId: string, itemId: string, date: string | null) => void;
+  setChecklistNote: (projectId: string, itemId: string, note: string) => void;
+  addChecklistItem: (projectId: string, item: ChecklistTemplateItem & { sectionId: string }) => void;
+  removeChecklistItem: (projectId: string, itemId: string, isCustom: boolean) => void;
+  restoreChecklistItems: (projectId: string) => void;
+  resetChecklistProgress: (projectId: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -252,6 +278,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
     const auctionSettings = loadAuctionSettings();
+    const checklistTemplate = loadChecklistTemplate();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers, lists);
       projects = [example];
@@ -266,6 +293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         lists,
         phaseTemplates,
         auctionSettings,
+        checklistTemplate,
         activeProjectId: projects[0]?.id ?? null,
       },
     });
@@ -345,8 +373,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return schedule;
   }
 
+  // ── Checklist mutations ─────────────────────────────────────────────────────
+  // Each one reads the project's current checklist, applies a narrow change, and
+  // writes the whole checklist back through UPDATE_CHECKLIST.
+
+  function mutateChecklist(projectId: string, fn: (c: ProjectChecklist) => ProjectChecklist) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    dispatch({ type: 'UPDATE_CHECKLIST', id: projectId, checklist: fn(normalizeChecklist(project.checklist)) });
+  }
+
+  function updateItemState(
+    checklist: ProjectChecklist,
+    itemId: string,
+    patch: Partial<ProjectChecklist['itemStates'][string]>
+  ): ProjectChecklist {
+    const current = checklist.itemStates[itemId] ?? EMPTY_ITEM_STATE;
+    return { ...checklist, itemStates: { ...checklist.itemStates, [itemId]: { ...current, ...patch } } };
+  }
+
+  function toggleChecklistItem(projectId: string, itemId: string) {
+    mutateChecklist(projectId, (c) => {
+      const done = !(c.itemStates[itemId]?.done ?? false);
+      return updateItemState(c, itemId, { done, completedAt: done ? new Date().toISOString() : null });
+    });
+  }
+
+  function setChecklistDueDate(projectId: string, itemId: string, date: string | null) {
+    mutateChecklist(projectId, (c) => updateItemState(c, itemId, { dueDateOverride: date }));
+  }
+
+  function setChecklistNote(projectId: string, itemId: string, note: string) {
+    mutateChecklist(projectId, (c) => updateItemState(c, itemId, { note }));
+  }
+
+  function addChecklistItem(projectId: string, item: ChecklistTemplateItem & { sectionId: string }) {
+    mutateChecklist(projectId, (c) => ({ ...c, customItems: [...c.customItems, item] }));
+  }
+
+  /**
+   * Custom items are deleted outright; template items are only hidden for this
+   * project, so the shared template stays intact.
+   */
+  function removeChecklistItem(projectId: string, itemId: string, isCustom: boolean) {
+    mutateChecklist(projectId, (c) =>
+      isCustom
+        ? { ...c, customItems: c.customItems.filter((i) => i.id !== itemId) }
+        : { ...c, excludedItemIds: [...new Set([...c.excludedItemIds, itemId])] }
+    );
+  }
+
+  function restoreChecklistItems(projectId: string) {
+    mutateChecklist(projectId, (c) => ({ ...c, excludedItemIds: [] }));
+  }
+
+  function resetChecklistProgress(projectId: string) {
+    mutateChecklist(projectId, (c) => ({ ...c, itemStates: {} }));
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate }}>
+    <AppContext.Provider
+      value={{
+        state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
+        toggleChecklistItem, setChecklistDueDate, setChecklistNote,
+        addChecklistItem, removeChecklistItem, restoreChecklistItems, resetChecklistProgress,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
