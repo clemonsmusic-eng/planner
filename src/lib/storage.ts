@@ -1,4 +1,4 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, ChecklistStore } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
@@ -11,6 +11,7 @@ const STORAGE_KEY_TEAM            = 'st-planner-team';
 const STORAGE_KEY_COMMUNITIES     = 'st-planner-communities';
 const STORAGE_KEY_LISTS           = 'st-planner-lists';
 const STORAGE_KEY_PHASE_TEMPLATES = 'st-planner-phase-templates';
+const STORAGE_KEY_CHECKLISTS      = 'st-planner-checklists';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -166,5 +167,35 @@ export function savePhaseTemplates(templates: PhaseTemplate[]): void {
     localStorage.setItem(STORAGE_KEY_PHASE_TEMPLATES, JSON.stringify(templates));
   } catch (e) {
     console.error('Failed to save phase templates', e);
+  }
+}
+
+// ─── Checklists ───────────────────────────────────────────────────────────────
+
+export function loadChecklists(): ChecklistStore {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as ChecklistStore;
+    // Normalize partially-shaped records saved by older builds
+    return Object.fromEntries(
+      Object.entries(parsed).map(([projectId, entry]) => [
+        projectId,
+        {
+          completed: entry?.completed ?? {},
+          longDistance: entry?.longDistance ?? false,
+        },
+      ])
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function saveChecklists(checklists: ChecklistStore): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklists));
+  } catch (e) {
+    console.error('Failed to save checklists', e);
   }
 }

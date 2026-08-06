@@ -177,6 +177,104 @@ export interface SuggestedDates {
   auctionPickup: string | null;
 }
 
+// ─── Checklist ────────────────────────────────────────────────────────────────
+/**
+ * Points in the generated move plan that a checklist item can be anchored to.
+ * Every anchor resolves to a date from `ScheduleResult.suggestedDates`.
+ */
+export type ChecklistAnchor =
+  | 'firstVisit'
+  | 'secondVisit'
+  | 'sortDayFirst'
+  | 'sortDayLast'
+  | 'finalPackDay'
+  | 'moveDay'
+  | 'cleanoutDay'
+  | 'auctionPickup';
+
+export interface ChecklistItemTemplate {
+  /** Stable id derived from the section id + item text */
+  id: string;
+  text: string;
+  /** Indented reference bullets shown under the item (not separately checkable) */
+  subItems?: string[];
+  /** Overrides the section anchor when this item is due at a different point */
+  anchor?: ChecklistAnchor;
+  /** Workdays before (negative) / after (positive) the anchor date */
+  offsetWorkdays?: number;
+  /** Only include when the project has auction services enabled */
+  requiresAuction?: boolean;
+  /** Only include when the project has cleanout services enabled */
+  requiresCleanout?: boolean;
+}
+
+export interface ChecklistSectionTemplate {
+  id: string;
+  name: string;
+  /** Who owns the section, e.g. "Project Manager" */
+  owner: string;
+  /** Extra context printed under the section heading */
+  note?: string;
+  anchor: ChecklistAnchor;
+  offsetWorkdays?: number;
+  /** Move types this section applies to. Omitted = all move types. */
+  moveTypes?: MoveType[];
+  /** Only include when the project has auction services enabled */
+  requiresAuction?: boolean;
+  /** Only include when the project has cleanout services enabled */
+  requiresCleanout?: boolean;
+  /** Only include when the PM flags the move as an outbound long distance move */
+  requiresLongDistance?: boolean;
+  items: ChecklistItemTemplate[];
+}
+
+export type ChecklistItemStatus =
+  | 'complete'
+  | 'overdue'
+  | 'today'
+  | 'upcoming'
+  | 'scheduled'
+  | 'unscheduled';
+
+/** A template item resolved against a project's generated schedule */
+export interface ChecklistItem extends ChecklistItemTemplate {
+  sectionId: string;
+  dueDate: string | null; // ISO date string
+  done: boolean;
+  completedAt: string | null;
+  status: ChecklistItemStatus;
+}
+
+export interface ChecklistSection {
+  id: string;
+  name: string;
+  owner: string;
+  note?: string;
+  dueDate: string | null;
+  items: ChecklistItem[];
+  doneCount: number;
+  overdueCount: number;
+}
+
+export interface ChecklistSummary {
+  sections: ChecklistSection[];
+  totalItems: number;
+  doneItems: number;
+  overdueItems: number;
+  percentComplete: number;
+  nextDue: ChecklistItem | null;
+}
+
+/** Per-project checklist state persisted alongside the projects */
+export interface ProjectChecklistState {
+  /** itemId → ISO timestamp the item was completed */
+  completed: Record<string, string>;
+  /** PM-set flag: this move is an outbound long distance move */
+  longDistance: boolean;
+}
+
+export type ChecklistStore = Record<string, ProjectChecklistState>;
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
@@ -187,7 +285,7 @@ export interface Project {
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
+export type TabName = 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist' | 'settings' | 'calendar';
 
 export interface AppState {
   projects: Project[];
@@ -197,4 +295,5 @@ export interface AppState {
   communities: string[];
   lists: ListCategory[];
   phaseTemplates: PhaseTemplate[];
+  checklists: ChecklistStore;
 }

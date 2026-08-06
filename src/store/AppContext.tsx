@@ -5,14 +5,16 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, ProjectChecklistState, ChecklistStore } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
   loadCommunities, saveCommunities,
   loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
+  loadChecklists, saveChecklists,
 } from '../lib/storage';
+import { EMPTY_CHECKLIST_STATE } from '../lib/checklist';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
 
@@ -64,7 +66,12 @@ type Action =
   | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
+  | { type: 'SET_CHECKLIST'; projectId: string; checklist: ProjectChecklistState }
   | { type: 'LOAD_STATE'; state: Partial<AppState> };
+
+function checklistFor(checklists: ChecklistStore, projectId: string): ProjectChecklistState {
+  return checklists[projectId] ?? EMPTY_CHECKLIST_STATE;
+}
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -99,7 +106,9 @@ function reducer(state: AppState, action: Action): AppState {
         state.activeProjectId === action.id
           ? (projects[0]?.id ?? null)
           : state.activeProjectId;
-      return { ...state, projects, activeProjectId: newActive };
+      const { [action.id]: _removed, ...checklists } = state.checklists;
+      saveChecklists(checklists);
+      return { ...state, projects, activeProjectId: newActive, checklists };
     }
 
     case 'SET_SCHEDULE': {
@@ -140,6 +149,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, phaseTemplates: action.phaseTemplates };
     }
 
+    case 'SET_CHECKLIST': {
+      const checklists = { ...state.checklists, [action.projectId]: action.checklist };
+      saveChecklists(checklists);
+      return { ...state, checklists };
+    }
+
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
@@ -158,6 +173,7 @@ const initialState: AppState = {
   communities: [],
   lists: [],
   phaseTemplates: [],
+  checklists: {},
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -168,6 +184,11 @@ interface AppContextValue {
   activeProject: Project | null;
   generateAndSaveSchedule: (projectId: string) => void;
   setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
+  /** Checklist state for a project (never null — defaults to an empty checklist) */
+  getChecklistState: (projectId: string) => ProjectChecklistState;
+  toggleChecklistItem: (projectId: string, itemId: string) => void;
+  setChecklistLongDistance: (projectId: string, longDistance: boolean) => void;
+  resetChecklist: (projectId: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -181,6 +202,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const communities = loadCommunities();
     const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
+    const checklists = loadChecklists();
     if (projects.length === 0) {
       const example = createExampleProject(teamMembers, lists);
       projects = [example];
@@ -194,6 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         communities,
         lists,
         phaseTemplates,
+        checklists,
         activeProjectId: projects[0]?.id ?? null,
       },
     });
@@ -255,8 +278,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_OVERRIDE', id: projectId, inputs, schedule });
   }
 
+  // ── Checklist helpers ───────────────────────────────────────────────────────
+
+  function getChecklistState(projectId: string): ProjectChecklistState {
+    return checklistFor(state.checklists, projectId);
+  }
+
+  function toggleChecklistItem(projectId: string, itemId: string) {
+    const current = getChecklistState(projectId);
+    const completed = { ...current.completed };
+    if (completed[itemId]) {
+      delete completed[itemId];
+    } else {
+      completed[itemId] = new Date().toISOString();
+    }
+    dispatch({ type: 'SET_CHECKLIST', projectId, checklist: { ...current, completed } });
+  }
+
+  function setChecklistLongDistance(projectId: string, longDistance: boolean) {
+    const current = getChecklistState(projectId);
+    dispatch({ type: 'SET_CHECKLIST', projectId, checklist: { ...current, longDistance } });
+  }
+
+  function resetChecklist(projectId: string) {
+    const current = getChecklistState(projectId);
+    dispatch({ type: 'SET_CHECKLIST', projectId, checklist: { ...current, completed: {} } });
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride }}>
+    <AppContext.Provider
+      value={{
+        state,
+        dispatch,
+        activeProject,
+        generateAndSaveSchedule,
+        setShiftOverride,
+        getChecklistState,
+        toggleChecklistItem,
+        setChecklistLongDistance,
+        resetChecklist,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
