@@ -77,7 +77,13 @@ export interface ListCategory {
 }
 
 // ─── Project Inputs ───────────────────────────────────────────────────────────
-export type MoveType = 'Full Move' | 'Emergency Move' | 'Downsize Only' | 'Cleanout' | 'Pack Only';
+export type MoveType =
+  | 'Full Move'
+  | 'Long Distance Move'
+  | 'Emergency Move'
+  | 'Downsize Only'
+  | 'Cleanout'
+  | 'Pack Only';
 
 export interface PhaseDateMove {
   id: string;
@@ -215,16 +221,98 @@ export interface SuggestedDates {
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
+// ─── Checklist ────────────────────────────────────────────────────────────────
+/**
+ * Every checklist item hangs off a milestone the move plan builder produces.
+ * Due dates are never stored on the template — they're resolved from the active
+ * project's generated schedule, so regenerating the plan re-dates the checklist.
+ */
+export type ChecklistAnchor =
+  | 'earliest-start'
+  | 'first-visit'
+  | 'second-visit'
+  | 'sort-start'
+  | 'sort-end'
+  | 'final-pack'
+  | 'move-day'
+  | 'cleanout-start'
+  | 'cleanout-end'
+  | 'lot-prep-start'
+  | 'lot-prep-end'
+  | 'auction-lot-org'
+  | 'auction-start'
+  | 'auction-pickup-prep'
+  | 'auction-pickup'
+  | 'hard-deadline';
+
+/** Calendar days count weekends; workdays skip them. */
+export type ChecklistOffsetMode = 'calendar' | 'workday';
+
+/** Roles named in the PM Checklist. */
+export type ChecklistOwner =
+  | 'Dir. Bus. Dev'
+  | 'Dir. Ops'
+  | 'PM'
+  | 'Specialist'
+  | 'Movers'
+  | 'Client'
+  | 'Community';
+
+/** Optional services from ProjectInputs that gate a section or item. */
+export type ChecklistRequirement = 'cleanout' | 'auction';
+
+export interface ChecklistTemplateItem {
+  id: string;
+  text: string;
+  anchor: ChecklistAnchor;
+  offsetDays: number;
+  offsetMode: ChecklistOffsetMode;
+  owner: ChecklistOwner;
+  /** When set, the item only appears for these move types. */
+  moveTypes?: MoveType[];
+  /** When set, the item only appears if that optional service is enabled. */
+  requires?: ChecklistRequirement;
+  note?: string;
+}
+
+export interface ChecklistTemplateSection {
+  id: string;
+  name: string;
+  order: number;
+  description?: string;
+  /** Applied to every item in the section unless the item overrides it. */
+  moveTypes?: MoveType[];
+  requires?: ChecklistRequirement;
+  items: ChecklistTemplateItem[];
+}
+
+export interface ChecklistItemState {
+  done: boolean;
+  completedAt: string | null;
+  /** Manual due date, overriding the anchor-derived one. */
+  dueDateOverride: string | null;
+  note: string;
+}
+
+/** Per-project checklist progress. Keyed by template item id so it survives regeneration. */
+export interface ProjectChecklist {
+  itemStates: Record<string, ChecklistItemState>;
+  customItems: Array<ChecklistTemplateItem & { sectionId: string }>;
+  excludedItemIds: string[];
+}
+
+// ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
   createdAt: string;
   updatedAt: string;
   inputs: ProjectInputs;
   schedule: ScheduleResult | null;
+  checklist?: ProjectChecklist | null;
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'settings' | 'calendar';
+export type TabName = 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist' | 'settings' | 'calendar';
 
 export interface AppState {
   projects: Project[];
@@ -236,4 +324,5 @@ export interface AppState {
   phaseTemplates: PhaseTemplate[];
   auctionSettings: AuctionAppSettings;
   projectListFilter: ProjectStatus | 'all';
+  checklistTemplate: ChecklistTemplateSection[];
 }

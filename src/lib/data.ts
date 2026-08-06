@@ -336,7 +336,7 @@ export function getDensityMultiplier(density: DensityLevel): number {
 // These 12 lists define the scheduling parameters and dropdown options.
 // Lists 10–12 use "maxSqFt:teamSize" format; list 9 uses "ShiftName=hours".
 export const DEFAULT_LISTS: ListCategory[] = [
-  { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
+  { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Long Distance Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
   { id: 'flexibility',         name: 'Flexibility',         items: ['None', 'Low', 'Medium', 'High'] },
   { id: 'shift-type',          name: 'Shift Type',          items: ['AM', 'PM', 'Full Day'] },
   { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },
@@ -392,6 +392,7 @@ export const COMMUNITIES: string[] = [
 // ─── Move Types ───────────────────────────────────────────────────────────────
 export const MOVE_TYPES: string[] = [
   'Full Move',
+  'Long Distance Move',
   'Emergency Move',
   'Downsize Only',
   'Cleanout',

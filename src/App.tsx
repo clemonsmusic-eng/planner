@@ -7,6 +7,7 @@ import { ProjectListPage } from './pages/ProjectListPage';
 import { InputFormPage } from './pages/InputFormPage';
 import { PlanPage } from './pages/PlanPage';
 import { SchedulePage } from './pages/SchedulePage';
+import { ChecklistPage } from './pages/ChecklistPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CalendarPage } from './pages/CalendarPage';
 
@@ -20,6 +21,7 @@ function AppContent() {
       case 'inputs':    return <InputFormPage />;
       case 'plan':      return <PlanPage />;
       case 'schedule':  return <SchedulePage />;
+      case 'checklist': return <ChecklistPage />;
       case 'settings':  return <SettingsPage />;
       case 'calendar':  return <CalendarPage />;
     }

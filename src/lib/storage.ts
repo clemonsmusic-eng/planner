@@ -1,10 +1,12 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
   PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES,
   DEFAULT_LISTS,
 } from './data';
+import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
+import { normalizeChecklist } from './checklist';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
 const STORAGE_KEY_TEAM             = 'st-planner-team';
@@ -12,6 +14,10 @@ const STORAGE_KEY_COMMUNITIES      = 'st-planner-communities';
 const STORAGE_KEY_LISTS            = 'st-planner-lists';
 const STORAGE_KEY_PHASE_TEMPLATES  = 'st-planner-phase-templates';
 const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
+// v2 = the PM Checklist content. Bumping the key retires any template stored
+// before it, so existing installs pick up the real checklist rather than a
+// stale seed. Per-project progress lives on the project and is untouched.
+const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v2';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -28,6 +34,8 @@ export function loadProjects(): Project[] {
         phaseDateMoves: p.inputs.phaseDateMoves ?? [],
         auction: { ...p.inputs.auction, lotCount: p.inputs.auction?.lotCount ?? 0 },
       },
+      // Backfill for projects saved before the checklist companion existed
+      checklist: normalizeChecklist(p.checklist),
     }));
   } catch {
     return [];
@@ -146,6 +154,14 @@ export function loadLists(): ListCategory[] {
         if (l.id === 'flexibility' && !l.items.includes('None')) {
           return { ...l, items: ['None', ...l.items] };
         }
+        // Migrate: add 'Long Distance Move', inserted after 'Full Move' to match
+        // the default ordering rather than being appended to the end.
+        if (l.id === 'move-types' && !l.items.includes('Long Distance Move')) {
+          const at = l.items.indexOf('Full Move');
+          const items = [...l.items];
+          items.splice(at >= 0 ? at + 1 : items.length, 0, 'Long Distance Move');
+          return { ...l, items };
+        }
         return l;
       });
     }
@@ -220,5 +236,41 @@ export function saveAuctionSettings(settings: AuctionAppSettings): void {
     localStorage.setItem(STORAGE_KEY_AUCTION_SETTINGS, JSON.stringify(settings));
   } catch (e) {
     console.error('Failed to save auction settings', e);
+  }
+}
+
+// ─── Checklist Template ───────────────────────────────────────────────────────
+
+function cloneChecklistTemplate(template: ChecklistTemplateSection[]): ChecklistTemplateSection[] {
+  return template.map((s) => ({ ...s, items: s.items.map((i) => ({ ...i })) }));
+}
+
+export function loadChecklistTemplate(): ChecklistTemplateSection[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CHECKLIST);
+    if (raw) {
+      const parsed = JSON.parse(raw) as ChecklistTemplateSection[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((s, i) => ({
+          ...s,
+          order: s.order ?? i + 1,
+          items: (s.items ?? []).map((item) => ({
+            ...item,
+            offsetDays: item.offsetDays ?? 0,
+            offsetMode: item.offsetMode ?? 'calendar',
+            owner: item.owner ?? 'PM',
+          })),
+        }));
+      }
+    }
+  } catch {}
+  return cloneChecklistTemplate(DEFAULT_CHECKLIST_TEMPLATE);
+}
+
+export function saveChecklistTemplate(template: ChecklistTemplateSection[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_CHECKLIST, JSON.stringify(template));
+  } catch (e) {
+    console.error('Failed to save checklist template', e);
   }
 }

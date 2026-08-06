@@ -35,6 +35,12 @@ const IconSchedule = () => (
   </svg>
 );
 
+const IconChecklist = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+    <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0A.75.75 0 018.25 6h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75zM2.625 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zM7.5 12a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12A.75.75 0 017.5 12zm-4.875 5.25a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+  </svg>
+);
+
 const IconCalendar = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
     <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm-1.5 8.25v6.75a.75.75 0 00.75.75h10.5a.75.75 0 00.75-.75V10.5H5.25zM9 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H9zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H9a.75.75 0 01-.75-.75zM12 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H12zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H12a.75.75 0 01-.75-.75zM15 12.75a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5H15zm-.75 3a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5H15a.75.75 0 01-.75-.75z" clipRule="evenodd" />
@@ -208,34 +214,45 @@ export function Navigation() {
             {/* Input */}
             <button
               onClick={() => setTab('inputs')}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
                 t === 'inputs' ? 'text-teal-600' : 'text-ios-gray-500'
               }`}
             >
               <IconInput />
-              <span className="text-[10px] font-medium leading-none">Input</span>
+              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Input</span>
             </button>
 
             {/* Plan */}
             <button
               onClick={() => setTab('plan')}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
                 t === 'plan' ? 'text-teal-600' : 'text-ios-gray-500'
               }`}
             >
               <IconPlan />
-              <span className="text-[10px] font-medium leading-none">Plan</span>
+              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Plan</span>
             </button>
 
             {/* Schedule */}
             <button
               onClick={() => setTab('schedule')}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
                 t === 'schedule' ? 'text-teal-600' : 'text-ios-gray-500'
               }`}
             >
               <IconSchedule />
-              <span className="text-[10px] font-medium leading-none">Schedule</span>
+              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Sched</span>
+            </button>
+
+            {/* Checklist */}
+            <button
+              onClick={() => setTab('checklist')}
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+                t === 'checklist' ? 'text-teal-600' : 'text-ios-gray-500'
+              }`}
+            >
+              <IconChecklist />
+              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">List</span>
             </button>
           </div>
 

@@ -17,7 +17,10 @@ export default defineConfig({
         background_color: '#f5f5f5',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // Must match `base` — the app is served from /planner/, not the domain
+        // root, so an installed icon launching at '/' would 404.
+        start_url: '/planner/',
+        scope: '/planner/',
         icons: [
           {
             src: 'pwa-192x192.png',
