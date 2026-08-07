@@ -192,9 +192,10 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'PM Final Pack & Pre-Move',
     minHours: 2,
     maxHours: 4,
-    minTeamSize: 1,
+    minTeamSize: 2,
     maxTeamSize: 4,
     roles: [
+      { role: 'Specialist' },
       { role: 'Specialist' },
     ],
     shift: 'PM',
@@ -221,7 +222,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'PM Move Day',
     minHours: 3,
     maxHours: 6,
-    minTeamSize: 1,
+    minTeamSize: 2,
     maxTeamSize: 8,
     roles: [
       { role: 'Specialist' },
@@ -292,36 +293,6 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
   },
 ];
 
-// ─── Square Footage Tables ────────────────────────────────────────────────────
-export function getPackSortTeamSize(originSqFt: number): number {
-  if (originSqFt <= 1200) return 2;
-  if (originSqFt <= 1500) return 3;
-  if (originSqFt <= 2001) return 4;
-  return 5;
-}
-
-export function getPreMoveTeamSize(destSqFt: number): number {
-  if (destSqFt <= 400) return 2;
-  if (destSqFt <= 600) return 2;
-  if (destSqFt <= 800) return 3;
-  if (destSqFt <= 1000) return 4;
-  if (destSqFt <= 1200) return 5;
-  if (destSqFt <= 1500) return 6;
-  if (destSqFt <= 1800) return 6;
-  return 6;
-}
-
-export function getMoveDayTeamSize(destSqFt: number): number {
-  if (destSqFt <= 400) return 2;
-  if (destSqFt <= 600) return 3;
-  if (destSqFt <= 800) return 4;
-  if (destSqFt <= 1000) return 5;
-  if (destSqFt <= 1200) return 6;
-  if (destSqFt <= 1500) return 7;
-  if (destSqFt <= 1800) return 8;
-  return 10;
-}
-
 export type DensityLevel = 'Light' | 'Moderate' | 'Heavy';
 
 export function getDensityMultiplier(density: DensityLevel): number {
@@ -333,8 +304,10 @@ export function getDensityMultiplier(density: DensityLevel): number {
 }
 
 // ─── Default Lists ────────────────────────────────────────────────────────────
-// These 12 lists define the scheduling parameters and dropdown options.
-// Lists 10–12 use "maxSqFt:teamSize" format; list 9 uses "ShiftName=hours".
+// These lists define the scheduling parameters and dropdown options.
+// 'shift-type-hours' uses "ShiftName=hours"; the rest are plain dropdown values.
+// Crew sizes are not listed here — every phase starts from its template team size
+// and is adjusted per shift on the Schedule tab.
 export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Long Distance Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
   { id: 'flexibility',         name: 'Flexibility',         items: ['None', 'Low', 'Medium', 'High'] },
@@ -345,33 +318,7 @@ export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'availability-block',  name: 'Availability Block',  items: ['Full Day', 'AM', 'PM', 'Unavailable'] },
   // Shift Type Hours: "ShiftName=hours" — used as sort-phase hour default per person
   { id: 'shift-type-hours',    name: 'Shift Type Hours',    items: ['AM=4', 'PM=4', 'Full Day=8'] },
-  // Team size tables: "maxSqFt:teamSize" — drives scheduler (9999 = "any above")
-  { id: 'sqft-ranges',         name: 'Square Foot Ranges',  items: ['1200:2', '1500:3', '2001:4', '9999:5'] },
-  { id: 'pre-move-team-sizes', name: 'Pre-Move Team Sizes', items: ['400:2', '600:2', '800:3', '1000:4', '1200:5', '1500:6', '9999:6'] },
-  { id: 'move-day-team-sizes', name: 'Move Day Team Sizes', items: ['400:2', '600:3', '800:4', '1000:5', '1200:6', '1500:7', '1800:8', '9999:10'] },
 ];
-
-// ─── Team size table utilities ────────────────────────────────────────────────
-
-export function parseTeamSizeTable(items: string[]): Array<{ maxSqft: number; teamSize: number }> {
-  return items
-    .map(item => {
-      const [a, b] = item.split(':');
-      const maxSqft = parseInt(a ?? '', 10);
-      const teamSize = parseInt(b ?? '', 10);
-      if (isNaN(maxSqft) || isNaN(teamSize)) return null;
-      return { maxSqft, teamSize };
-    })
-    .filter((r): r is { maxSqft: number; teamSize: number } => r !== null)
-    .sort((a, b) => a.maxSqft - b.maxSqft);
-}
-
-export function lookupTeamSize(sqFt: number, table: Array<{ maxSqft: number; teamSize: number }>): number {
-  for (const row of table) {
-    if (sqFt <= row.maxSqft) return row.teamSize;
-  }
-  return table.length > 0 ? table[table.length - 1].teamSize : 2;
-}
 
 // ─── Communities ──────────────────────────────────────────────────────────────
 export const COMMUNITIES: string[] = [

@@ -21,14 +21,7 @@ import {
   getDayOfWeekKey,
   getWeekKey,
 } from './dateUtils';
-import {
-  getPackSortTeamSize,
-  getPreMoveTeamSize,
-  getMoveDayTeamSize,
-  getRoleQualifiers,
-  parseTeamSizeTable,
-  lookupTeamSize,
-} from './data';
+import { getRoleQualifiers } from './data';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,7 +90,8 @@ export function generateSchedule(
   inputs: ProjectInputs,
   teamMembers: TeamMember[],
   phaseTemplates: PhaseTemplate[],
-  lists: ListCategory[] = [],
+  /** Reserved: parameter lists no longer feed scheduling now that crew sizes come from templates. */
+  _lists: ListCategory[] = [],
   existingBookings: ExternalBookings = {},
   auctionSettings?: AuctionAppSettings
 ): ScheduleResult {
@@ -105,8 +99,6 @@ export function generateSchedule(
     targetMoveDate,
     earliestStartDate,
     budgetedManHours,
-    originSqFt,
-    destinationSqFt,
     clientTimePreference,
     cleanout,
     auction,
@@ -114,17 +106,15 @@ export function generateSchedule(
   } = inputs;
 
   // ── 1. Team sizes (needed for sort day calculation) ──────────────────────────
+  // Crew size is no longer derived from square footage. Every phase starts at its
+  // template team size (2 by default) and is adjusted per shift on the Schedule tab.
 
-  const getItems = (id: string) => lists.find(l => l.id === id)?.items ?? [];
-  const sqftTable     = parseTeamSizeTable(getItems('sqft-ranges'));
-  const preMoveTable  = parseTeamSizeTable(getItems('pre-move-team-sizes'));
-  const moveDayTable  = parseTeamSizeTable(getItems('move-day-team-sizes'));
+  const templateSize = (phaseId: PhaseId | string, fallback: number) =>
+    phaseTemplates.find(t => t.id === phaseId)?.minTeamSize ?? fallback;
 
-  // Pack/Sort team size: driven by origin sq ft
-  const packSortSize = sqftTable.length ? lookupTeamSize(originSqFt, sqftTable) : getPackSortTeamSize(originSqFt);
-  // Pre-move and Move Day: driven by destination sq ft
-  const preMoveSize  = preMoveTable.length ? lookupTeamSize(destinationSqFt, preMoveTable) : getPreMoveTeamSize(destinationSqFt);
-  const moveDaySize  = moveDayTable.length ? lookupTeamSize(destinationSqFt, moveDayTable) : getMoveDayTeamSize(destinationSqFt);
+  const packSortSize = templateSize('phase-3', 2);
+  const preMoveSize  = templateSize('phase-4-2', 2);
+  const moveDaySize  = templateSize('phase-5-2', 2);
 
   // ── 2. Compute suggested dates ───────────────────────────────────────────────
 
@@ -198,8 +188,7 @@ export function generateSchedule(
   let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours - auctionPickupHours - auctionPickupPrepHours;
 
   // PM Move Day (5-2) — scale team size down if budget is tight
-  const moveDayPMMax = Math.max(1, moveDaySize - 2);
-  const moveDayPMActual = Math.min(moveDayPMMax, Math.max(0, Math.floor(budgetPool / h52)));
+  const moveDayPMActual = Math.min(moveDaySize, Math.max(0, Math.floor(budgetPool / h52)));
   budgetPool -= moveDayPMActual * h52;
 
   // Second Visit (Phase 2) — include if budget allows
@@ -225,8 +214,7 @@ export function generateSchedule(
   }
 
   // PM Final Pack (Phase 4-2) — only if budget remains (lowest priority)
-  const preMoveAMMax = Math.max(1, preMoveSize - 2);
-  const preMoveActual = budgetPool >= h42 ? Math.min(preMoveAMMax, Math.floor(budgetPool / h42)) : 0;
+  const preMoveActual = budgetPool >= h42 ? Math.min(preMoveSize, Math.floor(budgetPool / h42)) : 0;
   const includePhase42 = preMoveActual > 0;
 
   // Sort/pack days: prioritize staff availability over spreading the days out.
@@ -364,7 +352,7 @@ export function generateSchedule(
       overrideShift
     );
 
-    // Cap team size: override (from budget/sqft calc) bounded by template min/max
+    // Cap team size: override (from the budget calc) bounded by template min/max
     const rawSize = teamSizeOverride ?? template.minTeamSize;
     const size = Math.min(Math.max(rawSize, template.minTeamSize), template.maxTeamSize);
     // Build role list, padding with Specialist if size > template.roles.length

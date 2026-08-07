@@ -144,13 +144,15 @@ export function loadLists(): ListCategory[] {
     const raw = localStorage.getItem(STORAGE_KEY_LISTS);
     if (raw) {
       const data = JSON.parse(raw) as ListCategory[];
-      // Migrate: if stored data is the old 23-list format (missing new parameter lists), reset to defaults
-      const hasParamLists = data.some(l => l.id === 'sqft-ranges' || l.id === 'pre-move-team-sizes');
-      if (!hasParamLists) {
+      // Migrate: if stored data is the old 23-list format (missing the shift hours
+      // list the scheduler reads), reset to defaults
+      if (!data.some(l => l.id === 'shift-type-hours')) {
         return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
       }
-      // Migrate: remove density list if present
-      const filtered = data.filter(l => l.id !== 'density');
+      // Migrate: drop the density list and the retired sq ft → team size tables
+      const filtered = data.filter(
+        l => !['density', 'sqft-ranges', 'pre-move-team-sizes', 'move-day-team-sizes'].includes(l.id)
+      );
       // Migrate: add 'None' to flexibility list if missing
       return filtered.map(l => {
         if (l.id === 'flexibility' && !l.items.includes('None')) {
