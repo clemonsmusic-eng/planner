@@ -477,12 +477,20 @@ export function generateSchedule(
     weeklyHours[memberId][weekKey] = (weeklyHours[memberId][weekKey] ?? 0) + hours;
   }
 
-  function isShiftConflict(memberId: string, dateStr: string, shift: 'AM' | 'PM' | 'Full Day'): boolean {
+  /**
+   * One person works at most one shift per day on a project.
+   *
+   * The AM and PM halves of a day don't overlap in clock time, but putting the
+   * same person on both — both move-day shifts, or AM and PM final pack — is a
+   * scheduling error, not a legitimate double shift. So any existing booking on
+   * the date blocks another, whatever the shift.
+   *
+   * This is deliberately per-project: `existingBookings` handles other projects
+   * separately, where a half-day on each of two jobs is still allowed.
+   */
+  function isShiftConflict(memberId: string, dateStr: string): boolean {
     const dayShifts = bookings[memberId]?.[dateStr];
-    if (!dayShifts || dayShifts.size === 0) return false;
-    if (dayShifts.has('Full Day')) return true;
-    if (shift === 'Full Day') return dayShifts.size > 0;
-    return dayShifts.has(shift);
+    return !!dayShifts && dayShifts.size > 0;
   }
 
   function book(memberId: string, dateStr: string, weekKey: string, hours: number, shift: 'AM' | 'PM' | 'Full Day') {
@@ -520,7 +528,7 @@ export function generateSchedule(
 
     for (const member of sorted) {
       if (!isMemberAvailableForShift(member, date, shift, overrideShift)) continue;
-      if (isShiftConflict(member.id, dateStr, shift)) continue;
+      if (isShiftConflict(member.id, dateStr)) continue;
       if (isExternallyBlocked(member.id, dateStr, shift)) continue;
 
       const wkHours = getWeekHours(member.id, weekKey);
@@ -563,8 +571,8 @@ export function generateSchedule(
         } else if (!isMemberAvailableForShift(member, date, task.shift, overrideShift)) {
           warnings.push(`${member.name} shift conflict`);
           status = 'conflict';
-        } else if (isShiftConflict(lockedId, task.date, task.shift)) {
-          warnings.push(`${member.name} already booked for this shift`);
+        } else if (isShiftConflict(lockedId, task.date)) {
+          warnings.push(`${member.name} already booked on this day`);
           status = 'conflict';
         } else if (isExternallyBlocked(lockedId, task.date, task.shift)) {
           warnings.push(`${member.name} booked on another project`);
@@ -583,7 +591,7 @@ export function generateSchedule(
 
         assignedMemberId = lockedId;
         assignedMemberName = member.name;
-        if (!isShiftConflict(lockedId, task.date, task.shift)) {
+        if (!isShiftConflict(lockedId, task.date)) {
           book(lockedId, task.date, weekKey, task.hours, task.shift);
         } else {
           addWeekHours(lockedId, weekKey, task.hours);
@@ -634,7 +642,7 @@ export function generateSchedule(
           status = 'assigned';
         }
 
-        if (!isShiftConflict(assignedMemberId, task.date, effectiveShift)) {
+        if (!isShiftConflict(assignedMemberId, task.date)) {
           book(assignedMemberId, task.date, weekKey, task.hours, effectiveShift);
         } else {
           addWeekHours(assignedMemberId, weekKey, task.hours);

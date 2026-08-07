@@ -14,10 +14,11 @@ const STORAGE_KEY_COMMUNITIES      = 'st-planner-communities';
 const STORAGE_KEY_LISTS            = 'st-planner-lists';
 const STORAGE_KEY_PHASE_TEMPLATES  = 'st-planner-phase-templates';
 const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
-// v2 = the PM Checklist content. Bumping the key retires any template stored
-// before it, so existing installs pick up the real checklist rather than a
-// stale seed. Per-project progress lives on the project and is untouched.
-const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v2';
+// v3 = the revised PM Checklist (Client/Community visit split, reordered
+// sections, MaxSold). Bumping the key retires the stored copy so existing
+// installs pick up the new order instead of the one they cached. Per-project
+// progress lives on the project and is keyed by item id, so it survives.
+const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v3';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 

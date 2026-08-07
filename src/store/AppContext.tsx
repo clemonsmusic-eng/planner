@@ -16,45 +16,7 @@ import {
   loadChecklistTemplate, saveChecklistTemplate,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
-import { PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES } from '../lib/data';
-import { emptyChecklist, normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
-
-// ─── Example / Seed project ───────────────────────────────────────────────────
-
-function createExampleProject(teamMembers: TeamMember[], lists: ListCategory[] = []): Project {
-  const inputs: ProjectInputs = {
-    clientName: 'Jim Doyle',
-    projectName: 'Doyle Move – First Colonial Inn',
-    community: 'First Colonial Inn',
-    moveType: 'Full Move',
-    status: 'active',
-    targetMoveDate: '2026-05-15',
-    earliestStartDate: '2026-04-27',
-    hardDeadline: '2026-05-22',
-    flexibilityLevel: 'Medium',
-    originSqFt: 2738,
-    destinationSqFt: 858,
-    densityLevel: 'Moderate',
-    budgetedManHours: 149,
-    clientTimePreference: 'AM',
-    specialNotes: 'Example project from spec sheet',
-    cleanout: { enabled: false, type: '', startDate: '' },
-    auction: { enabled: false },
-    dateOverrides: [],
-    isLocked: false,
-    phaseDateMoves: [],
-  };
-  const project: Project = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    inputs,
-    schedule: null,
-    checklist: emptyChecklist(),
-  };
-  project.schedule = generateSchedule(inputs, teamMembers, DEFAULT_PHASE_TEMPLATES, lists);
-  return project;
-}
+import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
@@ -272,18 +234,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
-    let projects = loadProjects();
+    const projects = loadProjects();
     const teamMembers = loadTeamMembers();
     const communities = loadCommunities();
     const lists = loadLists();
     const phaseTemplates = loadPhaseTemplates();
     const auctionSettings = loadAuctionSettings();
     const checklistTemplate = loadChecklistTemplate();
-    if (projects.length === 0) {
-      const example = createExampleProject(teamMembers, lists);
-      projects = [example];
-      saveProjects(projects);
-    }
     dispatch({
       type: 'LOAD_STATE',
       state: {
