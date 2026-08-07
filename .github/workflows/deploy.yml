@@ -5,7 +5,10 @@ on:
     branches:
       - main
       - claude/move-plan-builder-iphone-pNs6g
-      - claude/move-plan-checklist-app-rfmznn
+  # Manual trigger, so a deploy can be run on demand from the Actions tab
+  # instead of only on push. Pick the default branch when running it — the
+  # github-pages environment only accepts deployments from there.
+  workflow_dispatch:
 
 permissions:
   contents: read
