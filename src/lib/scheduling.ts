@@ -472,6 +472,34 @@ export function generateSchedule(
     }
   }
 
+  // Replay the hand edits made on the Schedule tab. Without this a regenerate —
+  // which any date move triggers — would drop shifts the user added and bring
+  // back ones they deleted. Additions come first so a later deletion of one of
+  // them still lands; both are matched on phase + date, after the moves above.
+  for (const added of inputs.addedShifts ?? []) {
+    for (const role of added.roles) {
+      tasks.push({
+        phaseId: added.phaseId,
+        phaseName: added.phaseName,
+        date: added.date,
+        role,
+        shift: added.shift,
+        hours: added.hours,
+        shiftFlexible: false,
+      });
+    }
+  }
+
+  const removedShifts = inputs.removedShifts ?? [];
+  if (removedShifts.length > 0) {
+    for (let i = tasks.length - 1; i >= 0; i--) {
+      const t = tasks[i];
+      if (removedShifts.some((r) => r.phaseId === t.phaseId && r.date === t.date)) {
+        tasks.splice(i, 1);
+      }
+    }
+  }
+
   // Ensure move-day tasks are assigned before cleanout/pickup regardless of date
   const PHASE_PRIORITY: Record<string, number> = {
     'phase-1': 0, 'phase-2': 1, 'phase-3': 2,

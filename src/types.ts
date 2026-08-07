@@ -91,6 +91,25 @@ export interface PhaseDateMove {
   originalDate: string;
   newDate: string;
 }
+
+/**
+ * A shift added by hand on the Schedule tab. Stored on the inputs, not just on
+ * the generated schedule, so regenerating the plan keeps it.
+ */
+export interface ManualShift {
+  date: string;
+  phaseId: string;
+  phaseName: string;
+  shift: 'AM' | 'PM' | 'Full Day';
+  hours: number;
+  roles: RoleType[];
+}
+
+/** A generator-placed shift the user deleted, likewise remembered across regeneration. */
+export interface RemovedShift {
+  date: string;
+  phaseId: string;
+}
 export type FlexibilityLevel = 'None' | 'Low' | 'Medium' | 'High';
 export type DensityLevel = 'Light' | 'Moderate' | 'Heavy';
 export type TimePreference = 'AM' | 'PM';
@@ -163,6 +182,9 @@ export interface ProjectInputs {
   dateOverrides: DateOverride[];
   isLocked?: boolean;
   phaseDateMoves?: PhaseDateMove[];
+  /** Hand edits to the shift list, replayed whenever the plan regenerates. */
+  addedShifts?: ManualShift[];
+  removedShifts?: RemovedShift[];
 }
 
 // ─── Schedule ─────────────────────────────────────────────────────────────────

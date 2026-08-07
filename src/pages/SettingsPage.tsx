@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
-import { FloatingSaveButton } from '../components/FloatingSaveButton';
+import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
 import { ANCHOR_LABELS, CHECKLIST_OWNERS, DEFAULT_CHECKLIST_TEMPLATE } from '../lib/checklistData';
@@ -1605,6 +1605,7 @@ export function SettingsPage() {
         )}
 
         <div className="h-4" />
+        {isDirty && <FloatingSaveSpacer />}
       </div>
 
       {isDirty && <FloatingSaveButton onSave={save} />}

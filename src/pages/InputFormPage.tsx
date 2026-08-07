@@ -3,7 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
-import { FloatingSaveButton } from '../components/FloatingSaveButton';
+import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { LockButton } from '../components/LockButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
 import { SERVICE_CATALOG } from '../lib/data';
@@ -688,15 +688,19 @@ export function InputFormPage() {
             </p>
           )}
         </div>
+        {!saved && <FloatingSaveSpacer />}
       </div>
 
       {!saved && <FloatingSaveButton onSave={handleSaveAndGenerate} label="Save & Generate" />}
 
-      {/* Save Prompt Modal */}
+      {/*
+        Save Prompt Modal. The backdrop and the dialog have to be ordered
+        deliberately: a backdrop above the dialog dims it and eats every tap.
+      */}
       {showSavePrompt && (
         <>
           <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowSavePrompt(false)} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6">
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[61] bg-white rounded-2xl shadow-2xl p-6">
             <h3 className="font-bold text-teal-900 text-lg mb-1">Generate Schedule</h3>
             <p className="text-sm text-ios-gray-600 mb-5">
               There are {otherActiveUnlocked.length} other active project{otherActiveUnlocked.length > 1 ? 's' : ''}. Would you like to regenerate their schedules to resolve any new conflicts?
