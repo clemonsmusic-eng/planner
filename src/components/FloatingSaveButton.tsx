@@ -1,3 +1,15 @@
+/**
+ * Height a scrolling page has to reserve at its bottom so the floating button
+ * doesn't sit on top of the last control. Pair the button with a
+ * <FloatingSaveSpacer /> at the end of the scroll container.
+ */
+export const FLOATING_SAVE_CLEARANCE = 'calc(72px + env(safe-area-inset-bottom))';
+
+/** Blank block that keeps the last row of a page clear of the floating button. */
+export function FloatingSaveSpacer() {
+  return <div aria-hidden="true" style={{ height: FLOATING_SAVE_CLEARANCE }} />;
+}
+
 export function FloatingSaveButton({ onSave, label = 'Save' }: { onSave: () => void; label?: string }) {
   return (
     <button

@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -43,17 +43,11 @@ type Action =
   | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null }
   | { type: 'ADD_SCHEDULE_ROLE'; projectId: string; date: string; phaseId: string; role: RoleType }
   | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string }
-  | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift };
+  | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift }
+  | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
-export interface NewShift {
-  date: string;
-  phaseId: string;
-  phaseName: string;
-  shift: 'AM' | 'PM' | 'Full Day';
-  hours: number;
-  roles: RoleType[];
-}
+export type NewShift = ManualShift;
 
 
 /**
@@ -311,6 +305,49 @@ function reducer(state: AppState, action: Action): AppState {
 
         return {
           ...p,
+          // Recorded on the inputs too, so a later regenerate replays it.
+          inputs: {
+            ...p.inputs,
+            addedShifts: [...(p.inputs.addedShifts ?? []), action.shift],
+            removedShifts: (p.inputs.removedShifts ?? []).filter(
+              (r) => !(r.phaseId === phaseId && r.date === date)
+            ),
+          },
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    /** Drops one phase's whole crew from one day, leaving other shifts alone. */
+    case 'REMOVE_SHIFT': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+        const days = p.schedule.days
+          .map((day) =>
+            day.date === action.date
+              ? { ...day, entries: day.entries.filter((e) => e.phaseId !== action.phaseId) }
+              : day
+          )
+          .filter((day) => day.entries.length > 0);
+        return {
+          ...p,
+          // Remembered on the inputs so a regenerate doesn't bring the shift back.
+          // A hand-added shift is dropped outright rather than tombstoned.
+          inputs: {
+            ...p.inputs,
+            addedShifts: (p.inputs.addedShifts ?? []).filter(
+              (a) => !(a.phaseId === action.phaseId && a.date === action.date)
+            ),
+            removedShifts: [
+              ...(p.inputs.removedShifts ?? []).filter(
+                (r) => !(r.phaseId === action.phaseId && r.date === action.date)
+              ),
+              { phaseId: action.phaseId, date: action.date },
+            ],
+          },
           schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
           updatedAt: new Date().toISOString(),
         };

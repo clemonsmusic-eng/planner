@@ -3,7 +3,8 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
-import { FloatingSaveButton } from '../components/FloatingSaveButton';
+import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
+import { LockButton } from '../components/LockButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
 import { SERVICE_CATALOG } from '../lib/data';
 
@@ -119,27 +120,6 @@ function ServiceCategoryGroup({
   );
 }
 
-function LockButton({ isLocked, onToggle }: { isLocked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-        isLocked ? 'bg-teal-100 text-teal-700' : 'bg-ios-gray-100 text-ios-gray-500'
-      }`}
-      aria-label={isLocked ? 'Unlock project' : 'Lock project'}
-    >
-      {isLocked ? (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5a3 3 0 116 0v2.75a.75.75 0 001.5 0V5.5A4.5 4.5 0 0010 1z" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 export function InputFormPage() {
   const { dispatch, activeProject, generateAndSaveSchedule, state } = useApp();
@@ -708,15 +688,19 @@ export function InputFormPage() {
             </p>
           )}
         </div>
+        {!saved && <FloatingSaveSpacer />}
       </div>
 
       {!saved && <FloatingSaveButton onSave={handleSaveAndGenerate} label="Save & Generate" />}
 
-      {/* Save Prompt Modal */}
+      {/*
+        Save Prompt Modal. The backdrop and the dialog have to be ordered
+        deliberately: a backdrop above the dialog dims it and eats every tap.
+      */}
       {showSavePrompt && (
         <>
           <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowSavePrompt(false)} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6">
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[61] bg-white rounded-2xl shadow-2xl p-6">
             <h3 className="font-bold text-teal-900 text-lg mb-1">Generate Schedule</h3>
             <p className="text-sm text-ios-gray-600 mb-5">
               There are {otherActiveUnlocked.length} other active project{otherActiveUnlocked.length > 1 ? 's' : ''}. Would you like to regenerate their schedules to resolve any new conflicts?

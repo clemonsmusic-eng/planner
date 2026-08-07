@@ -3,8 +3,11 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { AddShiftSheet } from '../components/AddShiftSheet';
+import { ConfirmSheet } from '../components/ConfirmSheet';
+import { LockButton } from '../components/LockButton';
+import { formatDateLabel } from '../lib/dateUtils';
 import { useAddShift } from '../components/AddShiftContext';
-import { FloatingSaveButton } from '../components/FloatingSaveButton';
+import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -47,27 +50,6 @@ function ChevronDownIcon() {
   );
 }
 
-function LockButton({ isLocked, onToggle }: { isLocked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-        isLocked ? 'bg-teal-100 text-teal-700' : 'bg-ios-gray-100 text-ios-gray-500'
-      }`}
-      aria-label={isLocked ? 'Unlock project' : 'Lock project'}
-    >
-      {isLocked ? (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5a3 3 0 116 0v2.75a.75.75 0 001.5 0V5.5A4.5 4.5 0 0010 1z" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
@@ -95,6 +77,7 @@ export function SchedulePage() {
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
+  const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
@@ -330,8 +313,11 @@ export function SchedulePage() {
                   onPickMember={setMemberPickerEntry}
                   onAddRole={(phaseId) => dispatch({ type: 'ADD_SCHEDULE_ROLE', projectId: activeProject.id, date: day.date, phaseId, role: 'Specialist' })}
                   onRemoveRole={(entryId) => dispatch({ type: 'REMOVE_SCHEDULE_ROLE', projectId: activeProject.id, entryId })}
+                  onMoveShift={(phaseId) => setDateMovePicker({ phaseId, originalDate: day.date })}
+                  onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
                 />
               ))}
+              {isDirty && <FloatingSaveSpacer />}
             </div>
           )}
         </div>
@@ -364,16 +350,29 @@ export function SchedulePage() {
       {dateMovePicker && (
         <DateMoveSheet
           originalDate={dateMovePicker.originalDate}
-          onMove={(newDate) => {
-            const phasesOnDay = [...new Set(
-              (activeProject.schedule?.days.find(d => d.date === dateMovePicker.originalDate)?.entries ?? [])
-                .map(e => e.phaseId)
-            )];
-            for (const phaseId of phasesOnDay) {
-              movePhaseDate(activeProject.id, phaseId, dateMovePicker.originalDate, newDate);
-            }
-          }}
+          // Moves this phase only — a day may hold a second shift that stays put.
+          onMove={(newDate) =>
+            movePhaseDate(activeProject.id, dateMovePicker.phaseId, dateMovePicker.originalDate, newDate)
+          }
           onClose={() => setDateMovePicker(null)}
+        />
+      )}
+
+      {removeShift && (
+        <ConfirmSheet
+          title="Remove shift"
+          message={`Remove ${removeShift.phaseName} on ${formatDateLabel(removeShift.date)}? Any other shift that day stays.`}
+          confirmLabel="Remove Shift"
+          onConfirm={() => {
+            dispatch({
+              type: 'REMOVE_SHIFT',
+              projectId: activeProject.id,
+              date: removeShift.date,
+              phaseId: removeShift.phaseId,
+            });
+            setRemoveShift(null);
+          }}
+          onClose={() => setRemoveShift(null)}
         />
       )}
 
@@ -421,6 +420,8 @@ function DaySection({
   onPickMember,
   onAddRole,
   onRemoveRole,
+  onMoveShift,
+  onRemoveShift,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -432,6 +433,8 @@ function DaySection({
   onPickMember: (entry: ScheduleEntry) => void;
   onAddRole: (phaseId: string) => void;
   onRemoveRole: (entryId: string) => void;
+  onMoveShift: (phaseId: string) => void;
+  onRemoveShift: (phaseId: string, phaseName: string) => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -505,9 +508,31 @@ function DaySection({
                   <EntryRow key={entry.id} entry={entry} memberMap={memberMap} onPickMember={onPickMember} />
                 ))}
               </div>
-              {/* Crew size for this shift — any shift can gain or lose roles. */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
-                <span className="text-xs text-ios-gray-500 flex-1">
+              {/*
+                Per-shift controls. A day can hold more than one shift, so
+                moving or deleting has to act on this phase alone rather than
+                on everything scheduled that day.
+              */}
+              <div className="flex items-center gap-1 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
+                <button
+                  onClick={() => onMoveShift(phaseEntries[0].phaseId)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+                  aria-label={`Move ${phaseName} to a different date`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onRemoveShift(phaseEntries[0].phaseId, phaseName)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 flex-shrink-0"
+                  aria-label={`Remove the ${phaseName} shift`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <span className="text-xs text-ios-gray-500 flex-1 text-right pr-1">
                   {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
                   {' · '}
                   <span className="font-semibold text-teal-700">

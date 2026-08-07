@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
+import { LockButton } from '../components/LockButton';
 import { formatDateLabel } from '../lib/dateUtils';
 import { SERVICE_CATALOG } from '../lib/data';
 import type { ScheduleResult, TeamHoursSummary, DateOverride } from '../types';
@@ -15,34 +16,12 @@ function ChevronDownIcon() {
   );
 }
 
-function LockButton({ isLocked, onToggle }: { isLocked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-        isLocked ? 'bg-teal-100 text-teal-700' : 'bg-ios-gray-100 text-ios-gray-500'
-      }`}
-      aria-label={isLocked ? 'Unlock project' : 'Lock project'}
-    >
-      {isLocked ? (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5a3 3 0 116 0v2.75a.75.75 0 001.5 0V5.5A4.5 4.5 0 0010 1z" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 // SettingsModal has moved to the dedicated Settings tab
 
 
 export function PlanPage() {
   const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride } = useApp();
-  const [datesExpanded, setDatesExpanded] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
 
@@ -144,8 +123,6 @@ export function PlanPage() {
               <JobSummaryCard schedule={schedule} budgetedHours={activeProject.inputs.budgetedManHours} />
               <SuggestedDatesCard
                 schedule={schedule}
-                expanded={datesExpanded}
-                onToggle={() => setDatesExpanded(!datesExpanded)}
                 overrides={activeProject.inputs.dateOverrides}
                 onOverride={(date) => setOverrideDate(date)}
               />
@@ -206,6 +183,47 @@ function NoScheduleState({
   );
 }
 
+/**
+ * Every section on this tab is a card that can be folded away, so a long plan
+ * can be narrowed to whichever part is being worked on. Open state lives here
+ * per card rather than on the page.
+ */
+function CollapsibleCard({
+  title,
+  trailing,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  trailing?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Card className="overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full px-4 py-3 flex items-center gap-2 min-h-[48px] text-left"
+      >
+        <h2 className="font-bold text-teal-900 flex-1 min-w-0 truncate">{title}</h2>
+        {trailing}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-500 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </Card>
+  );
+}
+
 function JobSummaryCard({
   schedule,
   budgetedHours,
@@ -222,16 +240,16 @@ function JobSummaryCard({
       : 'bg-yellow-500';
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-teal-900">Job Summary</h2>
+    <CollapsibleCard
+      title="Job Summary"
+      trailing={
         <StatusBadge
           label={schedule.status}
           variant={getScheduleStatusVariant(schedule.status)}
           size="md"
         />
-      </div>
-
+      }
+    >
       <div className="grid grid-cols-3 gap-3 mb-4">
         <div className="text-center">
           <p className="text-2xl font-bold text-teal-900">{schedule.totalScheduledHours}</p>
@@ -261,20 +279,16 @@ function JobSummaryCard({
           />
         </div>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
 function SuggestedDatesCard({
   schedule,
-  expanded,
-  onToggle,
   overrides,
   onOverride,
 }: {
   schedule: ScheduleResult;
-  expanded: boolean;
-  onToggle: () => void;
   overrides: DateOverride[];
   onOverride: (date: string) => void;
 }) {
@@ -324,24 +338,8 @@ function SuggestedDatesCard({
   ].filter((item) => item.date);
 
   return (
-    <Card className="overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between min-h-[48px]"
-      >
-        <h2 className="font-bold text-teal-900">Dates</h2>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className={`w-5 h-5 text-ios-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
-        >
-          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-        </svg>
-      </button>
-
-      {expanded && (
-        <div className="px-4 pb-4 space-y-0">
+    <CollapsibleCard title="Dates">
+      <div className="space-y-0">
           {items.map((item, i) => {
             const override = overrides.find((o) => o.date === item.date);
             return (
@@ -384,9 +382,8 @@ function SuggestedDatesCard({
               </div>
             );
           })}
-        </div>
-      )}
-    </Card>
+      </div>
+    </CollapsibleCard>
   );
 }
 
@@ -401,16 +398,16 @@ function ServicesContractedCard({ services }: { services: string[] }) {
     .filter((g) => g.chosen.length > 0);
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-teal-900">Services Contracted</h2>
-        {services.length > 0 && (
-          <span className="text-xs text-ios-gray-500">
+    <CollapsibleCard
+      title="Services Contracted"
+      trailing={
+        services.length > 0 ? (
+          <span className="text-xs text-ios-gray-500 flex-shrink-0">
             {services.length} service{services.length === 1 ? '' : 's'}
           </span>
-        )}
-      </div>
-
+        ) : undefined
+      }
+    >
       {groups.length === 0 ? (
         <p className="text-sm text-ios-gray-500">
           No services selected yet — pick them on the Input tab.
@@ -436,7 +433,7 @@ function ServicesContractedCard({ services }: { services: string[] }) {
           ))}
         </div>
       )}
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -465,12 +462,14 @@ function MoveDaySnapshotCard({
   const totalTeamSize = moveDayEntries.length;
 
   return (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-teal-900">Move Day Snapshot</h2>
-        <span className="text-sm text-ios-gray-600">{moveDate ? formatDateLabel(moveDate) : '—'}</span>
-      </div>
-
+    <CollapsibleCard
+      title="Move Day Snapshot"
+      trailing={
+        <span className="text-sm text-ios-gray-600 flex-shrink-0">
+          {moveDate ? formatDateLabel(moveDate) : '—'}
+        </span>
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-center gap-2 py-1">
           <span className="text-xs font-semibold text-teal-600 w-16 flex-shrink-0">PM</span>
@@ -498,7 +497,7 @@ function MoveDaySnapshotCard({
           </p>
         </div>
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
 
@@ -511,8 +510,7 @@ function TeamHoursCard({ teamHours }: { teamHours: TeamHoursSummary[] }) {
   const maxHours = Math.max(...teamHours.map((t) => t.scheduledHours), 1);
 
   return (
-    <Card className="p-4">
-      <h2 className="font-bold text-teal-900 mb-3">Team Hours</h2>
+    <CollapsibleCard title="Team Hours">
       <div className="space-y-3">
         {teamHours
           .sort((a, b) => b.scheduledHours - a.scheduledHours)
@@ -520,27 +518,21 @@ function TeamHoursCard({ teamHours }: { teamHours: TeamHoursSummary[] }) {
             <div key={member.memberId}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-teal-900">{member.memberName}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-ios-gray-600">
-                    {member.scheduledHours}h
-                    {member.maxHours > 0 && (
-                      <span className="text-ios-gray-400"> · {member.maxHours}h/wk cap</span>
-                    )}
-                  </span>
-                  {member.isOverMax && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Week over</span>
-                  )}
-                </div>
+                {/*
+                  These are hours on this project, not hours in a week, so the
+                  weekly cap has nothing to say about them and isn't shown.
+                */}
+                <span className="text-sm text-ios-gray-600">{member.scheduledHours}h</span>
               </div>
               <div className="h-2 bg-ios-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${member.isOverMax ? 'bg-red-500' : 'bg-teal-500'}`}
+                  className="h-full rounded-full bg-teal-500"
                   style={{ width: `${(member.scheduledHours / maxHours) * 100}%` }}
                 />
               </div>
             </div>
           ))}
       </div>
-    </Card>
+    </CollapsibleCard>
   );
 }
