@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
-import { HamburgerButton } from '../components/HamburgerMenu';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
@@ -195,7 +194,6 @@ export function SchedulePage() {
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <HamburgerButton />
             {/* Project picker */}
             <div className="flex-1 min-w-0 relative">
               <button

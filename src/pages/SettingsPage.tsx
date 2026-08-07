@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
-import { HamburgerButton } from '../components/HamburgerMenu';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -1381,7 +1380,6 @@ export function SettingsPage() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
         <div className="flex items-center gap-2">
-          <HamburgerButton />
           <h1 className="text-xl font-bold text-teal-900 flex-1">Settings</h1>
           {isDirty ? (
             <button
