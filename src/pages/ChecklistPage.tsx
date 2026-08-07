@@ -10,8 +10,8 @@ import {
   type ChecklistItemStatus,
   type ChecklistView,
 } from '../lib/checklist';
-import { ANCHOR_LABELS, CHECKLIST_OWNERS, CHECKLIST_STANDING_NOTE } from '../lib/checklistData';
-import type { ChecklistAnchor, ChecklistOwner } from '../types';
+import { CHECKLIST_STANDING_NOTE } from '../lib/checklistData';
+import type { ChecklistOwner } from '../types';
 
 type Filter = 'all' | 'open' | 'overdue' | 'done';
 type Grouping = 'section' | 'date';
@@ -54,7 +54,6 @@ export function ChecklistPage() {
   const [grouping, setGrouping] = useState<Grouping>('section');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailItem, setDetailItem] = useState<ChecklistItemView | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Recomputed whenever the plan, the template, or stored progress changes —
@@ -295,13 +294,6 @@ export function ChecklistPage() {
 
           {/* Footer actions */}
           <div className="space-y-2 pt-2">
-            <button
-              onClick={() => setAddOpen(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-indigo-600 text-indigo-600 font-semibold text-sm min-h-[44px] active:bg-indigo-50"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Item
-            </button>
             {hiddenCount > 0 && (
               <button
                 onClick={() => restoreChecklistItems(activeProject.id)}
@@ -334,13 +326,6 @@ export function ChecklistPage() {
         />
       )}
 
-      {addOpen && (
-        <AddItemSheet
-          projectId={activeProject.id}
-          sections={view.sections.map((s) => ({ id: s.id, name: s.name }))}
-          onClose={() => setAddOpen(false)}
-        />
-      )}
     </>
   );
 }
@@ -645,143 +630,6 @@ function ItemDetailSheet({
   );
 }
 
-// ─── Add item sheet ───────────────────────────────────────────────────────────
-
-function AddItemSheet({
-  projectId,
-  sections,
-  onClose,
-}: {
-  projectId: string;
-  sections: Array<{ id: string; name: string }>;
-  onClose: () => void;
-}) {
-  const { addChecklistItem } = useApp();
-  const [text, setText] = useState('');
-  const [sectionId, setSectionId] = useState(sections[0]?.id ?? '');
-  const [owner, setOwner] = useState<ChecklistOwner>('PM');
-  const [anchor, setAnchor] = useState<ChecklistAnchor>('move-day');
-  const [offsetDays, setOffsetDays] = useState(0);
-
-  function submit() {
-    if (!text.trim() || !sectionId) return;
-    addChecklistItem(projectId, {
-      id: `custom-${crypto.randomUUID()}`,
-      sectionId,
-      text: text.trim(),
-      anchor,
-      offsetDays,
-      offsetMode: 'calendar',
-      owner,
-    });
-    onClose();
-  }
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} aria-hidden="true" />
-      <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-      >
-        <div className="sticky top-0 bg-white px-4 pt-3 pb-2 border-b border-ios-gray-100">
-          <div className="w-10 h-1 bg-ios-gray-300 rounded-full mx-auto mb-3" />
-          <div className="flex items-center justify-between">
-            <button onClick={onClose} className="text-sm font-semibold text-ios-gray-600">
-              Cancel
-            </button>
-            <p className="text-base font-bold text-gray-900">Add Item</p>
-            <button
-              onClick={submit}
-              disabled={!text.trim()}
-              className="text-sm font-semibold text-indigo-600 disabled:text-ios-gray-300"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        <div className="px-4 py-4 space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Task
-            </label>
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              autoFocus
-              placeholder="What needs to happen?"
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm min-h-[44px]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Section
-            </label>
-            <select
-              value={sectionId}
-              onChange={(e) => setSectionId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm bg-white min-h-[44px]"
-            >
-              {sections.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Owner
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CHECKLIST_OWNERS.map((o) => (
-                <button
-                  key={o}
-                  onClick={() => setOwner(o)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                    owner === o ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Due Relative To
-            </label>
-            <select
-              value={anchor}
-              onChange={(e) => setAnchor(e.target.value as ChecklistAnchor)}
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm bg-white min-h-[44px] mb-2"
-            >
-              {Object.entries(ANCHOR_LABELS).map(([id, label]) => (
-                <option key={id} value={id}>{label}</option>
-              ))}
-            </select>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={offsetDays}
-                onChange={(e) => setOffsetDays(parseInt(e.target.value, 10) || 0)}
-                className="w-24 px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm min-h-[44px]"
-              />
-              <span className="text-xs text-ios-gray-600">
-                days {offsetDays < 0 ? 'before' : offsetDays > 0 ? 'after' : 'from'}{' '}
-                {ANCHOR_LABELS[anchor]}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState({ onEdit }: { onEdit: () => void }) {
@@ -828,14 +676,6 @@ function ChevronIcon({ className = '' }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
       <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function PlusIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-      <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
     </svg>
   );
 }

@@ -509,6 +509,10 @@ function DaySection({
               <div className="flex items-center gap-2 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
                 <span className="text-xs text-ios-gray-500 flex-1">
                   {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
+                  {' · '}
+                  <span className="font-semibold text-teal-700">
+                    {formatHours(phaseEntries.reduce((sum, e) => sum + e.hours, 0))} hrs
+                  </span>
                 </span>
                 <button
                   onClick={() => onRemoveRole(phaseEntries[phaseEntries.length - 1].id)}
@@ -537,6 +541,11 @@ function DaySection({
       )}
     </div>
   );
+}
+
+/** Man-hours read better as "6" than "6.0", but half-hours have to survive. */
+function formatHours(hours: number): string {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
 }
 
 function groupEntriesByPhase(entries: ScheduleEntry[]) {
