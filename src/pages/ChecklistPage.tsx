@@ -108,6 +108,13 @@ export function ChecklistPage() {
 
   const dateGroups = grouping === 'date' ? groupByDueDate(view) : [];
 
+  // Finished sections sink below the ones still open, keeping their order among
+  // themselves so the list doesn't reshuffle beyond the move to the bottom.
+  const orderedSections = [
+    ...view.sections.filter((s) => !(s.total > 0 && s.completed >= s.total)),
+    ...view.sections.filter((s) => s.total > 0 && s.completed >= s.total),
+  ];
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -196,10 +203,12 @@ export function ChecklistPage() {
           {view.total === 0 ? (
             <EmptyState onEdit={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'settings' })} />
           ) : grouping === 'section' ? (
-            view.sections.map((section) => {
+            orderedSections.map((section) => {
               const items = section.items.filter(matchesFilter);
               if (items.length === 0) return null;
-              const isCollapsed = collapsed[section.id] ?? false;
+              const isComplete = section.total > 0 && section.completed >= section.total;
+              // Finished sections fold themselves away, but stay openable.
+              const isCollapsed = collapsed[section.id] ?? isComplete;
               return (
                 <Card key={section.id} className="overflow-hidden">
                   <button
@@ -220,7 +229,7 @@ export function ChecklistPage() {
                         {section.nextDueDate && ` · next ${formatDateLabel(section.nextDueDate)}`}
                       </p>
                     </div>
-                    <SectionRing completed={section.completed} total={section.total} />
+                    <SectionBubble completed={section.completed} total={section.total} />
                     <ChevronIcon
                       className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${
                         isCollapsed ? '' : 'rotate-180'
@@ -395,27 +404,29 @@ function ProgressRing({ percent }: { percent: number }) {
   );
 }
 
-function SectionRing({ completed, total }: { completed: number; total: number }) {
-  const pct = total > 0 ? (completed / total) * 100 : 0;
-  const r = 10;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - pct / 100);
-  const complete = completed === total;
+/**
+ * At-a-glance state of a section, beside its chevron: red for untouched, yellow
+ * once some items are ticked, green when the section is finished.
+ */
+function SectionBubble({ completed, total }: { completed: number; total: number }) {
+  const state = completed === 0 ? 'none' : completed >= total ? 'all' : 'some';
+  const style = {
+    none: 'bg-red-200 border-red-300 text-red-800',
+    some: 'bg-amber-100 border-amber-300 text-amber-800',
+    all:  'bg-green-200 border-green-300 text-green-900',
+  }[state];
+
   return (
-    <svg viewBox="0 0 24 24" className="w-6 h-6 -rotate-90 flex-shrink-0">
-      <circle cx="12" cy="12" r={r} fill="none" strokeWidth="3" className="stroke-ios-gray-100" />
-      <circle
-        cx="12"
-        cy="12"
-        r={r}
-        fill="none"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        className={complete ? 'stroke-green-500' : 'stroke-indigo-500'}
-      />
-    </svg>
+    <span
+      className={`flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center ${style}`}
+      aria-label={`${completed} of ${total} complete`}
+    >
+      {state === 'all' && (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+        </svg>
+      )}
+    </span>
   );
 }
 

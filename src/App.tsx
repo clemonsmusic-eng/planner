@@ -1,5 +1,6 @@
 import { AppProvider, useApp } from './store/AppContext';
 import { MenuProvider } from './components/MenuContext';
+import { AddShiftProvider } from './components/AddShiftContext';
 import { Navigation } from './components/Navigation';
 import { HamburgerMenu } from './components/HamburgerMenu';
 import { HomePage } from './pages/HomePage';
@@ -46,7 +47,9 @@ export function App() {
   return (
     <AppProvider>
       <MenuProvider>
-        <AppContent />
+        <AddShiftProvider>
+          <AppContent />
+        </AddShiftProvider>
       </MenuProvider>
     </AppProvider>
   );

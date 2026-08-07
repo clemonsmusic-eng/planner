@@ -15,7 +15,8 @@ import {
   loadAuctionSettings, saveAuctionSettings,
   loadChecklistTemplate, saveChecklistTemplate,
 } from '../lib/storage';
-import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
+import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
+import { formatDateLabel } from '../lib/dateUtils';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -41,13 +42,26 @@ type Action =
   | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string }
   | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null }
   | { type: 'ADD_SCHEDULE_ROLE'; projectId: string; date: string; phaseId: string; role: RoleType }
-  | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string };
+  | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string }
+  | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift };
+
+/** A shift built by hand on the Schedule tab rather than by the generator. */
+export interface NewShift {
+  date: string;
+  phaseId: string;
+  phaseName: string;
+  shift: 'AM' | 'PM' | 'Full Day';
+  hours: number;
+  roles: RoleType[];
+}
 
 
 /**
- * Totals and per-member hours are produced by generateSchedule, so any hand edit
- * on the Schedule tab leaves them stale — and the Plan tab reads them. Recompute
- * them from the entries so both tabs agree after an edit.
+ * Totals, per-member hours and the plan's milestone dates are produced by
+ * generateSchedule, so any hand edit on the Schedule tab leaves them stale — and
+ * the Plan tab reads the totals while the Checklist dates itself from the
+ * milestones. Recompute all three from the entries so every tab agrees with the
+ * schedule as it now stands.
  */
 function withRecomputedTotals(
   schedule: ScheduleResult,
@@ -67,6 +81,7 @@ function withRecomputedTotals(
   return {
     ...schedule,
     days,
+    suggestedDates: deriveSuggestedDates(days, schedule.suggestedDates),
     totalScheduledHours,
     remainingHours: budgetedManHours - totalScheduledHours,
     percentScheduled,
@@ -260,6 +275,44 @@ function reducer(state: AppState, action: Action): AppState {
         return {
           ...p,
           schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+        };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'ADD_SHIFT': {
+      const { date, phaseId, phaseName, shift, hours, roles } = action.shift;
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+
+        const stamp = Date.now();
+        const entries = roles.map((role, i) => ({
+          id: `entry-${stamp}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+          date,
+          phaseName,
+          phaseId,
+          role,
+          assignedMember: null,
+          assignedMemberName: null,
+          shift,
+          hours,
+          status: 'needs-assignment' as AssignmentStatus,
+          warnings: [],
+        }));
+
+        const existing = p.schedule.days.find((d) => d.date === date);
+        const days = existing
+          ? p.schedule.days.map((d) => (d.date === date ? { ...d, entries: [...d.entries, ...entries] } : d))
+          // A shift on a day the plan didn't cover adds that day, in date order.
+          : [...p.schedule.days, { date, label: formatDateLabel(date), entries }].sort((a, b) =>
+              a.date.localeCompare(b.date)
+            );
+
+        return {
+          ...p,
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          updatedAt: new Date().toISOString(),
         };
       });
       saveProjects(projects);

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { useMenu } from './MenuContext';
+import { useAddShift } from './AddShiftContext';
 import type { TabName } from '../types';
 
 // Width of the fixed left cluster (menu button + separator + folder button).
@@ -88,7 +89,11 @@ const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
 export function Navigation() {
   const { state, dispatch } = useApp();
   const { isOpen: menuOpen, toggle: toggleMenu } = useMenu();
+  const addShift = useAddShift();
   const [tabsOpen, setTabsOpen] = useState(false);
+  const scheduleTabRef = useRef<HTMLButtonElement>(null);
+  // Horizontal centre of the Schedule tab, so the popover rises out of it.
+  const [addShiftAnchorX, setAddShiftAnchorX] = useState(0);
 
   const activeProject = state.activeProjectId
     ? state.projects.find(p => p.id === state.activeProjectId)
@@ -103,8 +108,38 @@ export function Navigation() {
     if (!hasProject) setTabsOpen(false);
   }, [hasProject]);
 
+  // The Add Shift popover belongs to the Schedule tab; leaving it takes it away.
+  useEffect(() => {
+    if (state.activeTab !== 'schedule') addShift.closeMenu();
+  }, [state.activeTab]);
+
+  useEffect(() => {
+    const el = scheduleTabRef.current;
+    if (!addShift.menuOpen || !el) return;
+    const rect = el.getBoundingClientRect();
+    // Keep it on screen when the tab sits near either edge.
+    setAddShiftAnchorX(Math.min(Math.max(rect.left + rect.width / 2, 84), window.innerWidth - 84));
+  }, [addShift.menuOpen]);
+
   function setTab(tab: TabName) {
     dispatch({ type: 'SET_ACTIVE_TAB', tab });
+  }
+
+  /**
+   * Schedule is the one tab that does something when you're already on it:
+   * tapping it raises the Add Shift popover, and tapping again puts it away.
+   */
+  function onTabClick(tab: TabName) {
+    if (tab === 'schedule') {
+      if (state.activeTab === 'schedule') {
+        addShift.toggleMenu();
+        return;
+      }
+      addShift.closeMenu();
+    } else {
+      addShift.closeMenu();
+    }
+    setTab(tab);
   }
 
   /**
@@ -123,6 +158,7 @@ export function Navigation() {
   const t = state.activeTab;
 
   return (
+    <>
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ios-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -187,7 +223,9 @@ export function Navigation() {
             {PROJECT_TABS.map(({ tab, label, icon }) => (
               <button
                 key={tab}
-                onClick={() => setTab(tab)}
+                ref={tab === 'schedule' ? scheduleTabRef : undefined}
+                onClick={() => onTabClick(tab)}
+                aria-expanded={tab === 'schedule' ? addShift.menuOpen : undefined}
                 tabIndex={tabsOpen ? 0 : -1}
                 className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
                   t === tab ? 'text-teal-600' : 'text-ios-gray-500'
@@ -208,5 +246,41 @@ export function Navigation() {
 
       </div>
     </nav>
+
+      {/*
+        Add Shift popover — a sibling of the bar, not a child, so it can sit
+        above it while its click-catcher sits below and leaves the Schedule tab
+        live for the second tap that closes it.
+      */}
+      {addShift.menuOpen && (
+        <div className="fixed inset-0 z-[45]" onClick={addShift.closeMenu} aria-hidden="true" />
+      )}
+      <div
+        aria-hidden={!addShift.menuOpen}
+        className="fixed z-[55]"
+        style={{
+          left: `${addShiftAnchorX}px`,
+          bottom: 'calc(56px + env(safe-area-inset-bottom) + 8px)',
+          transformOrigin: 'bottom center',
+          opacity: addShift.menuOpen ? 1 : 0,
+          transform: addShift.menuOpen
+            ? 'translateX(-50%) translateY(0) scale(1)'
+            : 'translateX(-50%) translateY(10px) scale(0.94)',
+          pointerEvents: addShift.menuOpen ? 'auto' : 'none',
+          transition: 'opacity 160ms ease-out, transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <button
+          onClick={addShift.openSheet}
+          tabIndex={addShift.menuOpen ? 0 : -1}
+          className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-xl border border-ios-gray-200 text-teal-600 active:bg-teal-50 whitespace-nowrap"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 flex-shrink-0">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          <span className="text-sm font-semibold">Add Shift</span>
+        </button>
+      </div>
+    </>
   );
 }
