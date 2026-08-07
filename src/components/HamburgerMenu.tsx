@@ -1,6 +1,41 @@
 import { useState } from 'react';
 import { useMenu } from './MenuContext';
 import { useApp } from '../store/AppContext';
+import type { TabName } from '../types';
+
+/**
+ * Destinations that used to sit in the bottom bar. Order here is the order
+ * shown in the menu: Calendar, Settings, Home.
+ */
+const NAV_DESTINATIONS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
+  {
+    tab: 'calendar',
+    label: 'Calendar',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'settings',
+    label: 'Settings',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.992 6.992 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'home',
+    label: 'Home',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+];
 
 export function HamburgerButton() {
   const { toggle } = useMenu();
@@ -64,11 +99,6 @@ export function HamburgerMenu() {
     close();
   }
 
-  function goToSettings() {
-    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'settings' });
-    close();
-  }
-
   if (!isOpen) return null;
 
   const activeProjects  = state.projects.filter(p => (p.inputs.status ?? 'active') === 'active');
@@ -123,14 +153,14 @@ export function HamburgerMenu() {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/40"
+        className="fixed inset-0 z-[60] bg-black/40"
         onClick={close}
         aria-hidden="true"
       />
 
       {/* Drawer */}
       <div
-        className="fixed top-0 left-0 bottom-0 z-50 w-[280px] bg-white flex flex-col shadow-xl"
+        className="fixed top-0 left-0 bottom-0 z-[61] w-[280px] bg-white flex flex-col shadow-xl"
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Drawer header */}
@@ -151,17 +181,26 @@ export function HamburgerMenu() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Calendar shortcut */}
-          <div className="px-3 pt-3 pb-1">
-            <button
-              onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab: 'calendar' }); close(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-teal-900 active:bg-ios-gray-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ios-gray-500 flex-shrink-0">
-                <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-semibold">Calendar</span>
-            </button>
+          {/* Destinations moved out of the bottom bar, which now carries only
+              the menu and the project drawer. */}
+          <div className="px-3 pt-3 pb-1 space-y-0.5">
+            {NAV_DESTINATIONS.map(({ tab, label, icon }) => {
+              const isCurrent = state.activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab }); close(); }}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-ios-gray-100 ${
+                    isCurrent ? 'bg-teal-50 text-teal-700' : 'text-teal-900'
+                  }`}
+                >
+                  <span className={`w-5 h-5 flex-shrink-0 ${isCurrent ? 'text-teal-600' : 'text-ios-gray-500'}`}>
+                    {icon}
+                  </span>
+                  <span className="text-sm font-semibold">{label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Divider */}
@@ -283,21 +322,7 @@ export function HamburgerMenu() {
             </button>
           </div>
 
-          {/* Divider */}
-          <div className="mx-4 my-2 border-t border-ios-gray-200" />
-
-          {/* Settings */}
-          <div className="px-3 pb-4">
-            <button
-              onClick={goToSettings}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left text-teal-900 active:bg-ios-gray-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-ios-gray-500 flex-shrink-0">
-                <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.992 6.992 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-semibold">Settings</span>
-            </button>
-          </div>
+          <div className="h-2" />
         </div>
       </div>
     </>
