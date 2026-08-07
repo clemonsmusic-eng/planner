@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { AddShiftSheet } from '../components/AddShiftSheet';
+import { LockButton } from '../components/LockButton';
 import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
@@ -47,27 +48,6 @@ function ChevronDownIcon() {
   );
 }
 
-function LockButton({ isLocked, onToggle }: { isLocked: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
-        isLocked ? 'bg-teal-100 text-teal-700' : 'bg-ios-gray-100 text-ios-gray-500'
-      }`}
-      aria-label={isLocked ? 'Unlock project' : 'Lock project'}
-    >
-      {isLocked ? (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-          <path d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5a3 3 0 116 0v2.75a.75.75 0 001.5 0V5.5A4.5 4.5 0 0010 1z" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
