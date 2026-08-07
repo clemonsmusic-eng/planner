@@ -313,6 +313,8 @@ export function SchedulePage() {
                   onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
                   memberMap={memberMap}
                   onPickMember={setMemberPickerEntry}
+                  onAddRole={(phaseId) => dispatch({ type: 'ADD_SCHEDULE_ROLE', projectId: activeProject.id, date: day.date, phaseId, role: 'Specialist' })}
+                  onRemoveRole={(entryId) => dispatch({ type: 'REMOVE_SCHEDULE_ROLE', projectId: activeProject.id, entryId })}
                 />
               ))}
             </div>
@@ -393,6 +395,8 @@ function DaySection({
   onDateChange,
   memberMap,
   onPickMember,
+  onAddRole,
+  onRemoveRole,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -402,6 +406,8 @@ function DaySection({
   onDateChange: () => void;
   memberMap: Map<string, TeamMember>;
   onPickMember: (entry: ScheduleEntry) => void;
+  onAddRole: (phaseId: string) => void;
+  onRemoveRole: (entryId: string) => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -474,6 +480,32 @@ function DaySection({
                 {phaseEntries.map((entry) => (
                   <EntryRow key={entry.id} entry={entry} memberMap={memberMap} onPickMember={onPickMember} />
                 ))}
+              </div>
+              {/* Crew size for this shift — any shift can gain or lose roles. */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
+                <span className="text-xs text-ios-gray-500 flex-1">
+                  {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
+                </span>
+                <button
+                  onClick={() => onRemoveRole(phaseEntries[phaseEntries.length - 1].id)}
+                  disabled={phaseEntries.length <= 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 disabled:opacity-30"
+                  aria-label={`Remove a role from ${phaseName}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M4 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H4.75A.75.75 0 014 10z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onAddRole(phaseEntries[0].phaseId)}
+                  className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-teal-600 active:bg-teal-50 text-xs font-semibold"
+                  aria-label={`Add a crew member to ${phaseName}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                  </svg>
+                  Crew
+                </button>
               </div>
             </Card>
           ))}
@@ -608,9 +640,9 @@ function MemberPickerSheet({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl flex flex-col"
         style={{ maxHeight: '75vh', paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {/* Header */}
@@ -676,7 +708,7 @@ function FilterSheet({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[60] flex flex-col"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -758,9 +790,9 @@ function DateMoveSheet({
   const [newDate, setNewDate] = useState(originalDate);
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl px-4 py-5"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl px-4 py-5"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
       >
         <h3 className="font-bold text-teal-900 mb-4">Move to Different Date</h3>

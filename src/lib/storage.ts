@@ -34,6 +34,7 @@ export function loadProjects(): Project[] {
         isLocked: p.inputs.isLocked ?? false,
         phaseDateMoves: p.inputs.phaseDateMoves ?? [],
         auction: { ...p.inputs.auction, lotCount: p.inputs.auction?.lotCount ?? 0 },
+        contractedServices: p.inputs.contractedServices ?? [],
       },
       // Backfill for projects saved before the checklist companion existed
       checklist: normalizeChecklist(p.checklist),

@@ -154,6 +154,8 @@ export interface ProjectInputs {
   budgetedManHours: number;
   clientTimePreference: TimePreference;
   specialNotes: string;
+  // Services Contracted — sub-service labels from SERVICE_CATALOG
+  contractedServices: string[];
   // Optional Services
   cleanout: CleanoutOptions;
   auction: AuctionOptions;
@@ -264,6 +266,8 @@ export type ChecklistRequirement = 'cleanout' | 'auction';
 export interface ChecklistTemplateItem {
   id: string;
   text: string;
+  /** Subsection within the section — "where/when" the item is done. */
+  group?: string;
   anchor: ChecklistAnchor;
   offsetDays: number;
   offsetMode: ChecklistOffsetMode;

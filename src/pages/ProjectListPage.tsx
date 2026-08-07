@@ -22,6 +22,7 @@ function createDefaultInputs(): ProjectInputs {
     budgetedManHours: 0,
     clientTimePreference: 'AM',
     specialNotes: '',
+    contractedServices: [],
     cleanout: { enabled: false, type: '', startDate: '' },
     auction: { enabled: false },
     dateOverrides: [],
@@ -118,44 +119,27 @@ export function ProjectListPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {projects.length === 0 ? (
-          <EmptyState onCreate={handleCreateProject} />
-        ) : filter !== 'all' ? (
-          <div className="space-y-3">
-            {projects.map(renderCard)}
-          </div>
+        {filter !== 'all' ? (
+          projects.length === 0
+            ? <EmptyState onCreate={handleCreateProject} />
+            : <div className="space-y-3">{projects.map(renderCard)}</div>
         ) : (
-          <div className="space-y-6">
-            {activeProjects.length > 0 && (
-              <section>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
-                  Active · {activeProjects.length}
-                </h2>
-                <div className="space-y-3">{activeProjects.map(renderCard)}</div>
-              </section>
-            )}
-            {draftProjects.length > 0 && (
-              <section>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
-                  Draft · {draftProjects.length}
-                </h2>
-                <div className="space-y-3">{draftProjects.map(renderCard)}</div>
-              </section>
-            )}
-            {archivedProjects.length > 0 && (
-              <section>
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ios-gray-500 mb-2 px-1">
-                  Archived · {archivedProjects.length}
-                </h2>
-                <div className="space-y-3">{archivedProjects.map(renderCard)}</div>
-              </section>
-            )}
+          <div className="space-y-3">
+            <CategoryGroup label="Active" count={activeProjects.length} dotClass="bg-green-500" defaultOpen>
+              {activeProjects.map(renderCard)}
+            </CategoryGroup>
+            <CategoryGroup label="Draft" count={draftProjects.length} dotClass="bg-amber-400">
+              {draftProjects.map(renderCard)}
+            </CategoryGroup>
+            <CategoryGroup label="Archived" count={archivedProjects.length} dotClass="bg-ios-gray-400">
+              {archivedProjects.map(renderCard)}
+            </CategoryGroup>
           </div>
         )}
       </div>
 
       {/* FAB */}
-      {projects.length > 0 && (
+      {(
         <button
           onClick={handleCreateProject}
           className="fixed bottom-[calc(env(safe-area-inset-bottom)+72px)] right-4 w-14 h-14 bg-teal-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform z-40"
@@ -167,6 +151,52 @@ export function ProjectListPage() {
         </button>
       )}
     </div>
+  );
+}
+
+
+/** One project category, collapsible. Counts show even while collapsed. */
+function CategoryGroup({
+  label,
+  count,
+  dotClass,
+  defaultOpen,
+  children,
+}: {
+  label: string;
+  count: number;
+  dotClass: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
+  return (
+    <section className="bg-white rounded-2xl border border-ios-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-2.5 px-4 py-3.5 min-h-[52px] text-left active:bg-ios-gray-50"
+      >
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
+        <span className="flex-1 text-sm font-semibold text-teal-900">{label}</span>
+        <span className="text-sm text-ios-gray-500">{count}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {open && (
+        <div className="border-t border-ios-gray-100 p-3 space-y-3">
+          {count === 0
+            ? <p className="text-sm text-ios-gray-500 text-center py-3">No {label.toLowerCase()} projects.</p>
+            : children}
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -26,6 +26,7 @@ export interface ChecklistItemView {
   id: string;
   sectionId: string;
   sectionName: string;
+  group: string | null;
   text: string;
   owner: ChecklistOwner;
   note: string;
@@ -44,11 +45,19 @@ export interface ChecklistItemView {
   isCustom: boolean;
 }
 
+/** Items sharing a group label, in template order. */
+export interface ChecklistGroupView {
+  name: string | null;
+  items: ChecklistItemView[];
+}
+
 export interface ChecklistSectionView {
   id: string;
   name: string;
   description?: string;
   items: ChecklistItemView[];
+  /** The same items split by their subsection, preserving template order. */
+  groups: ChecklistGroupView[];
   total: number;
   completed: number;
   overdueCount: number;
@@ -261,6 +270,7 @@ export function buildChecklistView(
         id: item.id,
         sectionId: section.id,
         sectionName: section.name,
+        group: item.group ?? null,
         text: item.text,
         owner: item.owner,
         note: state.note || item.note || '',
@@ -288,11 +298,21 @@ export function buildChecklistView(
 
     const openDueDates = views.filter((v) => !v.done && v.dueDate).map((v) => v.dueDate!);
 
+    // Group in first-appearance order so subsections read top to bottom as the
+    // source document lays them out.
+    const groups: ChecklistGroupView[] = [];
+    for (const v of views) {
+      const last = groups[groups.length - 1];
+      if (last && last.name === v.group) last.items.push(v);
+      else groups.push({ name: v.group, items: [v] });
+    }
+
     sections.push({
       id: section.id,
       name: section.name,
       description: section.description,
       items: views,
+      groups,
       total: views.length,
       completed: views.filter((v) => v.done).length,
       overdueCount: views.filter((v) => v.status === 'overdue').length,

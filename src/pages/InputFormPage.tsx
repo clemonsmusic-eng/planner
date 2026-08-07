@@ -5,6 +5,7 @@ import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
+import { SERVICE_CATALOG } from '../lib/data';
 
 const CLEANOUT_TYPES = ['Basic', 'Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
 
@@ -31,6 +32,89 @@ function SectionHeader({ title, icon }: SectionHeaderProps) {
     <div className="flex items-center gap-2 mt-6 mb-2">
       <span className="text-teal-600">{icon}</span>
       <h2 className="text-xs font-bold uppercase tracking-wider text-teal-600">{title}</h2>
+    </div>
+  );
+}
+
+
+/**
+ * One service category, collapsed by default. Checking sub-services adds their
+ * labels to inputs.contractedServices; categories are independent, and any
+ * number of services may be checked across any number of categories.
+ */
+function ServiceCategoryGroup({
+  category,
+  services,
+  selected,
+  onToggleService,
+}: {
+  category: string;
+  services: string[];
+  selected: string[];
+  onToggleService: (service: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const chosen = services.filter((sv) => selected.includes(sv));
+
+  return (
+    <div className="border border-ios-gray-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-3 py-3 min-h-[48px] text-left active:bg-ios-gray-50"
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-teal-900">{category}</p>
+          <p className="text-xs text-ios-gray-500">
+            {chosen.length > 0 ? `${chosen.length} selected` : `${services.length} services`}
+          </p>
+        </div>
+        {chosen.length > 0 && (
+          <span className="flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+            {chosen.length}
+          </span>
+        )}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-ios-gray-100 divide-y divide-ios-gray-100">
+          {services.map((service) => {
+            const isChecked = selected.includes(service);
+            return (
+              <button
+                key={service}
+                onClick={() => onToggleService(service)}
+                role="checkbox"
+                aria-checked={isChecked}
+                className="w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] text-left active:bg-ios-gray-50"
+              >
+                <span
+                  className={`w-[20px] h-[20px] rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                    isChecked ? 'bg-teal-600 border-teal-600' : 'border-ios-gray-300'
+                  }`}
+                >
+                  {isChecked && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-white">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </span>
+                <span className={`text-sm leading-snug ${isChecked ? 'text-teal-900 font-medium' : 'text-teal-900'}`}>
+                  {service}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -141,6 +225,23 @@ export function InputFormPage() {
       reason: '',
     };
     update('dateOverrides', [...inputs.dateOverrides, override]);
+  }
+
+  const contractedServices = inputs?.contractedServices ?? [];
+
+  /** Multi-select: a service toggles independently of every other. */
+  function toggleService(service: string) {
+    setInputs((prev) => {
+      if (!prev) return prev;
+      const current = prev.contractedServices ?? [];
+      return {
+        ...prev,
+        contractedServices: current.includes(service)
+          ? current.filter((sv) => sv !== service)
+          : [...current, service],
+      };
+    });
+    setSaved(false);
   }
 
   function updateOverride(id: string, field: keyof DateOverride, value: string) {
@@ -342,38 +443,6 @@ export function InputFormPage() {
           </FormField>
         </Card>
 
-        {/* Section: Property */}
-        <SectionHeader
-          title="Property Details"
-          icon={
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" clipRule="evenodd" />
-            </svg>
-          }
-        />
-        <Card className="p-4 space-y-4">
-          <FormField label="Origin Sq Ft (current home)" required>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={inputs.originSqFt || ''}
-              onChange={(e) => update('originSqFt', parseFloat(e.target.value) || 0)}
-              placeholder="e.g. 2738"
-              className={inputClass()}
-            />
-          </FormField>
-          <FormField label="Destination Sq Ft (new home)" required>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={inputs.destinationSqFt || ''}
-              onChange={(e) => update('destinationSqFt', parseFloat(e.target.value) || 0)}
-              placeholder="e.g. 858"
-              className={inputClass()}
-            />
-          </FormField>
-        </Card>
-
         {/* Section: Budget & Preferences */}
         <SectionHeader
           title="Budget & Preferences"
@@ -423,9 +492,35 @@ export function InputFormPage() {
           </FormField>
         </Card>
 
-        {/* Section: Optional Services */}
+        {/* Section: Services Contracted */}
         <SectionHeader
-          title="Optional Services"
+          title="Services Contracted"
+          icon={
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v11.5A2.25 2.25 0 0115.75 18H4.25A2.25 2.25 0 012 15.75V4.25zm11.28 3.22a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 111.06-1.06L8.75 10.94l3.47-3.47a.75.75 0 011.06 0z" clipRule="evenodd" />
+            </svg>
+          }
+        />
+        <Card className="p-4 space-y-2">
+          {contractedServices.length > 0 && (
+            <p className="text-xs text-ios-gray-600 pb-1">
+              {contractedServices.length} service{contractedServices.length === 1 ? '' : 's'} contracted
+            </p>
+          )}
+          {SERVICE_CATALOG.map(({ category, services }) => (
+            <ServiceCategoryGroup
+              key={category}
+              category={category}
+              services={services}
+              selected={contractedServices}
+              onToggleService={toggleService}
+            />
+          ))}
+        </Card>
+
+        {/* Section: Cleanout */}
+        <SectionHeader
+          title="Cleanout"
           icon={
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
@@ -620,7 +715,7 @@ export function InputFormPage() {
       {/* Save Prompt Modal */}
       {showSavePrompt && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setShowSavePrompt(false)} />
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowSavePrompt(false)} />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6">
             <h3 className="font-bold text-teal-900 text-lg mb-1">Generate Schedule</h3>
             <p className="text-sm text-ios-gray-600 mb-5">

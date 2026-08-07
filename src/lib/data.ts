@@ -250,7 +250,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'Lot Prep',
     minHours: 3,
     maxHours: 6,
-    minTeamSize: 3,
+    minTeamSize: 2,
     maxTeamSize: 4,
     roles: [
       { role: 'PM', isLocked: true },
@@ -265,7 +265,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'Pickup Prep Day',
     minHours: 3,
     maxHours: 6,
-    minTeamSize: 3,
+    minTeamSize: 2,
     maxTeamSize: 4,
     roles: [
       { role: 'PM', isLocked: true },
@@ -414,3 +414,60 @@ export function getRoleQualifiers(role: RoleType): RoleType[] {
     default: return [role];
   }
 }
+
+// ─── Services Contracted ──────────────────────────────────────────────────────
+// The sub-services a client can contract, grouped by service category. Selected
+// values are stored on ProjectInputs.contractedServices as the sub-service label.
+export const SERVICE_CATALOG: { category: string; services: string[] }[] = [
+  {
+    category: 'Planning the Move',
+    services: [
+      'Space Planning',
+      'Natural State Photo Documentation',
+      'Sorting and Planning Downsize of Items',
+      'Document Sort',
+      'Safety Inspection',
+      'Change Utilities',
+      'Administrative Tasks',
+    ],
+  },
+  {
+    category: 'Packing Services',
+    services: [
+      'Packing for a Local Move',
+      'Packing for an Out of Area Move',
+      'Packing for an Out of State Move',
+      'Shipping to Family',
+      'Packing for Dispersal',
+      'Pack Regular Use Last Minute Items',
+      'Pack Perishables',
+      'Heavy Lifting – Packing & Sorting',
+    ],
+  },
+  {
+    category: 'Moving & Resettlement',
+    services: [
+      'Management of Your Move',
+      'Unpack',
+      'Setup of Your Home',
+      'Hang Pictures and Devices',
+      'Connect Electronics',
+      'Specialty TV Mounting 76"+',
+    ],
+  },
+  {
+    category: 'Dispersals & Cleanouts',
+    services: [
+      'Total Clean Out',
+      'Total Clean Out Delivery',
+      'Post Services Clean Out',
+      'Post Services Clean Out Delivery',
+      'Document Shredding',
+      'Hazmat Clean Out',
+      'Refuse Disposal (Various Levels)',
+      'Removal of 50+ Pound Items',
+      'Specialized Donation',
+      'Max Sold Staffing for Pickup',
+    ],
+  },
+];

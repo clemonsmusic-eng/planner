@@ -208,7 +208,7 @@ function ConflictDialog({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/50" />
+      <div className="fixed inset-0 z-[60] bg-black/50" />
       <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-2xl p-6">
         <div className="flex items-center gap-2 mb-3">
           <span className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -538,9 +538,9 @@ function FilterSheet({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-ios-gray-200">
