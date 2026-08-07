@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -39,7 +39,49 @@ type Action =
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
   | { type: 'TOGGLE_LOCK'; id: string }
   | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string }
-  | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null };
+  | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null }
+  | { type: 'ADD_SCHEDULE_ROLE'; projectId: string; date: string; phaseId: string; role: RoleType }
+  | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string };
+
+
+/**
+ * Totals and per-member hours are produced by generateSchedule, so any hand edit
+ * on the Schedule tab leaves them stale — and the Plan tab reads them. Recompute
+ * them from the entries so both tabs agree after an edit.
+ */
+function withRecomputedTotals(
+  schedule: ScheduleResult,
+  days: ScheduleDay[],
+  teamMembers: TeamMember[],
+  budgetedManHours: number
+): ScheduleResult {
+  const entries = days.flatMap((d) => d.entries);
+  const totalScheduledHours = entries.reduce((sum, e) => sum + e.hours, 0);
+  const percentScheduled = budgetedManHours > 0 ? (totalScheduledHours / budgetedManHours) * 100 : 0;
+
+  const hoursByMember: Record<string, number> = {};
+  for (const e of entries) {
+    if (e.assignedMember) hoursByMember[e.assignedMember] = (hoursByMember[e.assignedMember] ?? 0) + e.hours;
+  }
+
+  return {
+    ...schedule,
+    days,
+    totalScheduledHours,
+    remainingHours: budgetedManHours - totalScheduledHours,
+    percentScheduled,
+    status: percentScheduled > 120 ? 'OVER BUDGET' : percentScheduled < 85 ? 'UNDER SCHEDULED' : 'ON TRACK',
+    teamHours: teamMembers
+      .filter((m) => hoursByMember[m.id] !== undefined)
+      .map((m) => ({
+        memberId: m.id,
+        memberName: m.name,
+        scheduledHours: hoursByMember[m.id],
+        maxHours: m.maxHoursPerWeek,
+        isOverMax: m.maxHoursPerWeek > 0 && hoursByMember[m.id] > m.maxHoursPerWeek,
+      })),
+  };
+}
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -184,7 +226,56 @@ function reducer(state: AppState, action: Action): AppState {
               : entry
           ),
         }));
-        return { ...p, schedule: { ...p.schedule, days } };
+        return {
+          ...p,
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+        };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'ADD_SCHEDULE_ROLE': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+        const days = p.schedule.days.map((day) => {
+          if (day.date !== action.date) return day;
+          const sibling = day.entries.find((e) => e.phaseId === action.phaseId);
+          if (!sibling) return day;
+          // New slot inherits the phase's shift and hours; it starts unassigned.
+          const entry = {
+            ...sibling,
+            id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            role: action.role,
+            assignedMember: null,
+            assignedMemberName: null,
+            status: 'needs-assignment' as AssignmentStatus,
+            warnings: [],
+          };
+          const lastIdx = day.entries.map((e) => e.phaseId).lastIndexOf(action.phaseId);
+          const entries = [...day.entries];
+          entries.splice(lastIdx + 1, 0, entry);
+          return { ...day, entries };
+        });
+        return {
+          ...p,
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+        };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'REMOVE_SCHEDULE_ROLE': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+        const days = p.schedule.days
+          .map((day) => ({ ...day, entries: day.entries.filter((e) => e.id !== action.entryId) }))
+          .filter((day) => day.entries.length > 0);
+        return {
+          ...p,
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+        };
       });
       saveProjects(projects);
       return { ...state, projects };

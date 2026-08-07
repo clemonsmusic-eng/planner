@@ -278,6 +278,19 @@ function SuggestedDatesCard({
 }) {
   const { suggestedDates } = schedule;
 
+  /**
+   * Shift worked on a date, read off the schedule so it tracks any hand edit or
+   * shift override rather than the phase template's original intent.
+   */
+  function shiftFor(date: string): string | null {
+    const entries = schedule.days.find((d) => d.date === date)?.entries ?? [];
+    if (entries.length === 0) return null;
+    const shifts = new Set(entries.map((e) => e.shift));
+    if (shifts.has('Full Day')) return 'Full Day';
+    if (shifts.has('AM') && shifts.has('PM')) return 'AM/PM';
+    return shifts.has('AM') ? 'AM' : shifts.has('PM') ? 'PM' : null;
+  }
+
   type DateItem = { label: string; date: string; accent?: boolean };
 
   const items: DateItem[] = [
@@ -340,9 +353,16 @@ function SuggestedDatesCard({
                   }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${item.accent ? 'text-teal-700' : 'text-teal-900'}`}>
-                    {item.label}
-                  </p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className={`text-sm font-medium truncate ${item.accent ? 'text-teal-700' : 'text-teal-900'}`}>
+                      {item.label}
+                    </p>
+                    {shiftFor(item.date) && (
+                      <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700">
+                        {shiftFor(item.date)}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-ios-gray-500">{formatDateLabel(item.date)}</p>
                 </div>
                 {override && (

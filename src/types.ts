@@ -266,6 +266,8 @@ export type ChecklistRequirement = 'cleanout' | 'auction';
 export interface ChecklistTemplateItem {
   id: string;
   text: string;
+  /** Subsection within the section — "where/when" the item is done. */
+  group?: string;
   anchor: ChecklistAnchor;
   offsetDays: number;
   offsetMode: ChecklistOffsetMode;

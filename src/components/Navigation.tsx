@@ -80,8 +80,8 @@ const VSEP = () => (
 /** Tabs that live inside the project drawer. */
 const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
   { tab: 'inputs',    label: 'Input',     icon: <IconInput /> },
-  { tab: 'plan',      label: 'Plan',      icon: <IconPlan /> },
-  { tab: 'schedule',  label: 'Schedule',  icon: <IconSchedule /> },
+  { tab: 'plan',      label: 'Plan',      icon: <IconSchedule /> },
+  { tab: 'schedule',  label: 'Schedule',  icon: <IconPlan /> },
   { tab: 'checklist', label: 'Checklist', icon: <IconChecklist /> },
 ];
 

@@ -250,7 +250,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'Lot Prep',
     minHours: 3,
     maxHours: 6,
-    minTeamSize: 3,
+    minTeamSize: 2,
     maxTeamSize: 4,
     roles: [
       { role: 'PM', isLocked: true },
@@ -265,7 +265,7 @@ export const PHASE_TEMPLATES: PhaseTemplate[] = [
     name: 'Pickup Prep Day',
     minHours: 3,
     maxHours: 6,
-    minTeamSize: 3,
+    minTeamSize: 2,
     maxTeamSize: 4,
     roles: [
       { role: 'PM', isLocked: true },

@@ -22,7 +22,7 @@ const STATUS_STYLES: Record<ChecklistItemStatus, { label: string; chip: string; 
   'done':      { label: 'Done',     chip: 'bg-green-100 text-green-700',   text: 'text-ios-gray-400' },
   'overdue':   { label: 'Overdue',  chip: 'bg-red-100 text-red-700',       text: 'text-red-600' },
   'due-today': { label: 'Today',    chip: 'bg-amber-100 text-amber-800',   text: 'text-amber-700' },
-  'due-soon':  { label: 'Soon',     chip: 'bg-amber-50 text-amber-700',    text: 'text-amber-700' },
+  'due-soon':  { label: '',         chip: '',                              text: 'text-amber-700' },
   'upcoming':  { label: '',         chip: '',                              text: 'text-ios-gray-500' },
   'no-date':   { label: 'No date',  chip: 'bg-ios-gray-100 text-ios-gray-600', text: 'text-ios-gray-400' },
 };
@@ -230,14 +230,29 @@ export function ChecklistPage() {
 
                   {!isCollapsed && (
                     <div className="border-t border-ios-gray-100">
-                      {items.map((item) => (
-                        <ItemRow
-                          key={item.id}
-                          item={item}
-                          onToggle={() => toggleChecklistItem(activeProject.id, item.id)}
-                          onOpen={() => setDetailItem(item)}
-                        />
-                      ))}
+                      {section.groups.map((group, gi) => {
+                        const groupItems = group.items.filter(matchesFilter);
+                        if (groupItems.length === 0) return null;
+                        return (
+                          <div key={group.name ?? `g-${gi}`}>
+                            {group.name && (
+                              <div className="px-4 py-1.5 bg-ios-gray-50 border-b border-ios-gray-100">
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-ios-gray-500">
+                                  {group.name}
+                                </p>
+                              </div>
+                            )}
+                            {groupItems.map((item) => (
+                              <ItemRow
+                                key={item.id}
+                                item={item}
+                                onToggle={() => toggleChecklistItem(activeProject.id, item.id)}
+                                onOpen={() => setDetailItem(item)}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </Card>
@@ -341,14 +356,9 @@ function ProgressCard({ view }: { view: ChecklistView }) {
                 {view.overdueCount} overdue
               </span>
             )}
-            {view.dueSoonCount > 0 && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                {view.dueSoonCount} due soon
-              </span>
-            )}
-            {view.overdueCount === 0 && view.dueSoonCount === 0 && view.total > 0 && (
+            {view.overdueCount === 0 && view.total > 0 && (
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                Nothing due in the next 3 days
+                Nothing overdue
               </span>
             )}
           </div>
@@ -476,7 +486,9 @@ function ItemRow({
             {item.owner}
           </span>
           {showSection && (
-            <span className="text-[10px] text-ios-gray-400 truncate">{item.sectionName}</span>
+            <span className="text-[10px] text-ios-gray-400 truncate">
+              {item.group ? `${item.sectionName} · ${item.group}` : item.sectionName}
+            </span>
           )}
         </div>
         {item.note && (
