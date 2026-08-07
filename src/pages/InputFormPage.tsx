@@ -3,7 +3,6 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
-import { HamburgerButton } from '../components/HamburgerMenu';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
 
@@ -169,7 +168,6 @@ export function InputFormPage() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
         <div className="flex items-center gap-2">
-          <HamburgerButton />
           {/* Project picker */}
           <div className="flex-1 min-w-0 relative">
             <button

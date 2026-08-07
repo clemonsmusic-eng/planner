@@ -13,7 +13,6 @@ import {
   endOfWeek,
 } from 'date-fns';
 import { useApp } from '../store/AppContext';
-import { HamburgerButton } from '../components/HamburgerMenu';
 import type { Project, TeamMember, ExperienceLevel } from '../types';
 
 const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -728,7 +727,6 @@ export function CalendarPage() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
         <div className="flex items-center justify-between">
-          <HamburgerButton />
           <h1 className="text-lg font-bold text-teal-900">Calendar</h1>
           <button
             onClick={() => setShowFilters(true)}

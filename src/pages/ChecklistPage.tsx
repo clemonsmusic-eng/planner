@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
-import { HamburgerButton } from '../components/HamburgerMenu';
 import { formatDateLabel } from '../lib/dateUtils';
 import {
   buildChecklistView,
@@ -118,7 +117,6 @@ export function ChecklistPage() {
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <HamburgerButton />
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">Checklist</h1>
               <p className="text-xs text-ios-gray-600 truncate">
