@@ -1,6 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import type { TabName, ProjectStatus } from '../types';
+
+// Width of the fixed left cluster (Home + separator + the project/folder button).
+// The tab drawer expands to fill everything to the right of it, which pushes
+// Calendar and Settings past the right edge of the bar.
+const LEFT_CLUSTER_PX = 121;
+const DRAWER_WIDTH = `calc(100vw - ${LEFT_CLUSTER_PX}px)`;
+const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
 // Icons
 const IconHome = () => (
@@ -83,9 +90,18 @@ const VSEP = () => (
   <div className="w-px bg-ios-gray-200 self-stretch my-2 flex-shrink-0" />
 );
 
+/** Tabs that live inside the project drawer. */
+const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
+  { tab: 'inputs',    label: 'Input',     icon: <IconInput /> },
+  { tab: 'plan',      label: 'Plan',      icon: <IconPlan /> },
+  { tab: 'schedule',  label: 'Schedule',  icon: <IconSchedule /> },
+  { tab: 'checklist', label: 'Checklist', icon: <IconChecklist /> },
+];
+
 export function Navigation() {
   const { state, dispatch } = useApp();
   const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [tabsOpen, setTabsOpen] = useState(false);
 
   const activeProject = state.activeProjectId
     ? state.projects.find(p => p.id === state.activeProjectId)
@@ -95,8 +111,25 @@ export function Navigation() {
     ? (activeProject.inputs.projectName || activeProject.inputs.clientName || 'Project')
     : '';
 
+  // With no project open there are no tabs to show, so the drawer can't stay out.
+  useEffect(() => {
+    if (!hasProject) setTabsOpen(false);
+  }, [hasProject]);
+
   function setTab(tab: TabName) {
     dispatch({ type: 'SET_ACTIVE_TAB', tab });
+  }
+
+  /**
+   * The folder is the drawer's handle when a project is open. With no project
+   * it keeps its old job of opening the Projects filter menu.
+   */
+  function onFolderClick() {
+    if (!hasProject) {
+      setShowProjectMenu(m => !m);
+      return;
+    }
+    setTabsOpen(o => !o);
   }
 
   function goToFilter(filter: ProjectStatus) {
@@ -158,105 +191,79 @@ export function Navigation() {
         </div>
       )}
 
-      <div className="flex items-stretch min-h-[56px]">
+      {/*
+        Single row, clipped. Everything except the spacer refuses to shrink, so
+        when the drawer expands the overflow pushes Calendar and Settings off
+        the right edge rather than squeezing them.
+      */}
+      <div className="flex items-stretch min-h-[56px] overflow-hidden">
 
         {/* ── Home (always left) ── */}
         <NavBtn onClick={() => setTab('home')} active={t === 'home'} icon={<IconHome />} label="Home" className="w-14" />
 
         <VSEP />
 
-        {/* ── Middle section: flex-1, two layers crossfade ── */}
-        <div className="flex-1 relative overflow-hidden min-w-0">
+        {/* ── Project folder — the drawer handle ── */}
+        <button
+          onClick={onFolderClick}
+          aria-expanded={hasProject ? tabsOpen : undefined}
+          aria-label={hasProject ? `${projectName} tabs` : 'Projects'}
+          className={`w-16 flex-shrink-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors ${
+            tabsOpen || t === 'projects' || showProjectMenu ? 'text-teal-600' : 'text-ios-gray-500'
+          }`}
+        >
+          <IconFolder />
+          <span className="text-[9px] font-semibold leading-none truncate w-full text-center mt-0.5">
+            {hasProject ? projectName : 'Projects'}
+          </span>
+        </button>
 
-          {/* Layer A — Projects button (visible when no project open) */}
+        {/* ── Project tabs drawer — slides out of the folder ── */}
+        <div
+          className="flex-shrink-0 overflow-hidden flex items-stretch"
+          style={{
+            width: tabsOpen ? DRAWER_WIDTH : '0px',
+            transition: `width 320ms ${EASE}`,
+          }}
+          aria-hidden={!tabsOpen}
+        >
+          {/*
+            Fixed width so the tabs keep their final positions while the drawer
+            opens; the translate makes them read as sliding out of the folder
+            rather than simply being uncovered.
+          */}
           <div
-            className="absolute inset-0 flex items-stretch"
+            className="flex items-stretch"
             style={{
-              opacity: hasProject ? 0 : 1,
-              transform: hasProject ? 'translateX(-8px)' : 'translateX(0)',
-              transition: 'opacity 260ms ease-out, transform 260ms ease-out',
-              pointerEvents: hasProject ? 'none' : 'auto',
+              width: DRAWER_WIDTH,
+              transform: tabsOpen ? 'translateX(0)' : 'translateX(-28px)',
+              opacity: tabsOpen ? 1 : 0,
+              transition: `transform 320ms ${EASE}, opacity 200ms ease-out`,
             }}
           >
-            <button
-              onClick={() => setShowProjectMenu(m => !m)}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                t === 'projects' || showProjectMenu ? 'text-teal-600' : 'text-ios-gray-500'
-              }`}
-            >
-              <IconFolder />
-              <span className="text-[10px] font-medium leading-none">Projects</span>
-            </button>
+            <VSEP />
+            {PROJECT_TABS.map(({ tab, label, icon }) => (
+              <button
+                key={tab}
+                onClick={() => setTab(tab)}
+                tabIndex={tabsOpen ? 0 : -1}
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+                  t === tab ? 'text-teal-600' : 'text-ios-gray-500'
+                }`}
+              >
+                {icon}
+                <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">
+                  {label}
+                </span>
+              </button>
+            ))}
           </div>
-
-          {/* Layer B — Project name + tabs (visible when project is open, slides in from left) */}
-          <div
-            className="absolute inset-0 flex items-stretch"
-            style={{
-              opacity: hasProject ? 1 : 0,
-              transform: hasProject ? 'translateX(0)' : 'translateX(-16px)',
-              transition: 'opacity 280ms ease-out, transform 280ms ease-out',
-              pointerEvents: hasProject ? 'auto' : 'none',
-            }}
-          >
-            {/* Project name — tappable to go to projects list */}
-            <button
-              onClick={() => setTab('projects')}
-              className="flex flex-col items-center justify-center px-2 border-r border-ios-gray-200 flex-shrink-0 min-w-0 transition-colors text-ios-gray-500"
-              style={{ maxWidth: '30%', minWidth: '52px' }}
-            >
-              <IconFolder />
-              <span className="text-[9px] font-semibold leading-none text-ios-gray-400 truncate w-full text-center mt-0.5">
-                {projectName}
-              </span>
-            </button>
-
-            {/* Input */}
-            <button
-              onClick={() => setTab('inputs')}
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                t === 'inputs' ? 'text-teal-600' : 'text-ios-gray-500'
-              }`}
-            >
-              <IconInput />
-              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Input</span>
-            </button>
-
-            {/* Plan */}
-            <button
-              onClick={() => setTab('plan')}
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                t === 'plan' ? 'text-teal-600' : 'text-ios-gray-500'
-              }`}
-            >
-              <IconPlan />
-              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Plan</span>
-            </button>
-
-            {/* Schedule */}
-            <button
-              onClick={() => setTab('schedule')}
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                t === 'schedule' ? 'text-teal-600' : 'text-ios-gray-500'
-              }`}
-            >
-              <IconSchedule />
-              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">Sched</span>
-            </button>
-
-            {/* Checklist */}
-            <button
-              onClick={() => setTab('checklist')}
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
-                t === 'checklist' ? 'text-teal-600' : 'text-ios-gray-500'
-              }`}
-            >
-              <IconChecklist />
-              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">List</span>
-            </button>
-          </div>
-
         </div>
+
+        {/* Spacer — holds Calendar/Settings at the right edge while collapsed,
+            and is the first thing to give when the drawer opens. */}
+        <div className="flex-1 min-w-0" />
+
 
         <VSEP />
 
