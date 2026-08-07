@@ -6,6 +6,11 @@ on:
       - main
       - claude/move-plan-builder-iphone-pNs6g
       - claude/move-plan-checklist-app-rfmznn
+  # Manual trigger. Pushes authored by a GitHub App don't start workflow runs,
+  # so without this the site can only redeploy on a human push — and a merge
+  # that should have triggered one didn't. This makes a deploy runnable on
+  # demand from the Actions tab, or via the API, from any branch.
+  workflow_dispatch:
 
 permissions:
   contents: read
