@@ -76,6 +76,45 @@ function resolveShift(
   return clientPref;
 }
 
+// ─── Suggested dates from an edited schedule ──────────────────────────────────
+
+/**
+ * Re-read the plan milestones off the schedule's own entries.
+ *
+ * `generateSchedule` produces `suggestedDates` alongside the days, but hand
+ * edits on the Schedule tab — moving a shift, adding one, deleting the last
+ * role of a phase — change the days without going back through the generator.
+ * The checklist dates itself from these milestones, so they have to be
+ * rederived after every edit or the checklist keeps showing the plan as it was
+ * first generated.
+ *
+ * Phases that no longer appear resolve to empty rather than keeping their old
+ * value: a milestone with no shift behind it isn't a date any more, and the
+ * checklist renders that as "no date". The two auction milestones that have no
+ * phase of their own (lot organization and auction start) are carried forward,
+ * since nothing in the days could tell us about them.
+ */
+export function deriveSuggestedDates(days: ScheduleDay[], previous: SuggestedDates): SuggestedDates {
+  const datesFor = (phaseId: string): string[] =>
+    [...new Set(days.filter((d) => d.entries.some((e) => e.phaseId === phaseId)).map((d) => d.date))].sort();
+
+  const first = (phaseId: string): string => datesFor(phaseId)[0] ?? '';
+
+  return {
+    firstVisit: first('phase-1'),
+    secondVisit: first('phase-2'),
+    sortDays: datesFor('phase-3'),
+    finalPackDay: first('phase-4-1') || first('phase-4-2'),
+    moveDay: first('phase-5-1') || first('phase-5-2'),
+    cleanoutDays: datesFor('phase-6'),
+    lotPrepDays: datesFor('phase-lot-prep'),
+    auctionLotOrg: previous.auctionLotOrg,
+    auctionStart: previous.auctionStart,
+    auctionPickupPrep: first('phase-pickup-prep') || null,
+    auctionPickup: first('phase-7') || null,
+  };
+}
+
 // ─── Main Scheduling Function ─────────────────────────────────────────────────
 
 // memberId → dateStr → shift already committed in a prior project

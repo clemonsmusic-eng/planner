@@ -10,8 +10,8 @@ import {
   type ChecklistItemStatus,
   type ChecklistView,
 } from '../lib/checklist';
-import { ANCHOR_LABELS, CHECKLIST_OWNERS, CHECKLIST_STANDING_NOTE } from '../lib/checklistData';
-import type { ChecklistAnchor, ChecklistOwner } from '../types';
+import { CHECKLIST_STANDING_NOTE } from '../lib/checklistData';
+import type { ChecklistOwner } from '../types';
 
 type Filter = 'all' | 'open' | 'overdue' | 'done';
 type Grouping = 'section' | 'date';
@@ -54,7 +54,6 @@ export function ChecklistPage() {
   const [grouping, setGrouping] = useState<Grouping>('section');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailItem, setDetailItem] = useState<ChecklistItemView | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Recomputed whenever the plan, the template, or stored progress changes —
@@ -107,6 +106,13 @@ export function ChecklistPage() {
   }
 
   const dateGroups = grouping === 'date' ? groupByDueDate(view) : [];
+
+  // Finished sections sink below the ones still open, keeping their order among
+  // themselves so the list doesn't reshuffle beyond the move to the bottom.
+  const orderedSections = [
+    ...view.sections.filter((s) => !(s.total > 0 && s.completed >= s.total)),
+    ...view.sections.filter((s) => s.total > 0 && s.completed >= s.total),
+  ];
 
   return (
     <>
@@ -196,10 +202,12 @@ export function ChecklistPage() {
           {view.total === 0 ? (
             <EmptyState onEdit={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'settings' })} />
           ) : grouping === 'section' ? (
-            view.sections.map((section) => {
+            orderedSections.map((section) => {
               const items = section.items.filter(matchesFilter);
               if (items.length === 0) return null;
-              const isCollapsed = collapsed[section.id] ?? false;
+              const isComplete = section.total > 0 && section.completed >= section.total;
+              // Finished sections fold themselves away, but stay openable.
+              const isCollapsed = collapsed[section.id] ?? isComplete;
               return (
                 <Card key={section.id} className="overflow-hidden">
                   <button
@@ -220,7 +228,7 @@ export function ChecklistPage() {
                         {section.nextDueDate && ` · next ${formatDateLabel(section.nextDueDate)}`}
                       </p>
                     </div>
-                    <SectionRing completed={section.completed} total={section.total} />
+                    <SectionBubble completed={section.completed} total={section.total} />
                     <ChevronIcon
                       className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${
                         isCollapsed ? '' : 'rotate-180'
@@ -286,13 +294,6 @@ export function ChecklistPage() {
 
           {/* Footer actions */}
           <div className="space-y-2 pt-2">
-            <button
-              onClick={() => setAddOpen(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-indigo-600 text-indigo-600 font-semibold text-sm min-h-[44px] active:bg-indigo-50"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Item
-            </button>
             {hiddenCount > 0 && (
               <button
                 onClick={() => restoreChecklistItems(activeProject.id)}
@@ -325,13 +326,6 @@ export function ChecklistPage() {
         />
       )}
 
-      {addOpen && (
-        <AddItemSheet
-          projectId={activeProject.id}
-          sections={view.sections.map((s) => ({ id: s.id, name: s.name }))}
-          onClose={() => setAddOpen(false)}
-        />
-      )}
     </>
   );
 }
@@ -395,27 +389,29 @@ function ProgressRing({ percent }: { percent: number }) {
   );
 }
 
-function SectionRing({ completed, total }: { completed: number; total: number }) {
-  const pct = total > 0 ? (completed / total) * 100 : 0;
-  const r = 10;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - pct / 100);
-  const complete = completed === total;
+/**
+ * At-a-glance state of a section, beside its chevron: red for untouched, yellow
+ * once some items are ticked, green when the section is finished.
+ */
+function SectionBubble({ completed, total }: { completed: number; total: number }) {
+  const state = completed === 0 ? 'none' : completed >= total ? 'all' : 'some';
+  const style = {
+    none: 'bg-red-200 border-red-300 text-red-800',
+    some: 'bg-amber-100 border-amber-300 text-amber-800',
+    all:  'bg-green-200 border-green-300 text-green-900',
+  }[state];
+
   return (
-    <svg viewBox="0 0 24 24" className="w-6 h-6 -rotate-90 flex-shrink-0">
-      <circle cx="12" cy="12" r={r} fill="none" strokeWidth="3" className="stroke-ios-gray-100" />
-      <circle
-        cx="12"
-        cy="12"
-        r={r}
-        fill="none"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        className={complete ? 'stroke-green-500' : 'stroke-indigo-500'}
-      />
-    </svg>
+    <span
+      className={`flex-shrink-0 w-6 h-6 rounded-full border flex items-center justify-center ${style}`}
+      aria-label={`${completed} of ${total} complete`}
+    >
+      {state === 'all' && (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+        </svg>
+      )}
+    </span>
   );
 }
 
@@ -634,143 +630,6 @@ function ItemDetailSheet({
   );
 }
 
-// ─── Add item sheet ───────────────────────────────────────────────────────────
-
-function AddItemSheet({
-  projectId,
-  sections,
-  onClose,
-}: {
-  projectId: string;
-  sections: Array<{ id: string; name: string }>;
-  onClose: () => void;
-}) {
-  const { addChecklistItem } = useApp();
-  const [text, setText] = useState('');
-  const [sectionId, setSectionId] = useState(sections[0]?.id ?? '');
-  const [owner, setOwner] = useState<ChecklistOwner>('PM');
-  const [anchor, setAnchor] = useState<ChecklistAnchor>('move-day');
-  const [offsetDays, setOffsetDays] = useState(0);
-
-  function submit() {
-    if (!text.trim() || !sectionId) return;
-    addChecklistItem(projectId, {
-      id: `custom-${crypto.randomUUID()}`,
-      sectionId,
-      text: text.trim(),
-      anchor,
-      offsetDays,
-      offsetMode: 'calendar',
-      owner,
-    });
-    onClose();
-  }
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} aria-hidden="true" />
-      <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
-      >
-        <div className="sticky top-0 bg-white px-4 pt-3 pb-2 border-b border-ios-gray-100">
-          <div className="w-10 h-1 bg-ios-gray-300 rounded-full mx-auto mb-3" />
-          <div className="flex items-center justify-between">
-            <button onClick={onClose} className="text-sm font-semibold text-ios-gray-600">
-              Cancel
-            </button>
-            <p className="text-base font-bold text-gray-900">Add Item</p>
-            <button
-              onClick={submit}
-              disabled={!text.trim()}
-              className="text-sm font-semibold text-indigo-600 disabled:text-ios-gray-300"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        <div className="px-4 py-4 space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Task
-            </label>
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              autoFocus
-              placeholder="What needs to happen?"
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm min-h-[44px]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Section
-            </label>
-            <select
-              value={sectionId}
-              onChange={(e) => setSectionId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm bg-white min-h-[44px]"
-            >
-              {sections.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Owner
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CHECKLIST_OWNERS.map((o) => (
-                <button
-                  key={o}
-                  onClick={() => setOwner(o)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                    owner === o ? 'bg-indigo-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">
-              Due Relative To
-            </label>
-            <select
-              value={anchor}
-              onChange={(e) => setAnchor(e.target.value as ChecklistAnchor)}
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm bg-white min-h-[44px] mb-2"
-            >
-              {Object.entries(ANCHOR_LABELS).map(([id, label]) => (
-                <option key={id} value={id}>{label}</option>
-              ))}
-            </select>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={offsetDays}
-                onChange={(e) => setOffsetDays(parseInt(e.target.value, 10) || 0)}
-                className="w-24 px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm min-h-[44px]"
-              />
-              <span className="text-xs text-ios-gray-600">
-                days {offsetDays < 0 ? 'before' : offsetDays > 0 ? 'after' : 'from'}{' '}
-                {ANCHOR_LABELS[anchor]}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState({ onEdit }: { onEdit: () => void }) {
@@ -817,14 +676,6 @@ function ChevronIcon({ className = '' }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
       <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function PlusIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-      <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
     </svg>
   );
 }

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
+import { AddShiftSheet } from '../components/AddShiftSheet';
+import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton } from '../components/FloatingSaveButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
@@ -85,6 +87,7 @@ const SHIFT_LABELS: Record<string, string> = {
 
 export function SchedulePage() {
   const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate } = useApp();
+  const addShift = useAddShift();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -250,6 +253,18 @@ export function SchedulePage() {
             </button>
           </div>
 
+          {/* Add a shift the generator didn't place */}
+          <button
+            onClick={addShift.openSheet}
+            disabled={!schedule}
+            className="w-full flex items-center justify-center gap-1.5 mb-2 py-2 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[40px] active:bg-teal-50 disabled:opacity-40"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            Add Shift
+          </button>
+
           {/* Filter bar */}
           <div className="flex items-center gap-2">
             <button
@@ -381,6 +396,15 @@ export function SchedulePage() {
         />
       )}
 
+      {addShift.sheetOpen && (
+        <AddShiftSheet
+          phaseTemplates={state.phaseTemplates}
+          defaultDate={schedule?.days[0]?.date ?? activeProject.inputs.targetMoveDate}
+          onAdd={(shift) => dispatch({ type: 'ADD_SHIFT', projectId: activeProject.id, shift })}
+          onClose={addShift.closeSheet}
+        />
+      )}
+
       {isDirty && <FloatingSaveButton onSave={() => setIsDirty(false)} />}
     </>
   );
@@ -485,6 +509,10 @@ function DaySection({
               <div className="flex items-center gap-2 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
                 <span className="text-xs text-ios-gray-500 flex-1">
                   {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
+                  {' · '}
+                  <span className="font-semibold text-teal-700">
+                    {formatHours(phaseEntries.reduce((sum, e) => sum + e.hours, 0))} hrs
+                  </span>
                 </span>
                 <button
                   onClick={() => onRemoveRole(phaseEntries[phaseEntries.length - 1].id)}
@@ -513,6 +541,11 @@ function DaySection({
       )}
     </div>
   );
+}
+
+/** Man-hours read better as "6" than "6.0", but half-hours have to survive. */
+function formatHours(hours: number): string {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
 }
 
 function groupEntriesByPhase(entries: ScheduleEntry[]) {

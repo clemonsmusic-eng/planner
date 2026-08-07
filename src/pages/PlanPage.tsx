@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { formatDateLabel } from '../lib/dateUtils';
+import { SERVICE_CATALOG } from '../lib/data';
 import type { ScheduleResult, TeamHoursSummary, DateOverride } from '../types';
 
 function ChevronDownIcon() {
@@ -148,6 +149,7 @@ export function PlanPage() {
                 overrides={activeProject.inputs.dateOverrides}
                 onOverride={(date) => setOverrideDate(date)}
               />
+              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} />
               <MoveDaySnapshotCard schedule={schedule} teamMembers={state.teamMembers} moveDate={activeProject.inputs.targetMoveDate} />
               <TeamHoursCard teamHours={schedule.teamHours} />
             </>
@@ -327,7 +329,7 @@ function SuggestedDatesCard({
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center justify-between min-h-[48px]"
       >
-        <h2 className="font-bold text-teal-900">Suggested Dates</h2>
+        <h2 className="font-bold text-teal-900">Dates</h2>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
@@ -382,6 +384,56 @@ function SuggestedDatesCard({
               </div>
             );
           })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Read-only mirror of the Input tab's Services Contracted, grouped by the same
+ * categories and listing only what was actually ticked.
+ */
+function ServicesContractedCard({ services }: { services: string[] }) {
+  const selected = new Set(services);
+  const groups = SERVICE_CATALOG
+    .map(({ category, services: all }) => ({ category, chosen: all.filter((s) => selected.has(s)) }))
+    .filter((g) => g.chosen.length > 0);
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-teal-900">Services Contracted</h2>
+        {services.length > 0 && (
+          <span className="text-xs text-ios-gray-500">
+            {services.length} service{services.length === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+
+      {groups.length === 0 ? (
+        <p className="text-sm text-ios-gray-500">
+          No services selected yet — pick them on the Input tab.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {groups.map(({ category, chosen }) => (
+            <div key={category}>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ios-gray-500 mb-1.5">
+                {category}
+              </p>
+              <ul className="space-y-1">
+                {chosen.map((service) => (
+                  <li key={service} className="flex items-start gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-teal-900 leading-snug">{service}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </Card>
