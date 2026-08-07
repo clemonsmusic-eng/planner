@@ -356,26 +356,3 @@ export function groupByDueDate(view: ChecklistView): Array<{ date: string | null
   if (undated.length > 0) groups.push({ date: null, items: undated });
   return groups;
 }
-
-// ─── Export ───────────────────────────────────────────────────────────────────
-
-/** Plain-text checklist for sharing with a client or family. */
-export function checklistToText(project: Project, view: ChecklistView): string {
-  const lines: string[] = [];
-  const title = project.inputs.clientName || project.inputs.projectName || 'Move Checklist';
-  lines.push(`${title} — Move Checklist`);
-  if (project.inputs.community) lines.push(project.inputs.community);
-  lines.push(`${view.completed} of ${view.total} complete`);
-  lines.push('');
-
-  for (const section of view.sections) {
-    lines.push(`${section.name.toUpperCase()}  (${section.completed}/${section.total})`);
-    for (const item of section.items) {
-      const box = item.done ? '[x]' : '[ ]';
-      const due = item.dueDate ? item.dueDate : 'no date';
-      lines.push(`  ${box} ${due}  ${item.text}  — ${item.owner}`);
-    }
-    lines.push('');
-  }
-  return lines.join('\n');
-}
