@@ -5,9 +5,18 @@ import type { TabName } from '../types';
 
 /**
  * Destinations that used to sit in the bottom bar. Order here is the order
- * shown in the menu: Calendar, Settings, Home.
+ * shown in the menu, bottom group: Home, Calendar, Settings.
  */
 const NAV_DESTINATIONS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
+  {
+    tab: 'home',
+    label: 'Home',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
   {
     tab: 'calendar',
     label: 'Calendar',
@@ -23,15 +32,6 @@ const NAV_DESTINATIONS: { tab: TabName; label: string; icon: React.ReactNode }[]
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
         <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.992 6.992 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    tab: 'home',
-    label: 'Home',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" clipRule="evenodd" />
       </svg>
     ),
   },
@@ -99,8 +99,7 @@ export function HamburgerMenu() {
     close();
   }
 
-  if (!isOpen) return null;
-
+  // Rendered even while closed so it can animate both directions.
   const activeProjects  = state.projects.filter(p => (p.inputs.status ?? 'active') === 'active');
   const draftProjects   = state.projects.filter(p => (p.inputs.status ?? 'active') === 'draft');
   const archivedProjects = state.projects.filter(p => (p.inputs.status ?? 'active') === 'archived');
@@ -151,61 +150,32 @@ export function HamburgerMenu() {
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-[60] bg-black/40"
-        onClick={close}
-        aria-hidden="true"
-      />
+      {/*
+        Click-catcher. It sits *below* the bottom bar so the hamburger stays
+        visible and keeps working — a second tap on it closes the menu itself.
+      */}
+      {isOpen && (
+        <div className="fixed inset-0 z-[45]" onClick={close} aria-hidden="true" />
+      )}
 
-      {/* Drawer */}
+      {/* Popover — rises out of the hamburger in the bottom-left corner */}
       <div
-        className="fixed top-0 left-0 bottom-0 z-[61] w-[280px] bg-white flex flex-col shadow-xl"
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        aria-hidden={!isOpen}
+        className="fixed z-[55] w-[264px] bg-white rounded-2xl shadow-xl border border-ios-gray-200 flex flex-col overflow-hidden"
+        style={{
+          left: '8px',
+          maxWidth: 'calc(100vw - 16px)',
+          bottom: 'calc(56px + env(safe-area-inset-bottom) + 8px)',
+          maxHeight: 'calc(100vh - 56px - env(safe-area-inset-bottom) - 24px)',
+          transformOrigin: 'bottom left',
+          opacity: isOpen ? 1 : 0,
+          transform: isOpen ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.94)',
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: 'opacity 160ms ease-out, transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
       >
-        {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-ios-gray-200">
-          <div>
-            <p className="text-[11px] font-semibold text-ios-gray-500 uppercase tracking-wider">Smooth Transitions</p>
-            <h2 className="text-lg font-bold text-teal-900">Move Planner</h2>
-          </div>
-          <button
-            onClick={close}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-ios-gray-100 text-ios-gray-600"
-            aria-label="Close menu"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {/* Destinations moved out of the bottom bar, which now carries only
-              the menu and the project drawer. */}
-          <div className="px-3 pt-3 pb-1 space-y-0.5">
-            {NAV_DESTINATIONS.map(({ tab, label, icon }) => {
-              const isCurrent = state.activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab }); close(); }}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-ios-gray-100 ${
-                    isCurrent ? 'bg-teal-50 text-teal-700' : 'text-teal-900'
-                  }`}
-                >
-                  <span className={`w-5 h-5 flex-shrink-0 ${isCurrent ? 'text-teal-600' : 'text-ios-gray-500'}`}>
-                    {icon}
-                  </span>
-                  <span className="text-sm font-semibold">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Divider */}
-          <div className="mx-4 my-1 border-t border-ios-gray-200" />
-
+        {/* Projects — top of the menu, scrolls when the list is long */}
+        <div className="flex-1 min-h-0 overflow-y-auto py-2">
           {/* ── Active Projects ──────────────────────────────────── */}
           {activeProjects.length > 0 && (
             <>
@@ -321,8 +291,28 @@ export function HamburgerMenu() {
               <span className="text-sm font-semibold">New Project</span>
             </button>
           </div>
+        </div>
 
-          <div className="h-2" />
+        {/* Destinations — pinned to the bottom, directly above the hamburger */}
+        <div className="flex-shrink-0 border-t border-ios-gray-200 p-2 space-y-0.5">
+          {NAV_DESTINATIONS.map(({ tab, label, icon }) => {
+            const isCurrent = state.activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => { dispatch({ type: 'SET_ACTIVE_TAB', tab }); close(); }}
+                tabIndex={isOpen ? 0 : -1}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:bg-ios-gray-100 ${
+                  isCurrent ? 'bg-teal-50 text-teal-700' : 'text-teal-900'
+                }`}
+              >
+                <span className={`w-5 h-5 flex-shrink-0 ${isCurrent ? 'text-teal-600' : 'text-ios-gray-500'}`}>
+                  {icon}
+                </span>
+                <span className="text-sm font-semibold">{label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </>
