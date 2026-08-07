@@ -608,9 +608,9 @@ function MemberPickerSheet({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl flex flex-col"
         style={{ maxHeight: '75vh', paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {/* Header */}
@@ -676,7 +676,7 @@ function FilterSheet({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[60] flex flex-col"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -758,9 +758,9 @@ function DateMoveSheet({
   const [newDate, setNewDate] = useState(originalDate);
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl px-4 py-5"
+        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl px-4 py-5"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
       >
         <h3 className="font-bold text-teal-900 mb-4">Move to Different Date</h3>

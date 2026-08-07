@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { useMenu } from './MenuContext';
-import type { TabName, ProjectStatus } from '../types';
+import type { TabName } from '../types';
 
 // Width of the fixed left cluster (menu button + separator + folder button).
 // The tab drawer expands to fill everything to the right of it.
@@ -88,7 +88,6 @@ const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
 export function Navigation() {
   const { state, dispatch } = useApp();
   const { isOpen: menuOpen, toggle: toggleMenu } = useMenu();
-  const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [tabsOpen, setTabsOpen] = useState(false);
 
   const activeProject = state.activeProjectId
@@ -110,20 +109,15 @@ export function Navigation() {
 
   /**
    * The folder is the drawer's handle when a project is open. With no project
-   * it keeps its old job of opening the Projects filter menu.
+   * there are no tabs, so it becomes a plain link to the Projects page.
    */
   function onFolderClick() {
     if (!hasProject) {
-      setShowProjectMenu(m => !m);
+      dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' });
+      setTab('projects');
       return;
     }
     setTabsOpen(o => !o);
-  }
-
-  function goToFilter(filter: ProjectStatus) {
-    dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter });
-    setTab('projects');
-    setShowProjectMenu(false);
   }
 
   const t = state.activeTab;
@@ -133,52 +127,6 @@ export function Navigation() {
       className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ios-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Backdrop — closes Projects popup */}
-      {showProjectMenu && (
-        <div className="fixed inset-0 z-[60]" onClick={() => setShowProjectMenu(false)} />
-      )}
-
-      {/* Projects popup — centered above the nav, clears the safe area */}
-      {showProjectMenu && (
-        <div
-          className="fixed z-[70] bg-white rounded-2xl shadow-xl border border-ios-gray-200 overflow-hidden"
-          style={{
-            bottom: 'calc(56px + env(safe-area-inset-bottom) + 4px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            minWidth: '196px',
-          }}
-        >
-          {(
-            [
-              { filter: 'active'   as ProjectStatus, label: 'Active Projects'   },
-              { filter: 'draft'    as ProjectStatus, label: 'Draft Projects'    },
-              { filter: 'archived' as ProjectStatus, label: 'Archived Projects' },
-            ] as const
-          ).map(({ filter, label }, i) => {
-            const isCurrent = state.projectListFilter === filter && t === 'projects';
-            return (
-              <button
-                key={filter}
-                onClick={() => goToFilter(filter)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left active:bg-ios-gray-100 ${
-                  i > 0 ? 'border-t border-ios-gray-100' : ''
-                } ${isCurrent ? 'text-teal-700 font-semibold' : 'text-teal-900'}`}
-              >
-                <span className="w-4 flex-shrink-0 flex items-center justify-center">
-                  {isCurrent && (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-teal-600">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </span>
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/*
         Single row, clipped. Everything except the spacer refuses to shrink, so
         when the drawer expands the overflow pushes Calendar and Settings off
@@ -203,7 +151,7 @@ export function Navigation() {
           aria-expanded={hasProject ? tabsOpen : undefined}
           aria-label={hasProject ? `${projectName} tabs` : 'Projects'}
           className={`w-16 flex-shrink-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors ${
-            tabsOpen || t === 'projects' || showProjectMenu ? 'text-teal-600' : 'text-ios-gray-500'
+            tabsOpen || t === 'projects' ? 'text-teal-600' : 'text-ios-gray-500'
           }`}
         >
           <IconFolder />

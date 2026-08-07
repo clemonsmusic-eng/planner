@@ -154,6 +154,8 @@ export interface ProjectInputs {
   budgetedManHours: number;
   clientTimePreference: TimePreference;
   specialNotes: string;
+  // Services Contracted — sub-service labels from SERVICE_CATALOG
+  contractedServices: string[];
   // Optional Services
   cleanout: CleanoutOptions;
   auction: AuctionOptions;

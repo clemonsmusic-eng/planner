@@ -74,6 +74,7 @@ export function HamburgerMenu() {
           budgetedManHours: 0,
           clientTimePreference: 'AM',
           specialNotes: '',
+          contractedServices: [],
           cleanout: { enabled: false, type: '', startDate: '' },
           auction: { enabled: false },
           dateOverrides: [],
