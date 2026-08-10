@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { useMenu } from './MenuContext';
 import { useAddShift } from './AddShiftContext';
+import { useProjectDocs } from './ProjectDocsContext';
 import type { TabName } from '../types';
 
 // Width of the fixed left cluster (menu button + separator + folder button).
@@ -86,12 +87,58 @@ const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
   { tab: 'checklist', label: 'Checklist', icon: <IconChecklist /> },
 ];
 
+const DOC_TABS = new Set<TabName>(['furniture', 'floorplans', 'photos']);
+
+const IconDocs = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+    <path d="M19.5 21a3 3 0 003-3V9a3 3 0 00-3-3h-5.379a.75.75 0 01-.53-.22L11.47 3.66A2.25 2.25 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
+  </svg>
+);
+
+/** The documents menu entries, in the order they're used on a job. */
+const DOC_DESTINATIONS: { tab: TabName; label: string; hint: string; icon: React.ReactNode }[] = [
+  {
+    tab: 'furniture',
+    label: 'Furniture Inventory',
+    hint: 'Measurements, rooms, wishlist',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v11.5A2.25 2.25 0 0115.75 18H4.25A2.25 2.25 0 012 15.75V4.25zM5 6.75A.75.75 0 015.75 6h8.5a.75.75 0 010 1.5h-8.5A.75.75 0 015 6.75zm0 3.5a.75.75 0 01.75-.75h8.5a.75.75 0 010 1.5h-8.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5h-5.5a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'floorplans',
+    label: 'Floor Plans',
+    hint: 'Destination layout PDFs',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path fillRule="evenodd" d="M2.5 3.75A1.25 1.25 0 013.75 2.5h12.5a1.25 1.25 0 011.25 1.25v12.5a1.25 1.25 0 01-1.25 1.25H3.75a1.25 1.25 0 01-1.25-1.25V3.75zM4 4v5h4V4H4zm5.5 0v5H16V4H9.5zM4 10.5V16h6.5v-5.5H4zm8 0V16h4v-5.5h-4z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'photos',
+    label: 'Photos',
+    hint: 'Before, after, inventory, lots',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h13.5A2.25 2.25 0 0019 13.75v-7.5A2.25 2.25 0 0016.75 4H3.25zm10 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM3 13.5l3.75-3.75 2.5 2.5 3-3L17 13.5v.25a.75.75 0 01-.75.75H3.75A.75.75 0 013 13.75v-.25z" />
+      </svg>
+    ),
+  },
+];
+
 export function Navigation() {
   const { state, dispatch } = useApp();
   const { isOpen: menuOpen, toggle: toggleMenu } = useMenu();
   const addShift = useAddShift();
+  const docs = useProjectDocs();
   const [tabsOpen, setTabsOpen] = useState(false);
   const scheduleTabRef = useRef<HTMLButtonElement>(null);
+  const folderRef = useRef<HTMLButtonElement>(null);
+  // Left edge of the folder, so the docs menu rises out of it.
+  const [docsAnchorX, setDocsAnchorX] = useState(8);
   // Horizontal centre of the Schedule tab, so the popover rises out of it.
   const [addShiftAnchorX, setAddShiftAnchorX] = useState(0);
 
@@ -103,10 +150,22 @@ export function Navigation() {
     ? (activeProject.inputs.projectName || activeProject.inputs.clientName || 'Project')
     : '';
 
-  // With no project open there are no tabs to show, so the drawer can't stay out.
+  // With no project open there are no tabs to show, so the drawer can't stay out
+  // and the documents menu has nothing to point at.
   useEffect(() => {
-    if (!hasProject) setTabsOpen(false);
+    if (!hasProject) {
+      setTabsOpen(false);
+      docs.close();
+    }
   }, [hasProject]);
+
+  useEffect(() => {
+    const el = folderRef.current;
+    if (!docs.isOpen || !el) return;
+    const rect = el.getBoundingClientRect();
+    // Anchored to the folder, nudged inward so it never runs off either edge.
+    setDocsAnchorX(Math.min(Math.max(rect.left - 8, 8), window.innerWidth - 272));
+  }, [docs.isOpen]);
 
   // The Add Shift popover belongs to the Schedule tab; leaving it takes it away.
   useEffect(() => {
@@ -139,6 +198,7 @@ export function Navigation() {
     } else {
       addShift.closeMenu();
     }
+    docs.close();
     setTab(tab);
   }
 
@@ -150,6 +210,12 @@ export function Navigation() {
     if (!hasProject) {
       dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' });
       setTab('projects');
+      return;
+    }
+    // Tapping the folder again folds the documents menu back into it.
+    if (docs.isOpen) {
+      docs.close();
+      setTabsOpen(false);
       return;
     }
     setTabsOpen(o => !o);
@@ -183,6 +249,7 @@ export function Navigation() {
 
         {/* ── Project folder — the drawer handle ── */}
         <button
+          ref={folderRef}
           onClick={onFolderClick}
           aria-expanded={hasProject ? tabsOpen : undefined}
           aria-label={hasProject ? `${projectName} tabs` : 'Projects'}
@@ -237,6 +304,19 @@ export function Navigation() {
                 </span>
               </button>
             ))}
+            <button
+              onClick={() => { addShift.closeMenu(); docs.toggle(); }}
+              aria-expanded={docs.isOpen}
+              tabIndex={tabsOpen ? 0 : -1}
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+                docs.isOpen || DOC_TABS.has(t) ? 'text-teal-600' : 'text-ios-gray-500'
+              }`}
+            >
+              <IconDocs />
+              <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">
+                Files
+              </span>
+            </button>
           </div>
         </div>
 
@@ -280,6 +360,56 @@ export function Navigation() {
           </svg>
           <span className="text-sm font-semibold">Add Shift</span>
         </button>
+      </div>
+
+      {/* Project documents menu — rises out of the project folder. */}
+      {docs.isOpen && (
+        <div className="fixed inset-0 z-[45]" onClick={docs.close} aria-hidden="true" />
+      )}
+      <div
+        aria-hidden={!docs.isOpen}
+        className="fixed z-[55] w-64 bg-white rounded-2xl shadow-xl border border-ios-gray-200 overflow-hidden"
+        style={{
+          left: `${docsAnchorX}px`,
+          maxWidth: 'calc(100vw - 16px)',
+          bottom: 'calc(56px + env(safe-area-inset-bottom) + 8px)',
+          transformOrigin: 'bottom left',
+          opacity: docs.isOpen ? 1 : 0,
+          transform: docs.isOpen ? 'translateY(0) scale(1)' : 'translateY(10px) scale(0.94)',
+          pointerEvents: docs.isOpen ? 'auto' : 'none',
+          transition: 'opacity 160ms ease-out, transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <div className="px-4 pt-3 pb-1">
+          <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider truncate">
+            {projectName || 'Project'}
+          </p>
+        </div>
+        <div className="p-2 pt-1 space-y-0.5">
+          {DOC_DESTINATIONS.map(({ tab, label, hint, icon }) => {
+            const isCurrent = t === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => { docs.close(); setTab(tab); }}
+                tabIndex={docs.isOpen ? 0 : -1}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:bg-ios-gray-100 ${
+                  isCurrent ? 'bg-teal-50' : ''
+                }`}
+              >
+                <span className={`w-5 h-5 flex-shrink-0 ${isCurrent ? 'text-teal-600' : 'text-ios-gray-500'}`}>
+                  {icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-sm font-semibold truncate ${isCurrent ? 'text-teal-700' : 'text-teal-900'}`}>
+                    {label}
+                  </span>
+                  <span className="block text-[11px] text-ios-gray-500 truncate">{hint}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </>
   );
