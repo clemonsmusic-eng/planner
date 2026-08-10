@@ -462,7 +462,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         auctionSettings,
         checklistTemplate,
         supplies,
-        activeProjectId: projects[0]?.id ?? null,
+        // Nothing is opened for you. Auto-selecting the first stored project
+        // made whichever one happened to be first look like a default.
+        activeProjectId: null,
       },
     });
   }, []);

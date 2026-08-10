@@ -351,7 +351,7 @@ export function InputFormPage() {
               type="text"
               value={inputs.clientName}
               onChange={(e) => update('clientName', e.target.value)}
-              placeholder="e.g. Jim Doyle"
+              placeholder="Client name"
               className={inputClass()}
             />
           </FormField>

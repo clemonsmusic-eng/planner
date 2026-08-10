@@ -11,7 +11,6 @@ import type { ProjectDocuments, SupplyItem, SupplyUsage } from '../types';
 
 export const SUPPLY_CATEGORIES = [
   'Packing & Tools',
-  'Fanny Pack',
   'Tote Bag',
   'Tool Bag',
   'In Van',
@@ -35,9 +34,9 @@ function item(
  * Starting list, transcribed from the operations supply sheet. Everything here
  * can be edited, removed, or added to — it's only the default.
  *
- * The kit sections (Fanny Pack, Tote Bag, Tool Bag, In Van) are what each
- * staffer carries, so their sheet "Amount" is kept as a carry note rather than
- * a stock count.
+ * The kit sections (Tote Bag, Tool Bag, In Van, Storage) are what each staffer
+ * carries, so their sheet "Amount" is kept as a carry note rather than a stock
+ * count.
  */
 const C = true;   // consumable — used up on a job, so projects draw it
 const E = false;  // equipment — tracked here, never drawn down
@@ -59,9 +58,6 @@ export const DEFAULT_SUPPLIES: SupplyItem[] = [
   item('sup-electric-driver', 'Electric Driver', 'Packing & Tools', E),
   item('sup-flathead-driver', 'Flathead Driver', 'Packing & Tools', E),
   item('sup-phillipshead-driver', 'Phillipshead Driver', 'Packing & Tools', E),
-
-  item('sup-fp-marker', 'Marker', 'Fanny Pack', C, '', 'Carry 2'),
-  item('sup-fp-box-cutter', 'Box Cutter', 'Fanny Pack', E, '', 'Carry 1'),
 
   item('sup-tote-trash-bags', 'Trash Bags', 'Tote Bag', C, '', 'Carry 2–3'),
   item('sup-tote-freezer-bags', 'Freezer Bags', 'Tote Bag', C, 'box', 'Carry 1 box'),
@@ -95,7 +91,12 @@ export function emptySupplyItem(category: SupplyCategory = 'Packing & Tools'): S
   };
 }
 
-/** Tolerate items persisted before a field existed. */
+/** Sections that no longer exist; their rows move rather than vanish. */
+const RETIRED_CATEGORIES: Record<string, SupplyCategory> = {
+  'Fanny Pack': 'Packing & Tools',
+};
+
+/** Tolerate items persisted before a field existed, or in a retired section. */
 export function normalizeSupplies(supplies: SupplyItem[] | null | undefined): SupplyItem[] {
   if (!supplies || supplies.length === 0) return DEFAULT_SUPPLIES.map((s) => ({ ...s }));
   return supplies.map((s) => ({
@@ -104,6 +105,8 @@ export function normalizeSupplies(supplies: SupplyItem[] | null | undefined): Su
     costPerUnit: typeof s.costPerUnit === 'number' ? s.costPerUnit : null,
     unit: s.unit ?? '',
     description: s.description ?? '',
+    // A row left in a removed section would render nowhere and look deleted.
+    category: RETIRED_CATEGORIES[s.category] ?? s.category,
     // Lists saved before the consumable flag existed: take the seeded answer
     // for the items we shipped, and assume consumable for anything hand-added.
     consumable:

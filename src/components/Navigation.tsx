@@ -156,8 +156,10 @@ export function Navigation() {
     ? state.projects.find(p => p.id === state.activeProjectId)
     : null;
   const hasProject = !!activeProject;
+  // Blank rather than a stand-in name: a project that hasn't been filled in
+  // yet has no name to show, and inventing one makes it look like it does.
   const projectName = activeProject
-    ? (activeProject.inputs.projectName || activeProject.inputs.clientName || 'Project')
+    ? (activeProject.inputs.projectName || activeProject.inputs.clientName || '')
     : '';
 
   // With no project open there are no tabs to show, so the drawer can't stay out
@@ -262,7 +264,7 @@ export function Navigation() {
           ref={folderRef}
           onClick={onFolderClick}
           aria-expanded={hasProject ? tabsOpen : undefined}
-          aria-label={hasProject ? `${projectName} tabs` : 'Projects'}
+          aria-label={hasProject ? `${projectName || 'Project'} tabs` : 'Projects'}
           className={`w-16 flex-shrink-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-colors ${
             tabsOpen || t === 'projects' ? 'text-teal-600' : 'text-ios-gray-500'
           }`}
