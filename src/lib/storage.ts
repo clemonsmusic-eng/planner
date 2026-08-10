@@ -1,4 +1,4 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
@@ -7,6 +7,7 @@ import {
 } from './data';
 import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
+import { DEFAULT_SUPPLIES, normalizeSupplies } from './supplies';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
 const STORAGE_KEY_TEAM             = 'st-planner-team';
@@ -19,6 +20,7 @@ const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
 // installs pick up the new order instead of the one they cached. Per-project
 // progress lives on the project and is keyed by item id, so it survives.
 const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v3';
+const STORAGE_KEY_SUPPLIES         = 'st-planner-supplies';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -276,5 +278,25 @@ export function saveChecklistTemplate(template: ChecklistTemplateSection[]): voi
     localStorage.setItem(STORAGE_KEY_CHECKLIST, JSON.stringify(template));
   } catch (e) {
     console.error('Failed to save checklist template', e);
+  }
+}
+
+// ─── Supplies ─────────────────────────────────────────────────────────────────
+
+export function loadSupplies(): SupplyItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SUPPLIES);
+    // An empty stored list is a real state — the Director may have cleared it —
+    // so only a missing key falls back to the defaults.
+    if (raw !== null) return normalizeSupplies(JSON.parse(raw) as SupplyItem[]).filter(Boolean);
+  } catch {}
+  return DEFAULT_SUPPLIES.map((s) => ({ ...s }));
+}
+
+export function saveSupplies(supplies: SupplyItem[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_SUPPLIES, JSON.stringify(supplies));
+  } catch (e) {
+    console.error('Failed to save supplies', e);
   }
 }

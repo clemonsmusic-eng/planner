@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -14,6 +14,7 @@ import {
   loadPhaseTemplates, savePhaseTemplates,
   loadAuctionSettings, saveAuctionSettings,
   loadChecklistTemplate, saveChecklistTemplate,
+  loadSupplies, saveSupplies,
 } from '../lib/storage';
 import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -47,7 +48,8 @@ type Action =
   | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string }
   | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift }
   | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string }
-  | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments };
+  | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments }
+  | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
@@ -390,6 +392,11 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, projects };
     }
 
+    case 'UPDATE_SUPPLIES': {
+      saveSupplies(action.supplies);
+      return { ...state, supplies: action.supplies };
+    }
+
     default:
       return state;
   }
@@ -408,6 +415,7 @@ const initialState: AppState = {
   auctionSettings: { hourlyRate: 95, performanceLevel: 'Average' },
   projectListFilter: 'all',
   checklistTemplate: [],
+  supplies: [],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -442,6 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const phaseTemplates = loadPhaseTemplates();
     const auctionSettings = loadAuctionSettings();
     const checklistTemplate = loadChecklistTemplate();
+    const supplies = loadSupplies();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -452,6 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         phaseTemplates,
         auctionSettings,
         checklistTemplate,
+        supplies,
         activeProjectId: projects[0]?.id ?? null,
       },
     });
