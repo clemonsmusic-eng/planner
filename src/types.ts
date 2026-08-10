@@ -327,6 +327,58 @@ export interface ProjectChecklist {
   excludedItemIds: string[];
 }
 
+// ─── Project documents ────────────────────────────────────────────────────────
+
+/**
+ * One row of the Furniture Inventory sheet. Columns mirror the printed form:
+ * # · Item · W · D · H · 🖤 · Origination Location · Destination Location · Comments.
+ * Dimensions stay strings so "36", "36 in" and "36.5" all survive as typed.
+ */
+export interface FurnitureItem {
+  id: string;
+  item: string;
+  width: string;
+  depth: string;
+  height: string;
+  /** The 🖤 column — the client's furniture wishlist. */
+  wishlist: boolean;
+  originLocation: string;
+  destinationLocation: string;
+  comments: string;
+}
+
+/** The photo subfolders, in the order they're worked through on a job. */
+export const PHOTO_FOLDERS = [
+  'Origination Before',
+  'Inventory',
+  'Destination Before',
+  'Origination After',
+  'Destination After',
+  'Cleanout Before',
+  'Lots',
+  'Cleanout After',
+] as const;
+
+export type PhotoFolder = (typeof PHOTO_FOLDERS)[number];
+
+/**
+ * A file attached to a project. Only the metadata lives here — the bytes go to
+ * IndexedDB under this id, since photo sets run far past the localStorage quota.
+ */
+export interface ProjectFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  addedAt: string;
+}
+
+export interface ProjectDocuments {
+  furniture: FurnitureItem[];
+  floorPlans: ProjectFile[];
+  photos: Partial<Record<PhotoFolder, ProjectFile[]>>;
+}
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
@@ -335,10 +387,14 @@ export interface Project {
   inputs: ProjectInputs;
   schedule: ScheduleResult | null;
   checklist?: ProjectChecklist | null;
+  documents?: ProjectDocuments | null;
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
-export type TabName = 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist' | 'settings' | 'calendar';
+export type TabName =
+  | 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist'
+  | 'settings' | 'calendar'
+  | 'furniture' | 'floorplans' | 'photos';
 
 export interface AppState {
   projects: Project[];

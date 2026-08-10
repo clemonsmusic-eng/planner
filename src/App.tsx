@@ -1,6 +1,7 @@
 import { AppProvider, useApp } from './store/AppContext';
 import { MenuProvider } from './components/MenuContext';
 import { AddShiftProvider } from './components/AddShiftContext';
+import { ProjectDocsProvider } from './components/ProjectDocsContext';
 import { Navigation } from './components/Navigation';
 import { HamburgerMenu } from './components/HamburgerMenu';
 import { HomePage } from './pages/HomePage';
@@ -11,6 +12,9 @@ import { SchedulePage } from './pages/SchedulePage';
 import { ChecklistPage } from './pages/ChecklistPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { FurnitureInventoryPage } from './pages/FurnitureInventoryPage';
+import { FloorPlansPage } from './pages/FloorPlansPage';
+import { PhotosPage } from './pages/PhotosPage';
 
 function AppContent() {
   const { state } = useApp();
@@ -25,6 +29,9 @@ function AppContent() {
       case 'checklist': return <ChecklistPage />;
       case 'settings':  return <SettingsPage />;
       case 'calendar':  return <CalendarPage />;
+      case 'furniture': return <FurnitureInventoryPage />;
+      case 'floorplans':return <FloorPlansPage />;
+      case 'photos':    return <PhotosPage />;
     }
   })();
 
@@ -48,7 +55,9 @@ export function App() {
     <AppProvider>
       <MenuProvider>
         <AddShiftProvider>
-          <AppContent />
+          <ProjectDocsProvider>
+            <AppContent />
+          </ProjectDocsProvider>
         </AddShiftProvider>
       </MenuProvider>
     </AppProvider>

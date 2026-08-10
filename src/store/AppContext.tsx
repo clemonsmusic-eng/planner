@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -18,6 +18,8 @@ import {
 import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
 import { formatDateLabel } from '../lib/dateUtils';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
+import { normalizeDocuments, allFileIds } from '../lib/documents';
+import { deleteFile } from '../lib/fileStore';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
@@ -44,7 +46,8 @@ type Action =
   | { type: 'ADD_SCHEDULE_ROLE'; projectId: string; date: string; phaseId: string; role: RoleType }
   | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string }
   | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift }
-  | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string };
+  | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string }
+  | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
@@ -122,6 +125,12 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'DELETE_PROJECT': {
+      // Drop the project's attachment blobs too — the metadata goes with the
+      // project, but the bytes live in IndexedDB and would otherwise be orphaned.
+      const doomed = state.projects.find((p) => p.id === action.id);
+      if (doomed?.documents) {
+        for (const id of allFileIds(normalizeDocuments(doomed.documents))) deleteFile(id);
+      }
       const projects = state.projects.filter((p) => p.id !== action.id);
       saveProjects(projects);
       const newActive =
@@ -371,6 +380,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, projects };
     }
 
+    case 'UPDATE_DOCUMENTS': {
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId
+          ? { ...p, documents: action.documents, updatedAt: new Date().toISOString() }
+          : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
     default:
       return state;
   }
@@ -407,6 +426,7 @@ interface AppContextValue {
   removeChecklistItem: (projectId: string, itemId: string, isCustom: boolean) => void;
   restoreChecklistItems: (projectId: string) => void;
   resetChecklistProgress: (projectId: string) => void;
+  updateDocuments: (projectId: string, fn: (docs: ProjectDocuments) => ProjectDocuments) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -569,12 +589,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     mutateChecklist(projectId, (c) => ({ ...c, itemStates: {} }));
   }
 
+  // ── Documents ───────────────────────────────────────────────────────────────
+  // Furniture rows and file metadata. Blobs go to IndexedDB via lib/fileStore;
+  // only what's small enough for localStorage is written back through here.
+
+  function updateDocuments(projectId: string, fn: (docs: ProjectDocuments) => ProjectDocuments) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    dispatch({ type: 'UPDATE_DOCUMENTS', projectId, documents: fn(normalizeDocuments(project.documents)) });
+  }
+
   return (
     <AppContext.Provider
       value={{
         state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
         toggleChecklistItem, setChecklistDueDate, setChecklistNote,
         addChecklistItem, removeChecklistItem, restoreChecklistItems, resetChecklistProgress,
+        updateDocuments,
       }}
     >
       {children}
