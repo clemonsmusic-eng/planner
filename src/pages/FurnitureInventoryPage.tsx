@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ProjectDocHeader, NoProjectState } from '../components/ProjectDocHeader';
 import { emptyFurnitureItem, normalizeDocuments } from '../lib/documents';
+import { downloadBlob, furnitureToPdf, furnitureToXlsx } from '../lib/furnitureExport';
 import type { FurnitureItem } from '../types';
 
 /**
@@ -17,6 +18,7 @@ export function FurnitureInventoryPage() {
   const { activeProject, updateDocuments } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [wishlistOnly, setWishlistOnly] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   if (!activeProject) {
     return <NoProjectState title="Furniture Inventory" message="Pick a project to see its inventory." />;
@@ -63,8 +65,19 @@ export function FurnitureInventoryPage() {
           Wishlist{wishlistCount > 0 ? ` ${wishlistCount}` : ''}
         </button>
         <button
+          onClick={() => setExportOpen(true)}
+          disabled={items.length === 0}
+          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold bg-ios-gray-100 text-ios-gray-600 active:opacity-70 disabled:opacity-40 flex items-center gap-1.5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+            <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+            <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+          </svg>
+          Export
+        </button>
+        <button
           onClick={addRow}
-          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 active:opacity-70"
+          className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 active:opacity-70"
         >
           + Add Item
         </button>
@@ -199,6 +212,87 @@ export function FurnitureInventoryPage() {
             + Add Item
           </button>
         )}
+      </div>
+
+      {exportOpen && (
+        <ExportSheet
+          // Exports what's on screen: with the wishlist filter on, that's the
+          // wishlist — which is the list the client actually asks for.
+          count={shown.length}
+          scopeLabel={wishlistOnly ? 'wishlist items' : 'items'}
+          onExport={(format) => {
+            const build = format === 'pdf' ? furnitureToPdf : furnitureToXlsx;
+            // Carries the on-screen numbers, so a wishlist export still reads
+            // 5, 12, 20 rather than renumbering to 1, 2, 3.
+            const numbered = shown.map((row) => ({ number: items.indexOf(row) + 1, row }));
+            const { blob, filename } = build(activeProject, numbered);
+            downloadBlob(blob, filename);
+            setExportOpen(false);
+          }}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ExportSheet({
+  count,
+  scopeLabel,
+  onExport,
+  onClose,
+}: {
+  count: number;
+  scopeLabel: string;
+  onExport: (format: 'pdf' | 'xlsx') => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex flex-col"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative mt-auto bg-white rounded-t-3xl">
+        <div className="px-5 pt-5 pb-3">
+          <h2 className="text-lg font-bold text-teal-900 mb-1">Export Inventory</h2>
+          <p className="text-sm text-ios-gray-600">
+            {count} {scopeLabel} · all nine columns
+          </p>
+        </div>
+        <div className="px-4 pb-4 space-y-2">
+          <button
+            onClick={() => onExport('pdf')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-ios-gray-200 text-left active:bg-ios-gray-50"
+          >
+            <span className="w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0 text-[11px] font-bold">
+              PDF
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-teal-900">PDF</span>
+              <span className="block text-xs text-ios-gray-500">Printable sheet, landscape</span>
+            </span>
+          </button>
+          <button
+            onClick={() => onExport('xlsx')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-ios-gray-200 text-left active:bg-ios-gray-50"
+          >
+            <span className="w-9 h-9 rounded-lg bg-green-50 text-green-700 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
+              XLSX
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-teal-900">Excel</span>
+              <span className="block text-xs text-ios-gray-500">Editable spreadsheet</span>
+            </span>
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full min-h-[48px] rounded-xl border border-ios-gray-300 text-teal-900 font-semibold active:bg-ios-gray-50"
+          >
+            Cancel
+          </button>
+        </div>
+        <div className="h-2" />
       </div>
     </div>
   );
