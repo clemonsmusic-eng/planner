@@ -373,10 +373,41 @@ export interface ProjectFile {
   addedAt: string;
 }
 
+/** One draw against the master supply inventory, logged on a project. */
+export interface SupplyUsage {
+  id: string;
+  /** SupplyItem id from the master inventory. */
+  supplyId: string;
+  quantity: number;
+  date: string; // ISO date YYYY-MM-DD
+  note: string;
+}
+
 export interface ProjectDocuments {
   furniture: FurnitureItem[];
   floorPlans: ProjectFile[];
   photos: Partial<Record<PhotoFolder, ProjectFile[]>>;
+  supplyUsage?: SupplyUsage[];
+}
+
+// ─── Supplies ─────────────────────────────────────────────────────────────────
+
+/**
+ * A line in the master supply inventory, which the Director of Operations owns.
+ *
+ * `stocked` is what's been put on the shelf; what's actually available is that
+ * less everything projects have drawn, so a corrected or deleted usage entry
+ * restores the stock on its own.
+ */
+export interface SupplyItem {
+  id: string;
+  name: string;
+  category: string;
+  /** Free text — 'box', 'roll', '200 ct'. */
+  unit: string;
+  description: string;
+  stocked: number;
+  costPerUnit: number | null;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
@@ -394,7 +425,8 @@ export interface Project {
 export type TabName =
   | 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist'
   | 'settings' | 'calendar'
-  | 'furniture' | 'floorplans' | 'photos';
+  | 'furniture' | 'floorplans' | 'photos'
+  | 'supplies' | 'project-supplies';
 
 export interface AppState {
   projects: Project[];
@@ -407,4 +439,5 @@ export interface AppState {
   auctionSettings: AuctionAppSettings;
   projectListFilter: ProjectStatus | 'all';
   checklistTemplate: ChecklistTemplateSection[];
+  supplies: SupplyItem[];
 }

@@ -2,7 +2,7 @@ import { PHOTO_FOLDERS, type FurnitureItem, type PhotoFolder, type ProjectDocume
 
 /** A project that has never had documents opened still needs a shape to render. */
 export function emptyDocuments(): ProjectDocuments {
-  return { furniture: [], floorPlans: [], photos: {} };
+  return { furniture: [], floorPlans: [], photos: {}, supplyUsage: [] };
 }
 
 /** Tolerate documents persisted before a field existed. */
@@ -12,6 +12,9 @@ export function normalizeDocuments(docs: ProjectDocuments | null | undefined): P
     furniture: docs.furniture ?? [],
     floorPlans: docs.floorPlans ?? [],
     photos: docs.photos ?? {},
+    // Every read and write of a project's documents passes through here, so a
+    // field missing from this list is silently dropped on save.
+    supplyUsage: docs.supplyUsage ?? [],
   };
 }
 

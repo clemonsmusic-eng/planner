@@ -15,6 +15,8 @@ import { CalendarPage } from './pages/CalendarPage';
 import { FurnitureInventoryPage } from './pages/FurnitureInventoryPage';
 import { FloorPlansPage } from './pages/FloorPlansPage';
 import { PhotosPage } from './pages/PhotosPage';
+import { SupplyInventoryPage } from './pages/SupplyInventoryPage';
+import { ProjectSuppliesPage } from './pages/ProjectSuppliesPage';
 
 function AppContent() {
   const { state } = useApp();
@@ -32,6 +34,8 @@ function AppContent() {
       case 'furniture': return <FurnitureInventoryPage />;
       case 'floorplans':return <FloorPlansPage />;
       case 'photos':    return <PhotosPage />;
+      case 'supplies':  return <SupplyInventoryPage />;
+      case 'project-supplies': return <ProjectSuppliesPage />;
     }
   })();
 

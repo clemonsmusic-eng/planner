@@ -87,7 +87,7 @@ const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
   { tab: 'checklist', label: 'Checklist', icon: <IconChecklist /> },
 ];
 
-const DOC_TABS = new Set<TabName>(['furniture', 'floorplans', 'photos']);
+const DOC_TABS = new Set<TabName>(['furniture', 'floorplans', 'photos', 'project-supplies']);
 
 const IconDocs = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -114,6 +114,16 @@ const DOC_DESTINATIONS: { tab: TabName; label: string; hint: string; icon: React
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
         <path fillRule="evenodd" d="M2.5 3.75A1.25 1.25 0 013.75 2.5h12.5a1.25 1.25 0 011.25 1.25v12.5a1.25 1.25 0 01-1.25 1.25H3.75a1.25 1.25 0 01-1.25-1.25V3.75zM4 4v5h4V4H4zm5.5 0v5H16V4H9.5zM4 10.5V16h6.5v-5.5H4zm8 0V16h4v-5.5h-4z" clipRule="evenodd" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'project-supplies',
+    label: 'Supplies',
+    hint: 'Drawn from the master inventory',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path d="M1 1.75A.75.75 0 011.75 1h1.628a1.75 1.75 0 011.734 1.51L5.18 3a65.25 65.25 0 0113.36 1.412.75.75 0 01.58.875 48.645 48.645 0 01-1.618 6.2.75.75 0 01-.712.513H6a2.503 2.503 0 00-2.292 1.5H16.25a.75.75 0 010 1.5H2.76a.75.75 0 01-.748-.807 4.002 4.002 0 012.716-3.486L3.626 2.716a.25.25 0 00-.248-.216H1.75A.75.75 0 011 1.75zM6 17.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
       </svg>
     ),
   },
