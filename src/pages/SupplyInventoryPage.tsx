@@ -51,6 +51,7 @@ export function SupplyInventoryPage() {
   ].filter((c, i, arr) => arr.indexOf(c) === i);
 
   const totalOut = supplies.reduce((n, s) => n + usedEverywhere(allDocs, s.id), 0);
+  const consumableCount = supplies.filter((s) => s.consumable).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -60,7 +61,7 @@ export function SupplyInventoryPage() {
       >
         <h1 className="text-xl font-bold text-teal-900 leading-tight">Supply Inventory</h1>
         <p className="text-xs text-ios-gray-600">
-          Master list · {supplies.length} items
+          Master list · {supplies.length} items · {consumableCount} consumable
           {totalOut > 0 ? ` · ${totalOut} drawn by projects` : ''}
         </p>
       </div>
@@ -71,8 +72,8 @@ export function SupplyInventoryPage() {
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
           </svg>
           <p className="text-xs text-teal-900 leading-snug">
-            Project managers draw from this list on their job's Supplies page. On Hand already
-            has what they've used taken off it.
+            Consumables show on every project's Supplies page, where managers draw them down;
+            On Hand already has that taken off. Equipment is tracked here only.
           </p>
         </div>
 
@@ -115,11 +116,15 @@ export function SupplyInventoryPage() {
                               {row.name || 'Untitled item'}
                               {row.unit ? <span className="text-ios-gray-500 font-normal"> · {row.unit}</span> : null}
                             </span>
-                            {(row.description || used > 0) && (
-                              <span className="block text-xs text-ios-gray-500 truncate">
-                                {[row.description, used > 0 ? `${used} used on jobs` : ''].filter(Boolean).join(' · ')}
-                              </span>
-                            )}
+                            <span className="block text-xs text-ios-gray-500 truncate">
+                              {[
+                                row.consumable ? 'Consumable' : 'Equipment',
+                                row.description,
+                                used > 0 ? `${used} used on jobs` : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </span>
                           </span>
                           {/*
                             Red is for stock that ran out, not for stock that
@@ -218,6 +223,31 @@ export function SupplyInventoryPage() {
                                 className={INPUT}
                               />
                             </Field>
+
+                            <div>
+                              <label className={LABEL}>Type</label>
+                              <div className="flex gap-2">
+                                {([true, false] as const).map((value) => (
+                                  <button
+                                    key={String(value)}
+                                    onClick={() => patch(row.id, { consumable: value })}
+                                    aria-pressed={row.consumable === value}
+                                    className={`flex-1 min-h-[44px] rounded-xl text-sm font-semibold transition-colors ${
+                                      row.consumable === value
+                                        ? 'bg-teal-600 text-white'
+                                        : 'bg-ios-gray-100 text-ios-gray-600'
+                                    }`}
+                                  >
+                                    {value ? 'Consumable' : 'Equipment'}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-[11px] text-ios-gray-500 mt-1.5">
+                                {row.consumable
+                                  ? 'Listed on every project\u2019s supply page, where it can be drawn down.'
+                                  : 'Tracked here only \u2014 it never appears on a project\u2019s supply page.'}
+                              </p>
+                            </div>
 
                             <Field label="Category">
                               <select

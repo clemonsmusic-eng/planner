@@ -35,8 +35,17 @@ export function ProjectSuppliesPage() {
 
   const docs = normalizeDocuments(activeProject.documents);
   const usage = normalizeUsage(docs.supplyUsage);
-  const supplies = state.supplies;
   const allDocs = state.projects.map((p) => p.documents);
+
+  /**
+   * Consumables only — equipment is tracked on the master and never drawn.
+   * An item switched to equipment after a draw stays listed here while that
+   * draw exists, so the entry can still be seen and corrected rather than
+   * being stranded with stock held against it.
+   */
+  const supplies = state.supplies.filter(
+    (s) => s.consumable || usedOnProject(usage, s.id) > 0
+  );
 
   const totalLogged = usage.reduce((n, u) => n + u.quantity, 0);
 
@@ -96,7 +105,9 @@ export function ProjectSuppliesPage() {
         {supplies.length === 0 && (
           <div className="text-center py-16 px-6">
             <p className="text-ios-gray-600 text-sm">
-              The master supply inventory is empty. It's managed from Home → Supply Inventory.
+              {state.supplies.length === 0
+                ? "The master supply inventory is empty. It's managed from Home → Supply Inventory."
+                : 'No consumables in the master inventory yet. Mark an item Consumable there and it shows up here.'}
             </p>
           </div>
         )}
@@ -175,6 +186,11 @@ function SupplyRow({
           <p className="text-sm font-medium text-teal-900 truncate">
             {row.name || 'Untitled item'}
             {row.unit ? <span className="text-ios-gray-500 font-normal"> · {row.unit}</span> : null}
+            {!row.consumable && (
+              <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-ios-gray-100 text-ios-gray-600">
+                Equipment
+              </span>
+            )}
           </p>
           <p className="text-xs text-ios-gray-500 truncate">
             {/*

@@ -408,6 +408,12 @@ export interface SupplyItem {
   description: string;
   stocked: number;
   costPerUnit: number | null;
+  /**
+   * Consumables get used up on a job and are the only things a project's
+   * supply page lists; equipment (drills, ladders, tape measures) is tracked
+   * here but never drawn down.
+   */
+  consumable: boolean;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
