@@ -15,6 +15,7 @@ export const SUPPLY_CATEGORIES = [
   'Tote Bag',
   'Tool Bag',
   'In Van',
+  'Storage',
 ] as const;
 
 export type SupplyCategory = (typeof SUPPLY_CATEGORIES)[number];
