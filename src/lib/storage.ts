@@ -7,7 +7,7 @@ import {
 } from './data';
 import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
-import { DEFAULT_SUPPLIES, normalizeSupplies } from './supplies';
+import { DEFAULT_SUPPLIES, DEFAULT_SUPPLY_CATEGORIES, normalizeSupplies, normalizeCategories } from './supplies';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
 const STORAGE_KEY_TEAM             = 'st-planner-team';
@@ -21,6 +21,7 @@ const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
 // progress lives on the project and is keyed by item id, so it survives.
 const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v3';
 const STORAGE_KEY_SUPPLIES         = 'st-planner-supplies';
+const STORAGE_KEY_SUPPLY_CATS      = 'st-planner-supply-categories';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -155,6 +156,10 @@ export function loadLists(): ListCategory[] {
       const filtered = data.filter(
         l => !['density', 'sqft-ranges', 'pre-move-team-sizes', 'move-day-team-sizes'].includes(l.id)
       );
+      // Backfill lists added after this install was first saved.
+      for (const def of DEFAULT_LISTS) {
+        if (!filtered.some(l => l.id === def.id)) filtered.push({ ...def, items: [...def.items] });
+      }
       // Migrate: add 'None' to flexibility list if missing
       return filtered.map(l => {
         if (l.id === 'flexibility' && !l.items.includes('None')) {
@@ -298,5 +303,21 @@ export function saveSupplies(supplies: SupplyItem[]): void {
     localStorage.setItem(STORAGE_KEY_SUPPLIES, JSON.stringify(supplies));
   } catch (e) {
     console.error('Failed to save supplies', e);
+  }
+}
+
+export function loadSupplyCategories(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SUPPLY_CATS);
+    if (raw !== null) return normalizeCategories(JSON.parse(raw) as string[]);
+  } catch {}
+  return [...DEFAULT_SUPPLY_CATEGORIES];
+}
+
+export function saveSupplyCategories(categories: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_SUPPLY_CATS, JSON.stringify(categories));
+  } catch (e) {
+    console.error('Failed to save supply categories', e);
   }
 }

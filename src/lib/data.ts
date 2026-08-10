@@ -318,6 +318,15 @@ export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'availability-block',  name: 'Availability Block',  items: ['Full Day', 'AM', 'PM', 'Unavailable'] },
   // Shift Type Hours: "ShiftName=hours" — used as sort-phase hour default per person
   { id: 'shift-type-hours',    name: 'Shift Type Hours',    items: ['AM=4', 'PM=4', 'Full Day=8'] },
+  // Rooms and dispositions offered on the Furniture Inventory's origination and
+  // destination fields. Covers both ends of a move plus where items go instead.
+  { id: 'locations',           name: 'Locations',           items: [
+    'Living Room', 'Family Room', 'Den', 'Dining Room', 'Kitchen', 'Breakfast Nook',
+    'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 'Guest Room', 'Office',
+    'Master Bath', 'Bathroom', 'Foyer', 'Hallway', 'Laundry',
+    'Basement', 'Attic', 'Garage', 'Shed', 'Patio', 'Closet', 'Storage',
+    'Donation', 'Auction', 'Family', 'Dispersal', 'Trash',
+  ] },
 ];
 
 // ─── Communities ──────────────────────────────────────────────────────────────

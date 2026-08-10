@@ -4,7 +4,7 @@ import { Card } from '../components/Card';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { RearrangeSupplies } from '../components/RearrangeSupplies';
 import {
-  SUPPLY_CATEGORIES,
+  visibleCategories,
   availableOf,
   emptySupplyItem,
   stockedForOnHand,
@@ -27,6 +27,9 @@ export function SupplyInventoryPage() {
   const [confirmDelete, setConfirmDelete] = useState<SupplyItem | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [rearranging, setRearranging] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [sectionDraft, setSectionDraft] = useState('');
+  const [confirmSection, setConfirmSection] = useState<string | null>(null);
 
   const supplies = state.supplies;
   const allDocs = state.projects.map((p) => p.documents);
@@ -39,6 +42,44 @@ export function SupplyInventoryPage() {
     write(supplies.map((s) => (s.id === id ? { ...s, ...changes } : s)));
   }
 
+  // ── Sections ────────────────────────────────────────────────────────────────
+  // A section name is stored on every item in it, so renaming or removing one
+  // has to rewrite those items in the same action or they'd be orphaned.
+
+  function renameSection(from: string, to: string) {
+    const name = to.trim();
+    if (!name || name === from) { setEditingSection(null); return; }
+    if (categories.includes(name)) { setEditingSection(null); return; }
+    dispatch({
+      type: 'UPDATE_SUPPLY_CATEGORIES',
+      categories: categories.map((c) => (c === from ? name : c)),
+      supplies: supplies.map((s) => (s.category === from ? { ...s, category: name } : s)),
+    });
+    setEditingSection(null);
+  }
+
+  function addSection() {
+    let name = 'New Section';
+    for (let n = 2; categories.includes(name); n++) name = `New Section ${n}`;
+    dispatch({ type: 'UPDATE_SUPPLY_CATEGORIES', categories: [...categories, name] });
+    setEditingSection(name);
+    setSectionDraft(name);
+  }
+
+  function removeSection(name: string) {
+    const remaining = categories.filter((c) => c !== name);
+    const fallback = remaining[0];
+    dispatch({
+      type: 'UPDATE_SUPPLY_CATEGORIES',
+      categories: remaining,
+      // Items move rather than vanish; they carry stock and usage history.
+      supplies: fallback
+        ? supplies.map((s) => (s.category === name ? { ...s, category: fallback } : s))
+        : supplies,
+    });
+    setConfirmSection(null);
+  }
+
   function addItem(category: SupplyCategory) {
     const row = emptySupplyItem(category);
     write([...supplies, row]);
@@ -46,11 +87,7 @@ export function SupplyInventoryPage() {
     setCollapsed((c) => ({ ...c, [category]: false }));
   }
 
-  // Categories the data actually uses, so a custom one added by hand still shows.
-  const categories = [
-    ...SUPPLY_CATEGORIES,
-    ...supplies.map((s) => s.category).filter((c) => !SUPPLY_CATEGORIES.includes(c as SupplyCategory)),
-  ].filter((c, i, arr) => arr.indexOf(c) === i);
+  const categories = visibleCategories(state.supplyCategories, supplies);
 
   const totalOut = supplies.reduce((n, s) => n + usedEverywhere(allDocs, s.id), 0);
   const consumableCount = supplies.filter((s) => s.consumable).length;
@@ -109,22 +146,61 @@ export function SupplyInventoryPage() {
           const isCollapsed = collapsed[category] ?? false;
           return (
             <Card key={category} className="overflow-hidden">
-              <button
-                onClick={() => setCollapsed((c) => ({ ...c, [category]: !isCollapsed }))}
-                aria-expanded={!isCollapsed}
-                className="w-full px-4 py-3 flex items-center gap-2 min-h-[48px] text-left"
-              >
-                <h2 className="font-bold text-teal-900 text-sm flex-1 min-w-0 truncate">{category}</h2>
-                <span className="text-xs text-ios-gray-500 flex-shrink-0">{items.length}</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+              {editingSection === category ? (
+                <div className="px-3 py-2.5 flex items-center gap-2 border-b border-ios-gray-100">
+                  <input
+                    autoFocus
+                    value={sectionDraft}
+                    onChange={(e) => setSectionDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') renameSection(category, sectionDraft); }}
+                    className="flex-1 min-w-0 min-h-[40px] rounded-xl border border-ios-gray-300 bg-white px-3 text-base text-teal-900"
+                    aria-label={`Rename ${category}`}
+                  />
+                  <button
+                    onClick={() => renameSection(category, sectionDraft)}
+                    className="px-3 min-h-[40px] rounded-xl bg-teal-600 text-white text-sm font-semibold flex-shrink-0"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setConfirmSection(category)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-400 active:text-red-600 flex-shrink-0"
+                    aria-label={`Remove ${category} section`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+              <div className="w-full px-4 py-3 flex items-center gap-1 min-h-[48px]">
+                <button
+                  onClick={() => setCollapsed((c) => ({ ...c, [category]: !isCollapsed }))}
+                  aria-expanded={!isCollapsed}
+                  className="flex-1 min-w-0 flex items-center gap-2 text-left"
                 >
-                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                </svg>
-              </button>
+                  <h2 className="font-bold text-teal-900 text-sm flex-1 min-w-0 truncate">{category}</h2>
+                  <span className="text-xs text-ios-gray-500 flex-shrink-0">{items.length}</span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                  >
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => { setEditingSection(category); setSectionDraft(category); }}
+                  className="w-9 h-9 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-teal-600 flex-shrink-0"
+                  aria-label={`Edit ${category} section`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                </button>
+              </div>
+              )}
 
               {!isCollapsed && (
                 <div className="border-t border-ios-gray-100">
@@ -311,7 +387,28 @@ export function SupplyInventoryPage() {
             </Card>
           );
         })}
+
+        <button
+          onClick={addSection}
+          className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50"
+        >
+          + Add Section
+        </button>
       </div>
+      )}
+
+      {confirmSection && (
+        <ConfirmSheet
+          title="Remove section"
+          message={
+            supplies.some((s) => s.category === confirmSection)
+              ? `Remove the ${confirmSection} section? Its ${supplies.filter((s) => s.category === confirmSection).length} item(s) move to ${categories.filter((c) => c !== confirmSection)[0] ?? 'no section'}, keeping their stock.`
+              : `Remove the empty ${confirmSection} section?`
+          }
+          confirmLabel="Remove Section"
+          onConfirm={() => { removeSection(confirmSection); setEditingSection(null); }}
+          onClose={() => setConfirmSection(null)}
+        />
       )}
 
       {confirmDelete && (

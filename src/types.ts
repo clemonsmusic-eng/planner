@@ -446,4 +446,6 @@ export interface AppState {
   projectListFilter: ProjectStatus | 'all';
   checklistTemplate: ChecklistTemplateSection[];
   supplies: SupplyItem[];
+  /** Section names for the supply inventory, in display order. */
+  supplyCategories: string[];
 }

@@ -9,15 +9,37 @@ import type { ProjectDocuments, SupplyItem, SupplyUsage } from '../types';
  * see availableOf() for why.
  */
 
-export const SUPPLY_CATEGORIES = [
+/**
+ * Starting sections. The live list is stored on app state and editable — this
+ * is only what a fresh install begins with.
+ */
+export const DEFAULT_SUPPLY_CATEGORIES = [
   'Packing & Tools',
   'Tote Bag',
   'Tool Bag',
   'In Van',
   'Storage',
-] as const;
+];
 
-export type SupplyCategory = (typeof SUPPLY_CATEGORIES)[number];
+/** Sections are user-editable, so a category is just a string. */
+export type SupplyCategory = string;
+
+/**
+ * The sections to render: the stored list, plus any section an item still
+ * claims. Without the second part a row whose section was renamed or removed
+ * out from under it would render nowhere and look deleted.
+ */
+export function visibleCategories(stored: string[], supplies: SupplyItem[]): string[] {
+  const seen = new Set(stored);
+  const extra = supplies.map((s) => s.category).filter((c) => c && !seen.has(c));
+  return [...stored, ...extra].filter((c, i, arr) => arr.indexOf(c) === i);
+}
+
+export function normalizeCategories(categories: string[] | null | undefined): string[] {
+  if (!categories || categories.length === 0) return [...DEFAULT_SUPPLY_CATEGORIES];
+  const cleaned = categories.map((c) => c.trim()).filter(Boolean);
+  return cleaned.length > 0 ? cleaned.filter((c, i, a) => a.indexOf(c) === i) : [...DEFAULT_SUPPLY_CATEGORIES];
+}
 
 function item(
   id: string,
