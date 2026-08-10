@@ -15,7 +15,7 @@ import type { FurnitureItem } from '../types';
  * deleting a row renumbers the rest rather than leaving a gap.
  */
 export function FurnitureInventoryPage() {
-  const { activeProject, updateDocuments } = useApp();
+  const { state, activeProject, updateDocuments } = useApp();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [wishlistOnly, setWishlistOnly] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -24,6 +24,8 @@ export function FurnitureInventoryPage() {
     return <NoProjectState title="Furniture Inventory" message="Pick a project to see its inventory." />;
   }
 
+  // Rooms and dispositions come from the editable Locations list in Settings.
+  const locations = state.lists.find((l) => l.id === 'locations')?.items ?? [];
   const docs = normalizeDocuments(activeProject.documents);
   const items = docs.furniture;
   const shown = wishlistOnly ? items.filter((i) => i.wishlist) : items;
@@ -173,15 +175,21 @@ export function FurnitureInventoryPage() {
                     </div>
 
                     <Field label="Origination Location">
-                      <input type="text" value={row.originLocation}
-                        onChange={(e) => patch(row.id, { originLocation: e.target.value })}
-                        placeholder="Room it's coming from" className={INPUT} />
+                      <LocationSelect
+                        value={row.originLocation}
+                        locations={locations}
+                        placeholder="Room it's coming from"
+                        onChange={(v) => patch(row.id, { originLocation: v })}
+                      />
                     </Field>
 
                     <Field label="Destination Location">
-                      <input type="text" value={row.destinationLocation}
-                        onChange={(e) => patch(row.id, { destinationLocation: e.target.value })}
-                        placeholder="Room it's going to" className={INPUT} />
+                      <LocationSelect
+                        value={row.destinationLocation}
+                        locations={locations}
+                        placeholder="Room it's going to"
+                        onChange={(v) => patch(row.id, { destinationLocation: v })}
+                      />
                     </Field>
 
                     <Field label="Comments">
@@ -301,6 +309,39 @@ function ExportSheet({
 const INPUT =
   'w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900 focus:outline-none focus:ring-2 focus:ring-teal-500';
 const LABEL = 'block text-[11px] font-bold text-ios-gray-500 uppercase tracking-wide mb-1.5';
+
+/**
+ * Location picker backed by the Settings list.
+ *
+ * A value already on a row that isn't in the list — typed before the list
+ * existed, or removed from it since — is offered as an option of its own, so
+ * opening a row never silently blanks what someone recorded.
+ */
+function LocationSelect({
+  value,
+  locations,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  locations: string[];
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  const options = value && !locations.includes(value) ? [value, ...locations] : locations;
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${INPUT} appearance-none ${value ? '' : 'text-ios-gray-400'}`}
+    >
+      <option value="">{placeholder}</option>
+      {options.map((loc) => (
+        <option key={loc} value={loc}>{loc}</option>
+      ))}
+    </select>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

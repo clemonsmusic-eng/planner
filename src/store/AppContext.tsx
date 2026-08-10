@@ -15,6 +15,7 @@ import {
   loadAuctionSettings, saveAuctionSettings,
   loadChecklistTemplate, saveChecklistTemplate,
   loadSupplies, saveSupplies,
+  loadSupplyCategories, saveSupplyCategories,
 } from '../lib/storage';
 import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -49,7 +50,8 @@ type Action =
   | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift }
   | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string }
   | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments }
-  | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] };
+  | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] }
+  | { type: 'UPDATE_SUPPLY_CATEGORIES'; categories: string[]; supplies?: SupplyItem[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
@@ -397,6 +399,17 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, supplies: action.supplies };
     }
 
+    /** Renaming or removing a section has to move its items in the same write. */
+    case 'UPDATE_SUPPLY_CATEGORIES': {
+      saveSupplyCategories(action.categories);
+      if (action.supplies) saveSupplies(action.supplies);
+      return {
+        ...state,
+        supplyCategories: action.categories,
+        supplies: action.supplies ?? state.supplies,
+      };
+    }
+
     default:
       return state;
   }
@@ -416,6 +429,7 @@ const initialState: AppState = {
   projectListFilter: 'all',
   checklistTemplate: [],
   supplies: [],
+  supplyCategories: [],
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -451,6 +465,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const auctionSettings = loadAuctionSettings();
     const checklistTemplate = loadChecklistTemplate();
     const supplies = loadSupplies();
+    const supplyCategories = loadSupplyCategories();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -462,7 +477,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         auctionSettings,
         checklistTemplate,
         supplies,
-        activeProjectId: projects[0]?.id ?? null,
+        supplyCategories,
+        // Nothing is opened for you. Auto-selecting the first stored project
+        // made whichever one happened to be first look like a default.
+        activeProjectId: null,
       },
     });
   }, []);

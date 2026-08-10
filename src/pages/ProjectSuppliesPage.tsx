@@ -4,13 +4,12 @@ import { Card } from '../components/Card';
 import { ProjectDocHeader, NoProjectState } from '../components/ProjectDocHeader';
 import { normalizeDocuments } from '../lib/documents';
 import {
-  SUPPLY_CATEGORIES,
+  visibleCategories,
   availableOf,
   newUsageEntry,
   normalizeUsage,
   usedEverywhere,
   usedOnProject,
-  type SupplyCategory,
 } from '../lib/supplies';
 import { formatDateLabel } from '../lib/dateUtils';
 import type { SupplyItem } from '../types';
@@ -78,10 +77,7 @@ export function ProjectSuppliesPage() {
     }));
   }
 
-  const categories = [
-    ...SUPPLY_CATEGORIES,
-    ...supplies.map((s) => s.category).filter((c) => !SUPPLY_CATEGORIES.includes(c as SupplyCategory)),
-  ].filter((c, i, arr) => arr.indexOf(c) === i);
+  const categories = visibleCategories(state.supplyCategories, supplies);
 
   return (
     <div className="flex flex-col h-full">
