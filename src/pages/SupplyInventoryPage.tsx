@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ConfirmSheet } from '../components/ConfirmSheet';
+import { RearrangeSupplies } from '../components/RearrangeSupplies';
 import {
   SUPPLY_CATEGORIES,
   availableOf,
@@ -25,6 +26,7 @@ export function SupplyInventoryPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<SupplyItem | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [rearranging, setRearranging] = useState(false);
 
   const supplies = state.supplies;
   const allDocs = state.projects.map((p) => p.documents);
@@ -59,13 +61,38 @@ export function SupplyInventoryPage() {
         className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
-        <h1 className="text-xl font-bold text-teal-900 leading-tight">Supply Inventory</h1>
-        <p className="text-xs text-ios-gray-600">
-          Master list · {supplies.length} items · {consumableCount} consumable
-          {totalOut > 0 ? ` · ${totalOut} drawn by projects` : ''}
-        </p>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-bold text-teal-900 leading-tight">Supply Inventory</h1>
+            <p className="text-xs text-ios-gray-600">
+              {rearranging
+                ? 'Drag to reorder or move between sections'
+                : `Master list · ${supplies.length} items · ${consumableCount} consumable${
+                    totalOut > 0 ? ` · ${totalOut} drawn by projects` : ''
+                  }`}
+            </p>
+          </div>
+          <button
+            onClick={() => { setRearranging((v) => !v); setExpandedId(null); }}
+            aria-pressed={rearranging}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold min-h-[36px] transition-colors ${
+              rearranging ? 'bg-teal-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+            }`}
+          >
+            {rearranging ? 'Done' : 'Rearrange'}
+          </button>
+        </div>
       </div>
 
+      {rearranging && (
+        <RearrangeSupplies
+          supplies={supplies}
+          categories={categories}
+          onCommit={write}
+        />
+      )}
+
+      {!rearranging && (
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-teal-50/70 border border-teal-100">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5">
@@ -285,6 +312,7 @@ export function SupplyInventoryPage() {
           );
         })}
       </div>
+      )}
 
       {confirmDelete && (
         <ConfirmSheet
