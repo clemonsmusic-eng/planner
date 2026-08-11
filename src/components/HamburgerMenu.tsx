@@ -5,7 +5,7 @@ import type { TabName } from '../types';
 
 /**
  * Destinations that used to sit in the bottom bar. Order here is the order
- * shown in the menu, bottom group: Home, Calendar, Settings.
+ * shown in the menu, bottom group: Home, Calendar, Inventory, Settings.
  */
 const NAV_DESTINATIONS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
   {
@@ -27,6 +27,15 @@ const NAV_DESTINATIONS: { tab: TabName; label: string; icon: React.ReactNode }[]
     ),
   },
   {
+    tab: 'supplies',
+    label: 'Inventory',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+        <path d="M1 1.75A.75.75 0 011.75 1h1.628a1.75 1.75 0 011.734 1.51L5.18 3a65.25 65.25 0 0113.36 1.412.75.75 0 01.58.875 48.645 48.645 0 01-1.618 6.2.75.75 0 01-.712.513H6a2.503 2.503 0 00-2.292 1.5H16.25a.75.75 0 010 1.5H2.76a.75.75 0 01-.748-.807 4.002 4.002 0 012.716-3.486L3.626 2.716a.25.25 0 00-.248-.216H1.75A.75.75 0 011 1.75zM6 17.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+      </svg>
+    ),
+  },
+  {
     tab: 'settings',
     label: 'Settings',
     icon: (
@@ -42,6 +51,8 @@ export function HamburgerMenu() {
   const { state, dispatch } = useApp();
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
+  // Open by default — the active list is what the menu is usually for.
+  const [activeOpen, setActiveOpen] = useState(true);
 
   function selectProject(id: string) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id });
@@ -164,17 +175,33 @@ export function HamburgerMenu() {
         <div className="flex-1 min-h-0 overflow-y-auto py-2">
           {/* ── Active Projects ──────────────────────────────────── */}
           {activeProjects.length > 0 && (
-            <>
-              <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
-                  Active · {activeProjects.length}
-                </p>
-              </div>
-              <div className="px-3 space-y-1">
-                {activeProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
-              </div>
-            </>
+            <div className="px-3 pt-2">
+              <button
+                onClick={() => setActiveOpen(o => !o)}
+                aria-expanded={activeOpen}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl active:bg-ios-gray-100"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider">
+                    Active · {activeProjects.length}
+                  </span>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className={`w-4 h-4 text-ios-gray-400 transition-transform ${activeOpen ? 'rotate-180' : ''}`}
+                >
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {activeOpen && (
+                <div className="space-y-1 mt-1">
+                  {activeProjects.map((p) => <ProjectRow key={p.id} project={p} />)}
+                </div>
+              )}
+            </div>
           )}
 
           {/* ── Draft Projects (collapsible) ─────────────────────── */}
