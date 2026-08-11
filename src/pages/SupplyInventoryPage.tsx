@@ -126,6 +126,9 @@ export function SupplyInventoryPage() {
           supplies={supplies}
           categories={categories}
           onCommit={write}
+          onCommitCategories={(next) =>
+            dispatch({ type: 'UPDATE_SUPPLY_CATEGORIES', categories: next })
+          }
         />
       )}
 
