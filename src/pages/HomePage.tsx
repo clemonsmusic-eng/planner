@@ -7,8 +7,6 @@ export function HomePage() {
   const { state, dispatch } = useApp();
 
   const activeProjects = state.projects.filter((p) => (p.inputs.status ?? 'active') === 'active');
-  const draftProjects = state.projects.filter((p) => (p.inputs.status ?? 'active') === 'draft');
-  const archivedProjects = state.projects.filter((p) => (p.inputs.status ?? 'active') === 'archived');
 
   const recentActive = [...activeProjects]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -76,31 +74,18 @@ export function HomePage() {
             Browse
           </h2>
           <div className="grid grid-cols-2 gap-3">
+            {/*
+              One door to the project list. Active, draft and archived are
+              collapsible categories on that page, so three buttons here were
+              three routes to the same screen.
+            */}
             <HomeButton
-              label="Active Projects"
-              count={activeProjects.length}
+              label="Projects"
+              count={state.projects.length}
               colorClass="bg-teal-50 text-teal-700"
-              onClick={() => goToProjects('active')}
+              onClick={() => goToProjects('all')}
               icon={
-                <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
-              }
-            />
-            <HomeButton
-              label="Draft Projects"
-              count={draftProjects.length}
-              colorClass="bg-amber-50 text-amber-700"
-              onClick={() => goToProjects('draft')}
-              icon={
-                <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-              }
-            />
-            <HomeButton
-              label="Archived Projects"
-              count={archivedProjects.length}
-              colorClass="bg-ios-gray-100 text-ios-gray-600"
-              onClick={() => goToProjects('archived')}
-              icon={
-                <path d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-19.5 0v6a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25v-6m-19.5 0h19.5M5.25 6h13.5a2.25 2.25 0 012.25 2.25v.75H3v-.75A2.25 2.25 0 015.25 6z"/>
+                <path d="M19.5 21a3 3 0 003-3V9a3 3 0 00-3-3h-5.379a.75.75 0 01-.53-.22L11.47 3.66A2.25 2.25 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
               }
             />
             <HomeButton
