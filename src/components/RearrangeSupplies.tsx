@@ -14,7 +14,8 @@ import type { SupplyItem } from '../types';
  *
  * Order within the array *is* the display order, and an item's section is its
  * category, so a drag does both jobs at once — dropping a row under a different
- * heading recategorises it.
+ * heading recategorises it. Section headings drag too, which reorders the
+ * category list and leaves the items alone.
  *
  * The move/up listeners go on the window rather than the grip handle. Pointer
  * capture would be the obvious choice, but reordering detaches and reinserts
@@ -25,15 +26,21 @@ export function RearrangeSupplies({
   supplies,
   categories,
   onCommit,
+  onCommitCategories,
 }: {
   supplies: SupplyItem[];
   categories: string[];
   onCommit: (next: SupplyItem[]) => void;
+  onCommitCategories: (next: string[]) => void;
 }) {
   // While dragging, this shadows the prop so the parent isn't re-rendered on
   // every move; null means "not dragging, show what was passed in".
   const [working, setWorking] = useState<SupplyItem[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  // A section drag reorders the category list; an item drag reorders the array.
+  const [dragSection, setDragSection] = useState<string | null>(null);
+  const [workingCats, setWorkingCats] = useState<string[] | null>(null);
+  const workingCatsRef = useRef<string[] | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const autoScroll = useRef<number | null>(null);
   // Whatever actually scrolls: an ancestor with its own overflow, or the page.
@@ -43,10 +50,16 @@ export function RearrangeSupplies({
   const workingRef = useRef<SupplyItem[] | null>(null);
 
   const list = working ?? supplies;
+  const shownCategories = workingCats ?? categories;
 
   function setWork(next: SupplyItem[] | null) {
     workingRef.current = next;
     setWorking(next);
+  }
+
+  function setWorkCats(next: string[] | null) {
+    workingCatsRef.current = next;
+    setWorkingCats(next);
   }
 
   function stopAutoScroll() {
@@ -109,15 +122,33 @@ export function RearrangeSupplies({
   }
 
   useEffect(() => {
-    if (!dragId) return;
+    if (!dragId && !dragSection) return;
 
     function onMove(e: PointerEvent) {
       e.preventDefault();
       runAutoScroll(e.clientY);
 
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+
+      // ── Dragging a whole section ────────────────────────────────────────
+      if (dragSection) {
+        const sectionEl = under?.closest<HTMLElement>('[data-section]');
+        if (!sectionEl) return;
+        const over = sectionEl.dataset.section!;
+        if (over === dragSection) return;
+        const cats = workingCatsRef.current ?? categories;
+        const from = cats.indexOf(dragSection);
+        const to = cats.indexOf(over);
+        if (from < 0 || to < 0) return;
+        const next = [...cats];
+        next.splice(from, 1);
+        next.splice(to, 0, dragSection);
+        setWorkCats(next);
+        return;
+      }
+
       // What's under the finger. Rows keep pointer-events on and no floating
       // copy is drawn, so this always lands on a real row or heading.
-      const under = document.elementFromPoint(e.clientX, e.clientY);
       const rowEl = under?.closest<HTMLElement>('[data-supply-id]');
       const headerEl = under?.closest<HTMLElement>('[data-category]');
 
@@ -146,10 +177,14 @@ export function RearrangeSupplies({
 
     function onEnd() {
       stopAutoScroll();
+      const finishedCats = workingCatsRef.current;
+      if (finishedCats) onCommitCategories(finishedCats);
       const finished = workingRef.current;
       if (finished) onCommit(finished);
+      setWorkCats(null);
       setWork(null);
       setDragId(null);
+      setDragSection(null);
     }
 
     // passive:false so preventDefault actually suppresses the touch scroll.
@@ -162,7 +197,7 @@ export function RearrangeSupplies({
       window.removeEventListener('pointercancel', onEnd);
       stopAutoScroll();
     };
-  }, [dragId]);
+  }, [dragId, dragSection]);
 
   return (
     <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -171,18 +206,41 @@ export function RearrangeSupplies({
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
         <p className="text-xs text-amber-900 leading-snug">
-          Drag a row by its handle to reorder it, or onto another section's heading to move it there.
+          Drag a row by its handle to reorder it, or onto another section's heading to move it
+          there. Section handles drag whole sections.
         </p>
       </div>
 
-      {categories.map((category) => {
+      {shownCategories.map((category) => {
         const items = list.filter((s) => s.category === category);
+        const sectionDragging = category === dragSection;
         return (
-          <div key={category} className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
+          <div
+            key={category}
+            data-section={category}
+            className={`rounded-2xl shadow-sm border overflow-hidden transition-colors ${
+              sectionDragging ? 'bg-teal-50 border-teal-300 opacity-90' : 'bg-white border-ios-gray-200'
+            }`}
+          >
             <div
               data-category={category}
-              className="px-4 py-3 bg-ios-gray-50 border-b border-ios-gray-200 flex items-center gap-2"
+              className="px-2 py-3 bg-ios-gray-50 border-b border-ios-gray-200 flex items-center gap-1"
             >
+              <button
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  scrollTarget.current = findScrollTarget();
+                  setDragSection(category);
+                  setWorkCats(shownCategories);
+                }}
+                style={{ touchAction: 'none' }}
+                className="w-10 h-10 -my-1 flex items-center justify-center text-ios-gray-400 flex-shrink-0 active:text-teal-600"
+                aria-label={`Reorder ${category} section`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                  <path d="M7 4.5a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zM7 10a1.25 1.25 0 11-2.5 0A1.25 1.25 0 017 10zm0 5.5a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zM15.5 4.5a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zM15.5 10a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0zm0 5.5a1.25 1.25 0 11-2.5 0 1.25 1.25 0 012.5 0z" />
+                </svg>
+              </button>
               <h2 className="font-bold text-teal-900 text-sm flex-1 min-w-0 truncate">{category}</h2>
               <span className="text-xs text-ios-gray-500 flex-shrink-0">{items.length}</span>
             </div>
