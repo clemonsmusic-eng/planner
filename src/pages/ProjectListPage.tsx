@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
+import { emptyPhaseBudgets } from '../lib/budgets';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import type { Project, ProjectInputs } from '../types';
@@ -19,7 +20,7 @@ function createDefaultInputs(): ProjectInputs {
     originSqFt: 0,
     destinationSqFt: 0,
     densityLevel: 'Moderate',
-    budgetedManHours: 0,
+    phaseBudgets: emptyPhaseBudgets(),
     clientTimePreference: 'AM',
     specialNotes: '',
     contractedServices: [],

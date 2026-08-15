@@ -8,6 +8,7 @@ import {
 import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
 import { DEFAULT_SUPPLIES, DEFAULT_SUPPLY_CATEGORIES, normalizeSupplies, normalizeCategories } from './supplies';
+import { normalizePhaseBudgets } from './budgets';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
 const STORAGE_KEY_TEAM             = 'st-planner-team';
@@ -43,6 +44,9 @@ export function loadProjects(): Project[] {
         originAddress: p.inputs.originAddress ?? '',
         destinationAddress: p.inputs.destinationAddress ?? '',
         shiftNotes: p.inputs.shiftNotes ?? [],
+        // Projects budgeted before the split start empty rather than having
+        // their old single figure divided up by guesswork.
+        phaseBudgets: normalizePhaseBudgets(p.inputs.phaseBudgets),
       },
       // Backfill for projects saved before the checklist companion existed
       checklist: normalizeChecklist(p.checklist),

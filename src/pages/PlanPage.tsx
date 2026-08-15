@@ -6,7 +6,8 @@ import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
 import { LockButton } from '../components/LockButton';
 import { formatDateLabel } from '../lib/dateUtils';
 import { SERVICE_CATALOG } from '../lib/data';
-import type { ScheduleResult, TeamHoursSummary, DateOverride } from '../types';
+import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
+import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -120,7 +121,7 @@ export function PlanPage() {
             />
           ) : (
             <>
-              <JobSummaryCard schedule={schedule} budgetedHours={activeProject.inputs.budgetedManHours} />
+              <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
               <SuggestedDatesCard
                 schedule={schedule}
                 overrides={activeProject.inputs.dateOverrides}
@@ -226,11 +227,12 @@ function CollapsibleCard({
 
 function JobSummaryCard({
   schedule,
-  budgetedHours,
+  budgets,
 }: {
   schedule: ScheduleResult;
-  budgetedHours: number;
+  budgets: PhaseBudgetHours;
 }) {
+  const budgetedHours = totalBudgetedHours(budgets);
   const pct = Math.round(schedule.percentScheduled);
   const barColor =
     schedule.status === 'ON TRACK'
@@ -278,6 +280,36 @@ function JobSummaryCard({
             style={{ width: `${Math.min(pct, 100)}%` }}
           />
         </div>
+      </div>
+
+      {/*
+        Each group of phases spends its own allowance, so one total can't say
+        which one ran out — and running out is exactly why a sort day or the PM
+        final pack goes missing from the plan.
+      */}
+      <div className="mt-4 pt-3 border-t border-ios-gray-100 space-y-2">
+        {BUDGET_POOLS.map(({ pool, label }) => {
+          const budget = poolBudget(budgets, pool);
+          const used = poolScheduled(schedule, pool);
+          const over = budget > 0 && used > budget;
+          const share = budget > 0 ? Math.min((used / budget) * 100, 100) : 0;
+          return (
+            <div key={pool}>
+              <div className="flex justify-between items-baseline gap-2 text-xs">
+                <span className="text-ios-gray-600 truncate">{label}</span>
+                <span className={`tabular-nums flex-shrink-0 ${over ? 'text-red-600 font-semibold' : 'text-teal-900'}`}>
+                  {used} / {budget || '—'}
+                </span>
+              </div>
+              <div className="h-1.5 bg-ios-gray-100 rounded-full overflow-hidden mt-1">
+                <div
+                  className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : 'bg-teal-500'}`}
+                  style={{ width: `${over ? 100 : share}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </CollapsibleCard>
   );

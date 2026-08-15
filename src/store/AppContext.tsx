@@ -22,6 +22,7 @@ import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '.
 import { formatDateLabel } from '../lib/dateUtils';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
 import { normalizeDocuments, allFileIds } from '../lib/documents';
+import { budgetOf } from '../lib/budgets';
 import { deleteFile } from '../lib/fileStore';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -253,7 +254,7 @@ function reducer(state: AppState, action: Action): AppState {
         }));
         return {
           ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
         };
       });
       saveProjects(projects);
@@ -284,7 +285,7 @@ function reducer(state: AppState, action: Action): AppState {
         });
         return {
           ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
         };
       });
       saveProjects(projects);
@@ -329,7 +330,7 @@ function reducer(state: AppState, action: Action): AppState {
               (r) => !(r.phaseId === phaseId && r.date === date)
             ),
           },
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
           updatedAt: new Date().toISOString(),
         };
       });
@@ -364,7 +365,7 @@ function reducer(state: AppState, action: Action): AppState {
               { phaseId: action.phaseId, date: action.date },
             ],
           },
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
           updatedAt: new Date().toISOString(),
         };
       });
@@ -380,7 +381,7 @@ function reducer(state: AppState, action: Action): AppState {
           .filter((day) => day.entries.length > 0);
         return {
           ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, p.inputs.budgetedManHours),
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
         };
       });
       saveProjects(projects);
@@ -458,7 +459,7 @@ interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   activeProject: Project | null;
-  generateAndSaveSchedule: (projectId: string) => void;
+  generateAndSaveSchedule: (projectId: string, inputsOverride?: ProjectInputs) => void;
   setShiftOverride: (projectId: string, date: string, shift: AvailabilitySlot | null) => void;
   movePhaseDate: (projectId: string, phaseId: string, originalDate: string, newDate: string) => ScheduleResult;
   toggleChecklistItem: (projectId: string, itemId: string) => void;
@@ -543,11 +544,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return bookings;
   }
 
-  function generateAndSaveSchedule(projectId: string) {
+  /**
+   * `state` here is the closure from the render that handed this function out,
+   * so a caller that has just edited the inputs would otherwise generate from
+   * the previous ones — every save landing a plan one edit behind. Callers
+   * holding fresh inputs pass them in rather than racing the dispatch.
+   */
+  function generateAndSaveSchedule(projectId: string, inputsOverride?: ProjectInputs) {
     const project = state.projects.find((p) => p.id === projectId);
-    if (!project) return;
+    if (!project && !inputsOverride) return;
+    const inputs = inputsOverride ?? project!.inputs;
     const extBookings = buildExternalBookings(projectId);
-    const schedule = generateSchedule(project.inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
+    const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
   }
 

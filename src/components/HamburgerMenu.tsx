@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMenu } from './MenuContext';
 import { useApp } from '../store/AppContext';
+import { emptyPhaseBudgets } from '../lib/budgets';
 import { NAV_DESTINATIONS } from './navDestinations';
 
 /**
@@ -43,7 +44,7 @@ export function HamburgerMenu() {
           originSqFt: 0,
           destinationSqFt: 0,
           densityLevel: 'Moderate',
-          budgetedManHours: 0,
+          phaseBudgets: emptyPhaseBudgets(),
           clientTimePreference: 'AM',
           specialNotes: '',
           contractedServices: [],
