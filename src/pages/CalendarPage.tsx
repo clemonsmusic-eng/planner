@@ -41,8 +41,18 @@ interface CalendarJob {
   projectManagerName: string | null;
   originAddress: string;
   destinationAddress: string;
+  /** Whether this shift ends at the destination rather than the origin. */
+  isMoveDay: boolean;
   note: string;
 }
+
+/**
+ * The phases that end somewhere other than where they started. Everything else
+ * — sorting, packing, cleanout — happens at the origin, so showing a
+ * destination against them would be telling the crew to drive to the wrong
+ * address.
+ */
+const MOVE_DAY_PHASES = new Set(['phase-5-1', 'phase-5-2']);
 
 // ─── Project Color Palette ────────────────────────────────────────────────────
 
@@ -105,6 +115,7 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
             projectManagerName: pmName,
             originAddress: project.inputs.originAddress ?? '',
             destinationAddress: project.inputs.destinationAddress ?? '',
+            isMoveDay: MOVE_DAY_PHASES.has(entry.phaseId),
             note:
               (project.inputs.shiftNotes ?? []).find(
                 (n) => n.phaseId === entry.phaseId && n.date === day.date
@@ -669,7 +680,9 @@ function MonthJobDetail({
             {job.memberNames.length > 0 ? job.memberNames.join(', ') : 'Nobody assigned yet'}
           </DetailRow>
           {job.originAddress && <DetailRow label="From">{job.originAddress}</DetailRow>}
-          {job.destinationAddress && <DetailRow label="To">{job.destinationAddress}</DetailRow>}
+          {job.isMoveDay && job.destinationAddress && (
+            <DetailRow label="To">{job.destinationAddress}</DetailRow>
+          )}
           {job.note && <DetailRow label="Note">{job.note}</DetailRow>}
         </dl>
       </div>

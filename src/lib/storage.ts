@@ -330,7 +330,7 @@ export function saveSupplyCategories(categories: string[]): void {
 
 // ─── Shift Times ──────────────────────────────────────────────────────────────
 
-export const DEFAULT_SHIFT_TIMES: ShiftTimeSettings = { am: '08:00', pm: '13:00' };
+export const DEFAULT_SHIFT_TIMES: ShiftTimeSettings = { am: '09:00', pm: '13:00' };
 
 /** Rejects anything that isn't HH:mm so a bad save can't poison every label. */
 function validTime(v: unknown, fallback: string): string {
