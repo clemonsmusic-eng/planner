@@ -1,5 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useApp } from '../store/AppContext';
+import {
+  SETTINGS_GROUPS, SUB_LABELS, resolveOrder,
+  type SettingsGroup as SettingsGroupDef, type SettingsGroupKey, type SettingsOrder,
+} from '../lib/settingsLayout';
+import { loadSettingsOrder, saveSettingsOrder } from '../lib/storage';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -91,34 +96,88 @@ function nextSlot(current: AvailabilitySlot): AvailabilitySlot {
 
 // ─── Accordion Section ────────────────────────────────────────────────────────
 
+/** A top-level Settings group, holding its submenus. */
+function SettingsGroupCard({
+  group,
+  open,
+  onToggle,
+  children,
+}: {
+  group: SettingsGroupDef;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div data-group={group.label} className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-4 min-h-[60px] active:bg-ios-gray-100 lg:hover:bg-ios-gray-100">
+        <div className="text-left">
+          <p className="font-bold text-teal-900 text-base">{group.label}</p>
+          <p className="text-xs text-ios-gray-500 mt-0.5">{group.subtitle}</p>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ml-3 ${open ? 'rotate-180' : ''}`}>
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {open && <div className="border-t border-ios-gray-100 p-2 space-y-2 bg-ios-gray-50/60">{children}</div>}
+    </div>
+  );
+}
+
 function AccordionSection({
   title,
   subtitle,
   open,
   onToggle,
   children,
+  dragKey,
+  rearranging,
+  dragging,
+  onDragStart,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  dragKey?: string;
+  rearranging?: boolean;
+  dragging?: boolean;
+  onDragStart?: (e: React.PointerEvent) => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-ios-gray-200 overflow-hidden">
+    <div
+      data-sub={dragKey}
+      className={`bg-white rounded-xl border overflow-hidden transition-shadow ${
+        dragging ? 'border-teal-400 shadow-lg' : 'border-ios-gray-200'
+      }`}
+    >
       <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-4 min-h-[56px]"
+        onClick={rearranging ? undefined : onToggle}
+        // While rearranging the header is a handle, not a disclosure: opening a
+        // panel mid-drag would move every row underneath the finger.
+        onPointerDown={rearranging ? onDragStart : undefined}
+        style={rearranging ? { touchAction: 'none' } : undefined}
+        className={`w-full flex items-center justify-between px-4 py-3.5 min-h-[52px] ${
+          rearranging ? 'cursor-grab active:cursor-grabbing' : ''
+        }`}
       >
-        <div className="text-left">
-          <p className="font-bold text-teal-900">{title}</p>
-          {subtitle && <p className="text-xs text-ios-gray-500 mt-0.5">{subtitle}</p>}
+        {rearranging && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+            className="w-4 h-4 text-ios-gray-400 flex-shrink-0 mr-3" aria-hidden="true">
+            <path d="M7 4a1 1 0 100 2 1 1 0 000-2zm6 0a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zm6 0a1 1 0 100 2 1 1 0 000-2zm-6 5a1 1 0 100 2 1 1 0 000-2zm6 0a1 1 0 100 2 1 1 0 000-2z" />
+          </svg>
+        )}
+        <div className="text-left flex-1 min-w-0">
+          <p className="font-bold text-teal-900 truncate">{title}</p>
+          {subtitle && <p className="text-xs text-ios-gray-500 mt-0.5 truncate">{subtitle}</p>}
         </div>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ml-3 ${open ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-ios-gray-400 flex-shrink-0 transition-transform ml-3 ${open ? 'rotate-180' : ''} ${rearranging ? 'opacity-0' : ''}`}
         >
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
         </svg>
@@ -1127,7 +1186,6 @@ function ChecklistSectionCard({
   );
 }
 
-type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'checklist' | 'communities' | 'auctionDefaults' | 'teamExperience' | 'shiftTimes';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -1146,9 +1204,84 @@ export function SettingsPage() {
   );
   const [newCommunity, setNewCommunity] = useState('');
   const [isDirty, setIsDirty] = useState(false);
-  const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set());
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Set<SettingsGroupKey>>(new Set());
+  const [subOrder, setSubOrder] = useState<SettingsOrder>(() => loadSettingsOrder());
+  const [rearranging, setRearranging] = useState(false);
+  const [dragSub, setDragSub] = useState<string | null>(null);
+  // Read by the window listeners, which close over the value at drag start.
+  const orderRef = useRef<SettingsOrder | null>(null);
 
-  function toggleSection(key: SectionKey) {
+  /**
+   * Reorder submenus by dragging.
+   *
+   * A drag only moves an entry within its own group — the groups are what give
+   * each panel its meaning, and letting Shift Times land under Employees would
+   * quietly undo that. Listeners go on the window rather than using pointer
+   * capture, because reordering detaches the row being dragged and capture dies
+   * with it.
+   */
+  function beginDrag(sub: string, e: React.PointerEvent) {
+    if (!rearranging) return;
+    e.preventDefault();
+    setDragSub(sub);
+  }
+
+  useEffect(() => {
+    if (!dragSub) return;
+    const group = SETTINGS_GROUPS.find((g) => g.subs.includes(dragSub));
+    if (!group) return;
+
+    function onMove(e: PointerEvent) {
+      e.preventDefault();
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const row = under?.closest<HTMLElement>('[data-sub]');
+      const overKey = row?.dataset.sub;
+      if (!overKey || overKey === dragSub || !group!.subs.includes(overKey)) return;
+
+      const current = orderRef.current ?? subOrder;
+      const order = resolveOrder(group!, current);
+      const from = order.indexOf(dragSub!);
+      const box = row!.getBoundingClientRect();
+      const after = e.clientY > box.top + box.height / 2;
+      let to = order.indexOf(overKey) + (after ? 1 : 0);
+      if (from < to) to -= 1;
+      if (from < 0 || to < 0 || from === to) return;
+
+      const next = [...order];
+      next.splice(from, 1);
+      next.splice(to, 0, dragSub!);
+      const merged = { ...current, [group!.key]: next };
+      orderRef.current = merged;
+      setSubOrder(merged);
+    }
+
+    function onEnd() {
+      if (orderRef.current) saveSettingsOrder(orderRef.current);
+      orderRef.current = null;
+      setDragSub(null);
+    }
+
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    };
+  }, [dragSub, subOrder]);
+
+  function toggleGroup(key: SettingsGroupKey) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleSection(key: string) {
     setOpenSections((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -1193,7 +1326,11 @@ export function SettingsPage() {
   function addCommunity() {
     const trimmed = newCommunity.trim();
     if (!trimmed) return;
-    setCommunities((prev) => [...prev, trimmed]);
+    // Sorted on the way in: a list this long is only usable in order, and
+    // appending put every new one at the bottom where nobody looks for it.
+    setCommunities((prev) =>
+      [...prev, trimmed].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base' }))
+    );
     setNewCommunity('');
     setIsDirty(true);
   }
@@ -1247,37 +1384,17 @@ export function SettingsPage() {
     setIsDirty(false);
   }
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Sticky header */}
-      <div
-        className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
-      >
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-teal-900 flex-1">Settings</h1>
-          {isDirty ? (
-            <button
-              onClick={save}
-              className="bg-teal-600 text-white px-4 py-1.5 rounded-xl text-sm font-semibold min-h-[36px]"
-            >
-              Save
-            </button>
-          ) : (
-            <span className="text-xs text-ios-gray-400">All changes saved</span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-
-        {/* ── Team ─────────────────────────────────────────────────────── */}
-        <AccordionSection
-          title="Team"
-          subtitle={`${members.length} members`}
-          open={openSections.has('team')}
-          onToggle={() => toggleSection('team')}
-        >
+  /*
+   * Every panel on the page, keyed so a group can name the ones it holds.
+   * The parameter lists each get their own entry: they used to share a single
+   * "Variables" panel, which meant knowing that Flexibility lived inside it.
+   */
+  const SUBS: Record<string, { title: string; subtitle?: React.ReactNode; body: React.ReactNode }> = {
+    team: {
+      title: 'Team Members',
+      subtitle: `${members.length} members`,
+      body: (
+        <>
           <div className="px-4 py-3 space-y-2">
             <p className="text-xs text-ios-gray-500">
               Tap a member to expand. Tap availability cells to cycle: Full Day → AM → PM → Off.
@@ -1298,15 +1415,14 @@ export function SettingsPage() {
               Add Team Member
             </button>
           </div>
-        </AccordionSection>
-
-        {/* ── Phase Roles ──────────────────────────────────────────────── */}
-        <AccordionSection
-          title="Phase Roles"
-          subtitle={`${members.length} members`}
-          open={openSections.has('phaseRoles')}
-          onToggle={() => toggleSection('phaseRoles')}
-        >
+        </>
+      ),
+    },
+    phaseRoles: {
+      title: 'Phase Roles',
+      subtitle: `${members.length} members`,
+      body: (
+        <>
           <div className="px-4 py-3 space-y-2">
             <p className="text-xs text-ios-gray-500">
               Tap a member to expand. Tap a phase cell to pick which roles that person can fill in that phase.
@@ -1321,266 +1437,14 @@ export function SettingsPage() {
               ))}
             </div>
           </div>
-        </AccordionSection>
-
-        {/* ── Variables ────────────────────────────────────────────────── */}
-        <AccordionSection
-          title="Variables"
-          subtitle="Scheduling parameter lists"
-          open={openSections.has('lists')}
-          onToggle={() => toggleSection('lists')}
-        >
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs text-ios-gray-500">
-              Simple lists populate dropdowns. Shift hours directly drive schedule generation.
-            </p>
-            {lists.map((list, listIdx) => {
-              const onChange = (updated: ListCategory) => updateList(listIdx, updated);
-              if (list.id === 'shift-type-hours') {
-                return <ShiftHoursCard key={list.id} list={list} onChange={onChange} />;
-              }
-              return <ListCategoryCard key={list.id} list={list} onChange={onChange} />;
-            })}
-          </div>
-        </AccordionSection>
-
-        {/* ── Task Template ─────────────────────────────────────────────── */}
-        <AccordionSection
-          title="Task Template"
-          subtitle="Phase hours and base team sizes"
-          open={openSections.has('templates')}
-          onToggle={() => toggleSection('templates')}
-        >
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs text-ios-gray-500">
-              Edit hours per person and base team size for each phase. Changes affect schedule generation.
-              Crew size for an individual shift can be adjusted on the Schedule tab.
-            </p>
-            {phaseTemplates
-              .slice()
-              .sort((a, b) => Number(a.order) - Number(b.order))
-              .map((template) => {
-                const idx = phaseTemplates.findIndex((t) => t.id === template.id);
-                return (
-                  <PhaseTemplateCard
-                    key={template.id}
-                    template={template}
-                    onChange={(updated) => updatePhaseTemplate(idx, updated)}
-                  />
-                );
-              })}
-          </div>
-        </AccordionSection>
-
-        {/* ── Communities ───────────────────────────────────────────────── */}
-        {/* ── Checklist Template ────────────────────────────────────────── */}
-        <AccordionSection
-          title="Checklist Template"
-          subtitle={`${checklistTemplate.length} sections · ${checklistTemplate.reduce((n, s) => n + s.items.length, 0)} items`}
-          open={openSections.has('checklist')}
-          onToggle={() => toggleSection('checklist')}
-        >
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs text-ios-gray-500">
-              Items are dated relative to a milestone from the move plan, not by fixed date — so
-              every project's checklist re-dates itself when its plan changes.
-            </p>
-            <div className="space-y-2">
-              {checklistTemplate.map((section, i) => (
-                <ChecklistSectionCard
-                  key={section.id}
-                  section={section}
-                  onChange={(updated) => updateChecklistSection(i, updated)}
-                  onDelete={() => deleteChecklistSection(i)}
-                />
-              ))}
-            </div>
-            <button
-              onClick={addChecklistSection}
-              className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-              </svg>
-              Add Section
-            </button>
-            <button
-              onClick={restoreDefaultChecklist}
-              className="w-full py-2.5 text-xs font-semibold text-ios-gray-500"
-            >
-              Restore Default Template
-            </button>
-          </div>
-        </AccordionSection>
-
-        <AccordionSection
-          title="Communities"
-          subtitle="Senior communities in the project dropdown"
-          open={openSections.has('communities')}
-          onToggle={() => toggleSection('communities')}
-        >
-          <div className="px-4 py-3 space-y-2">
-            {communities.map((name, i) => (
-              <div
-                key={`${name}-${i}`}
-                className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
-              >
-                <span className="text-sm text-teal-900 flex-1 py-3">{name}</span>
-                <button
-                  onClick={() => removeCommunity(i)}
-                  className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
-                  aria-label={`Remove ${name}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2 pt-1">
-              <input
-                value={newCommunity}
-                onChange={(e) => setNewCommunity(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
-                placeholder="Add a community…"
-                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
-              />
-              <button
-                onClick={addCommunity}
-                className="bg-teal-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </AccordionSection>
-
-        {/* ── Auction Defaults ──────────────────────────────────────────── */}
-        {/*
-          The app has only ever known AM, PM and Full Day. These turn that into
-          a clock time on the calendar; the end is the start plus the shift's own
-          hours, so nothing here has to be kept in step with the plan.
-        */}
-        <AccordionSection
-          title="Shift Times"
-          subtitle="When AM and PM shifts start"
-          open={openSections.has('shiftTimes')}
-          onToggle={() => toggleSection('shiftTimes')}
-        >
-          <div className="px-4 py-4 space-y-4">
-            <p className="text-xs text-ios-gray-500">
-              Used to show shift times on the calendar. A Full Day starts at the AM time.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="am-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
-                  AM starts
-                </label>
-                <input
-                  id="am-start"
-                  type="time"
-                  value={state.shiftTimes.am}
-                  onChange={(e) =>
-                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, am: e.target.value } })
-                  }
-                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
-                />
-              </div>
-              <div>
-                <label htmlFor="pm-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
-                  PM starts
-                </label>
-                <input
-                  id="pm-start"
-                  type="time"
-                  value={state.shiftTimes.pm}
-                  onChange={(e) =>
-                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, pm: e.target.value } })
-                  }
-                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
-                />
-              </div>
-            </div>
-          </div>
-        </AccordionSection>
-
-        <AccordionSection
-          title="Auction Defaults"
-          subtitle="Hourly rate and performance level for estimates"
-          open={openSections.has('auctionDefaults')}
-          onToggle={() => toggleSection('auctionDefaults')}
-        >
-          <div className="px-4 py-4 space-y-4">
-            <p className="text-xs text-ios-gray-500">
-              These defaults drive the labor estimate on the Inputs tab when a Full – Auction cleanout is selected.
-            </p>
-
-            {/* Hourly Rate */}
-            <div>
-              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Hourly Rate ($)</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={auctionSettings.hourlyRate || ''}
-                onChange={(e) => {
-                  setAuctionSettings((prev) => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }));
-                  setIsDirty(true);
-                }}
-                placeholder="e.g. 95"
-                className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
-              />
-            </div>
-
-            {/* Performance Level */}
-            <div>
-              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Performance Level</label>
-              <div className="space-y-2">
-                {([
-                  { level: 'High' as ExperienceLevel, minPerLot: 13, desc: 'Experienced team, organized home, easy access' },
-                  { level: 'Average' as ExperienceLevel, minPerLot: 18, desc: 'Typical auction, mixed items, normal sorting' },
-                  { level: 'Low' as ExperienceLevel, minPerLot: 25, desc: 'Dense home, heavy sorting, stairs or complex pickup' },
-                ]).map(({ level, minPerLot, desc }) => (
-                  <button
-                    key={level}
-                    onClick={() => {
-                      setAuctionSettings((prev) => ({ ...prev, performanceLevel: level }));
-                      setIsDirty(true);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors border ${
-                      auctionSettings.performanceLevel === level
-                        ? 'bg-teal-50 border-teal-300'
-                        : 'bg-ios-gray-50 border-ios-gray-200'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full flex-shrink-0 border-2 flex items-center justify-center ${
-                      auctionSettings.performanceLevel === level ? 'border-teal-600' : 'border-ios-gray-300'
-                    }`}>
-                      {auctionSettings.performanceLevel === level && (
-                        <div className="w-2 h-2 rounded-full bg-teal-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${auctionSettings.performanceLevel === level ? 'text-teal-900' : 'text-teal-800'}`}>{level}</span>
-                        <span className="text-xs text-ios-gray-500">{minPerLot} min/lot</span>
-                      </div>
-                      <p className="text-xs text-ios-gray-500 truncate">{desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </AccordionSection>
-
-        {/* ── Team Experience ───────────────────────────────────────────── */}
-        <AccordionSection
-          title="Team Experience"
-          subtitle="Pack & Sort and Cleanout competency per member"
-          open={openSections.has('teamExperience')}
-          onToggle={() => toggleSection('teamExperience')}
-        >
+        </>
+      ),
+    },
+    teamExperience: {
+      title: 'Team Experience',
+      subtitle: "Pack & Sort and Cleanout competency per member",
+      body: (
+        <>
           <div className="px-4 py-4 space-y-3">
             <p className="text-xs text-ios-gray-500">
               Annotation only — shown as a multiplier on Schedule and Calendar. Does not affect scheduling or hours.
@@ -1640,7 +1504,309 @@ export function SettingsPage() {
               ))}
             </div>
           </div>
-        </AccordionSection>
+        </>
+      ),
+    },
+    templates: {
+      title: 'Task Template',
+      subtitle: "Phase hours and base team sizes",
+      body: (
+        <>
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Edit hours per person and base team size for each phase. Changes affect schedule generation.
+              Crew size for an individual shift can be adjusted on the Schedule tab.
+            </p>
+            {phaseTemplates
+              .slice()
+              .sort((a, b) => Number(a.order) - Number(b.order))
+              .map((template) => {
+                const idx = phaseTemplates.findIndex((t) => t.id === template.id);
+                return (
+                  <PhaseTemplateCard
+                    key={template.id}
+                    template={template}
+                    onChange={(updated) => updatePhaseTemplate(idx, updated)}
+                  />
+                );
+              })}
+          </div>
+        </>
+      ),
+    },
+    checklist: {
+      title: 'Checklist Template',
+      subtitle: `${checklistTemplate.length} sections · ${checklistTemplate.reduce((n, s) => n + s.items.length, 0)} items`,
+      body: (
+        <>
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-ios-gray-500">
+              Items are dated relative to a milestone from the move plan, not by fixed date — so
+              every project's checklist re-dates itself when its plan changes.
+            </p>
+            <div className="space-y-2">
+              {checklistTemplate.map((section, i) => (
+                <ChecklistSectionCard
+                  key={section.id}
+                  section={section}
+                  onChange={(updated) => updateChecklistSection(i, updated)}
+                  onDelete={() => deleteChecklistSection(i)}
+                />
+              ))}
+            </div>
+            <button
+              onClick={addChecklistSection}
+              className="w-full py-3.5 border-2 border-dashed border-ios-gray-300 rounded-2xl text-ios-gray-500 text-sm font-semibold min-h-[52px] flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+              </svg>
+              Add Section
+            </button>
+            <button
+              onClick={restoreDefaultChecklist}
+              className="w-full py-2.5 text-xs font-semibold text-ios-gray-500"
+            >
+              Restore Default Template
+            </button>
+          </div>
+        </>
+      ),
+    },
+    communities: {
+      title: 'Communities',
+      subtitle: "Senior communities in the project dropdown",
+      body: (
+        <>
+          <div className="px-4 py-3 space-y-2">
+            {communities.map((name, i) => (
+              <div
+                key={`${name}-${i}`}
+                className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
+              >
+                <span className="text-sm text-teal-900 flex-1 py-3">{name}</span>
+                <button
+                  onClick={() => removeCommunity(i)}
+                  className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
+                  aria-label={`Remove ${name}`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <input
+                value={newCommunity}
+                onChange={(e) => setNewCommunity(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
+                placeholder="Add a community…"
+                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+              />
+              <button
+                onClick={addCommunity}
+                className="bg-teal-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </>
+      ),
+    },
+    shiftTimes: {
+      title: 'Shift Times',
+      subtitle: "When AM and PM shifts start",
+      body: (
+        <>
+          <div className="px-4 py-4 space-y-4">
+            <p className="text-xs text-ios-gray-500">
+              Used to show shift times on the calendar. A Full Day starts at the AM time.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="am-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
+                  AM starts
+                </label>
+                <input
+                  id="am-start"
+                  type="time"
+                  value={state.shiftTimes.am}
+                  onChange={(e) =>
+                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, am: e.target.value } })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+                />
+              </div>
+              <div>
+                <label htmlFor="pm-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
+                  PM starts
+                </label>
+                <input
+                  id="pm-start"
+                  type="time"
+                  value={state.shiftTimes.pm}
+                  onChange={(e) =>
+                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, pm: e.target.value } })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      ),
+    },
+    auctionDefaults: {
+      title: 'Auction Defaults',
+      subtitle: "Hourly rate and performance level for estimates",
+      body: (
+        <>
+          <div className="px-4 py-4 space-y-4">
+            <p className="text-xs text-ios-gray-500">
+              These defaults drive the labor estimate on the Inputs tab when a Full – Auction cleanout is selected.
+            </p>
+            {/* Hourly Rate */}
+            <div>
+              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Hourly Rate ($)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={auctionSettings.hourlyRate || ''}
+                onChange={(e) => {
+                  setAuctionSettings((prev) => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }));
+                  setIsDirty(true);
+                }}
+                placeholder="e.g. 95"
+                className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+              />
+            </div>
+            {/* Performance Level */}
+            <div>
+              <label className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">Performance Level</label>
+              <div className="space-y-2">
+                {([
+                  { level: 'High' as ExperienceLevel, minPerLot: 13, desc: 'Experienced team, organized home, easy access' },
+                  { level: 'Average' as ExperienceLevel, minPerLot: 18, desc: 'Typical auction, mixed items, normal sorting' },
+                  { level: 'Low' as ExperienceLevel, minPerLot: 25, desc: 'Dense home, heavy sorting, stairs or complex pickup' },
+                ]).map(({ level, minPerLot, desc }) => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setAuctionSettings((prev) => ({ ...prev, performanceLevel: level }));
+                      setIsDirty(true);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors border ${
+                      auctionSettings.performanceLevel === level
+                        ? 'bg-teal-50 border-teal-300'
+                        : 'bg-ios-gray-50 border-ios-gray-200'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full flex-shrink-0 border-2 flex items-center justify-center ${
+                      auctionSettings.performanceLevel === level ? 'border-teal-600' : 'border-ios-gray-300'
+                    }`}>
+                      {auctionSettings.performanceLevel === level && (
+                        <div className="w-2 h-2 rounded-full bg-teal-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${auctionSettings.performanceLevel === level ? 'text-teal-900' : 'text-teal-800'}`}>{level}</span>
+                        <span className="text-xs text-ios-gray-500">{minPerLot} min/lot</span>
+                      </div>
+                      <p className="text-xs text-ios-gray-500 truncate">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      ),
+    },
+  };
+
+  lists.forEach((list, listIdx) => {
+    const onChange = (updated: ListCategory) => updateList(listIdx, updated);
+    SUBS[`list:${list.id}`] = {
+      title: SUB_LABELS[`list:${list.id}`] ?? list.name,
+      subtitle: `${list.items.length} ${list.items.length === 1 ? 'entry' : 'entries'}`,
+      body: (
+        <div className="px-4 py-3">
+          {list.id === 'shift-type-hours'
+            ? <ShiftHoursCard list={list} onChange={onChange} />
+            : <ListCategoryCard list={list} onChange={onChange} />}
+        </div>
+      ),
+    };
+  });
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Sticky header */}
+      <div
+        className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+      >
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-teal-900 flex-1">Settings</h1>
+          <button
+            onClick={() => { setRearranging((v) => !v); setOpenSections(new Set()); }}
+            aria-pressed={rearranging}
+            className={`px-3 py-1.5 rounded-xl text-sm font-semibold min-h-[36px] mr-2 transition-colors ${
+              rearranging ? 'bg-teal-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+            }`}
+          >
+            {rearranging ? 'Done' : 'Rearrange'}
+          </button>
+          {isDirty ? (
+            <button
+              onClick={save}
+              className="bg-teal-600 text-white px-4 py-1.5 rounded-xl text-sm font-semibold min-h-[36px]"
+            >
+              Save
+            </button>
+          ) : (
+            <span className="text-xs text-ios-gray-400">All changes saved</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+
+        {SETTINGS_GROUPS.map((group) => {
+          const order = resolveOrder(group, subOrder);
+          return (
+            <SettingsGroupCard
+              key={group.key}
+              group={group}
+              open={openGroups.has(group.key)}
+              onToggle={() => toggleGroup(group.key)}
+            >
+              {order.map((subKey) => {
+                const sub = SUBS[subKey];
+                if (!sub) return null;
+                return (
+                  <AccordionSection
+                    key={subKey}
+                    title={sub.title}
+                    subtitle={sub.subtitle}
+                    open={!rearranging && openSections.has(subKey)}
+                    onToggle={() => toggleSection(subKey)}
+                    dragKey={subKey}
+                    rearranging={rearranging}
+                    dragging={dragSub === subKey}
+                    onDragStart={(e) => beginDrag(subKey, e)}
+                  >
+                    {sub.body}
+                  </AccordionSection>
+                );
+              })}
+            </SettingsGroupCard>
+          );
+        })}
 
         {/* Bottom save bar */}
         {isDirty && (

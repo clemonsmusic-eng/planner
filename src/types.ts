@@ -156,6 +156,17 @@ export interface AuctionAppSettings {
   performanceLevel: ExperienceLevel;
 }
 
+/**
+ * Budgeted man-hours, split the way the client's quote splits them. Planning
+ * and packing are priced separately but spend from one allowance.
+ */
+export interface PhaseBudgetHours {
+  planning: number;
+  packing: number;
+  move: number;
+  dispersals: number;
+}
+
 export interface DateOverride {
   id: string;
   date: string; // ISO date string
@@ -192,7 +203,11 @@ export interface ProjectInputs {
   destinationSqFt: number;
   densityLevel: DensityLevel;
   // Budget & Preferences
-  budgetedManHours: number;
+  /**
+   * Man-hours per group of phases. Replaces the single budgetedManHours the
+   * app used to carry — see lib/budgets for what each group covers.
+   */
+  phaseBudgets: PhaseBudgetHours;
   clientTimePreference: TimePreference;
   specialNotes: string;
   // Services Contracted — sub-service labels from SERVICE_CATALOG

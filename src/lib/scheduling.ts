@@ -22,6 +22,7 @@ import {
   getWeekKey,
 } from './dateUtils';
 import { getRoleQualifiers } from './data';
+import { poolBudget, totalBudgetedHours } from './budgets';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,7 @@ export function generateSchedule(
   const {
     targetMoveDate,
     earliestStartDate,
-    budgetedManHours,
+    phaseBudgets,
     clientTimePreference,
     cleanout,
     auction,
@@ -217,43 +218,61 @@ export function generateSchedule(
   // Priority order: Phase 1 (required) → Phase 5-1 (required) → Phase 5-2
   // → Phase 2 → Phase 4-1 → Sort days (budget-scaled) → Phase 4-2 (last resort)
 
-  // Required: Phase 1 + AM Move Day (always included, 2 people each)
-  // Auction phases (lot prep, pickup prep, pickup) are committed upfront and deducted from the pool.
-  const auctionPickupHours = auction.enabled ? AUCTION_PICKUP_HOURS * AUCTION_PICKUP_TEAM_SIZE : 0;
-  const pickupPrepTpl = phaseTemplates.find(t => t.id === 'phase-pickup-prep');
-  const auctionPickupPrepHours = auction.enabled
-    ? (pickupPrepTpl?.minHours ?? 3) * (pickupPrepTpl?.minTeamSize ?? 3)
-    : 0;
-  let budgetPool = budgetedManHours - (h1 * 2) - (h51 * 2) - auctionEstHours - auctionPickupHours - auctionPickupPrepHours;
+  // Required: Phase 1 + AM Move Day (always included, 2 people each).
+  // The auction phases used to be deducted here too, back when one pool paid
+  // for everything; they now spend from the dispersal allowance instead.
+  /*
+   * Each group of phases spends from its own allowance, so a long cleanout can
+   * no longer quietly eat the hours that were sold for packing. Planning and
+   * packing share one pool: they are priced separately on the quote, but moving
+   * an hour between the first visit and a sort day is a scheduling call.
+   */
+  let packPool = poolBudget(phaseBudgets, 'pack') - (h1 * 2);
+  let movePool = poolBudget(phaseBudgets, 'move') - (h51 * 2);
+  /*
+   * The dispersal allowance is not deducted here and does not gate anything.
+   * How much cleanout there is comes from the cleanout type and the lot count,
+   * not from an hours figure, so an allowance can only report on that work, not
+   * shrink it — the Plan tab shows scheduled against budget per pool. What
+   * matters is that these hours no longer come out of the packing pool, which
+   * is what used to let a big auction quietly eat the packing that was sold.
+   */
 
-  // PM Move Day (5-2) — scale team size down if budget is tight
-  const moveDayPMActual = Math.min(moveDaySize, Math.max(0, Math.floor(budgetPool / h52)));
-  budgetPool -= moveDayPMActual * h52;
+  // PM Move Day (5-2) — its own allowance has to cover a full crew, since a
+  // phase can't run below its minimum team size however tight the budget is.
+  const moveDayPMActual = movePool >= h52 * moveDaySize ? moveDaySize : 0;
+  movePool -= moveDayPMActual * h52;
 
-  // Second Visit (Phase 2) — include if budget allows
-  const includePhase2 = budgetPool >= h2 * 2;
-  if (includePhase2) budgetPool -= h2 * 2;
+  // Second Visit (Phase 2) — include if the packing allowance covers it
+  const includePhase2 = packPool >= h2 * 2;
+  if (includePhase2) packPool -= h2 * 2;
 
-  // AM Final Pack (Phase 4-1) — include if budget allows
-  const includePhase41 = budgetPool >= h41 * 2;
-  if (includePhase41) budgetPool -= h41 * 2;
+  // AM Final Pack (Phase 4-1) — include if the packing allowance covers it
+  const includePhase41 = packPool >= h41 * 2;
+  if (includePhase41) packPool -= h41 * 2;
 
   // Sort days — fill remaining budget, scale team size to fit
   let sortDayCount = 0;
   let actualSortTeamSize = 0;
-  if (budgetPool >= h3) {
-    const sortHoursFullDay = packSortSize * h3;
-    sortDayCount = Math.max(1, Math.ceil(budgetPool / sortHoursFullDay));
-    // Scale down team size so total sort hours stay within budget
-    actualSortTeamSize = Math.min(
-      packSortSize,
-      Math.max(1, Math.floor(budgetPool / (sortDayCount * h3)))
-    );
-    budgetPool -= sortDayCount * actualSortTeamSize * h3;
+  /*
+   * Sort days fill what's left of the packing allowance.
+   *
+   * The crew can't be scaled below the phase's minimum team size — addPhaseOnDate
+   * clamps it back up, and you can't send one person on a two-person job — so the
+   * day count is what flexes. Rounding the days up and the crew down, as this
+   * used to, budgeted for a crew that never turned up: a 100-hour allowance
+   * bought 102 hours of work, and a 30-hour one bought 38.
+   */
+  const sortDayHours = packSortSize * h3;
+  if (packPool >= sortDayHours) {
+    actualSortTeamSize = packSortSize;
+    sortDayCount = Math.floor(packPool / sortDayHours);
+    packPool -= sortDayCount * sortDayHours;
   }
 
-  // PM Final Pack (Phase 4-2) — only if budget remains (lowest priority)
-  const preMoveActual = budgetPool >= h42 ? Math.min(preMoveSize, Math.floor(budgetPool / h42)) : 0;
+  // PM Final Pack (Phase 4-2) — lowest priority, and likewise all-or-nothing:
+  // budgeting for a half crew just meant overspending by the other half.
+  const preMoveActual = packPool >= h42 * preMoveSize ? preMoveSize : 0;
   const includePhase42 = preMoveActual > 0;
 
   // Sort/pack days: prioritize staff availability over spreading the days out.
@@ -453,7 +472,11 @@ export function generateSchedule(
 
   // Pickup Prep Day – 1 day before auction pickup
   if (auction.enabled && auctionPickupPrep) {
-    addPhaseOnDate('phase-pickup-prep', parseISO(auctionPickupPrep), pickupPrepTpl?.minTeamSize);
+    addPhaseOnDate(
+      'phase-pickup-prep',
+      parseISO(auctionPickupPrep),
+      phaseTemplates.find((t) => t.id === 'phase-pickup-prep')?.minTeamSize
+    );
   }
 
   // Phase 7 – Pickup Day (if auction enabled); always 4 people × 8 hours
@@ -744,6 +767,7 @@ export function generateSchedule(
   // ── 7. Compute totals ─────────────────────────────────────────────────────────
 
   const totalScheduledHours = entries.reduce((sum, e) => sum + e.hours, 0);
+  const budgetedManHours = totalBudgetedHours(phaseBudgets);
   const remainingHours = budgetedManHours - totalScheduledHours;
   const percentScheduled = budgetedManHours > 0 ? (totalScheduledHours / budgetedManHours) * 100 : 0;
 

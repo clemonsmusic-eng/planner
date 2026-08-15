@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
+import { BUDGET_GROUPS, totalBudgetedHours } from '../lib/budgets';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { LockButton } from '../components/LockButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
@@ -168,6 +169,8 @@ export function InputFormPage() {
    * If nobody is marked up yet the whole team is offered rather than an empty
    * menu, so a new install can still name someone.
    */
+  const budgetTotal = inputs ? totalBudgetedHours(inputs.phaseBudgets) : 0;
+
   const pmCandidates = (() => {
     const qualified = state.teamMembers.filter((m) =>
       Object.values(m.phaseRoles).some(
@@ -184,15 +187,15 @@ export function InputFormPage() {
   function saveAndGenerate(allProjects: boolean) {
     if (!inputs || !activeProject) return;
     dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, inputs });
-    setTimeout(() => {
-      generateAndSaveSchedule(activeProject.id);
-      if (allProjects) {
-        for (const p of otherActiveUnlocked) {
-          generateAndSaveSchedule(p.id);
-        }
+    // Hand the edited inputs straight to the generator: waiting on the dispatch
+    // to land in state was what made a save plan the previous edit.
+    generateAndSaveSchedule(activeProject.id, inputs);
+    if (allProjects) {
+      for (const p of otherActiveUnlocked) {
+        generateAndSaveSchedule(p.id);
       }
-      setSaved(true);
-    }, 50);
+    }
+    setSaved(true);
   }
 
   function handleSaveAndGenerate() {
@@ -252,7 +255,7 @@ export function InputFormPage() {
   }
 
   const isFormComplete = Boolean(
-    inputs && inputs.clientName && inputs.targetMoveDate && inputs.earliestStartDate && inputs.budgetedManHours > 0
+    inputs && inputs.clientName && inputs.targetMoveDate && inputs.earliestStartDate && totalBudgetedHours(inputs.phaseBudgets) > 0
   );
 
   return (
@@ -481,16 +484,42 @@ export function InputFormPage() {
           }
         />
         <Card className="p-4 space-y-4">
-          <FormField label="Budgeted Man Hours" required>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={inputs.budgetedManHours || ''}
-              onChange={(e) => update('budgetedManHours', parseFloat(e.target.value) || 0)}
-              placeholder="e.g. 149"
-              className={inputClass(!inputs.budgetedManHours)}
-            />
-          </FormField>
+          {/*
+            Budgeted hours, split the way the quote splits them. The scheduler
+            spends each group's hours on its own phases, so a long cleanout can
+            no longer eat the hours that were sold for packing.
+          */}
+          {BUDGET_GROUPS.map((group) => (
+            <FormField
+              key={group.key}
+              label={`${group.label} Hours`}
+              hint={group.hint}
+              required={group.key === 'planning'}
+            >
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                value={inputs.phaseBudgets[group.key] || ''}
+                onChange={(e) =>
+                  update('phaseBudgets', {
+                    ...inputs.phaseBudgets,
+                    [group.key]: Math.max(0, parseFloat(e.target.value) || 0),
+                  })
+                }
+                placeholder="0"
+                className={inputClass(budgetTotal <= 0)}
+              />
+            </FormField>
+          ))}
+          <div className="flex items-center justify-between pt-1 border-t border-ios-gray-100">
+            <span className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide">
+              Total Man Hours
+            </span>
+            <span className={`text-sm font-bold tabular-nums ${budgetTotal > 0 ? 'text-teal-900' : 'text-ios-gray-400'}`}>
+              {budgetTotal}
+            </span>
+          </div>
           <FormField label="Client Time Preference">
             <div className="flex rounded-xl border border-ios-gray-300 overflow-hidden min-h-[44px]">
               {(['AM', 'PM'] as TimePreference[]).map((pref) => (

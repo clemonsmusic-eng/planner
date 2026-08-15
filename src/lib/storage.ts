@@ -8,6 +8,8 @@ import {
 import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
 import { DEFAULT_SUPPLIES, DEFAULT_SUPPLY_CATEGORIES, normalizeSupplies, normalizeCategories } from './supplies';
+import { normalizePhaseBudgets } from './budgets';
+import type { SettingsOrder } from './settingsLayout';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
 const STORAGE_KEY_TEAM             = 'st-planner-team';
@@ -23,6 +25,7 @@ const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v3';
 const STORAGE_KEY_SUPPLIES         = 'st-planner-supplies';
 const STORAGE_KEY_SUPPLY_CATS      = 'st-planner-supply-categories';
 const STORAGE_KEY_SHIFT_TIMES      = 'st-planner-shift-times';
+const STORAGE_KEY_SETTINGS_ORDER   = 'st-planner-settings-order';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,9 @@ export function loadProjects(): Project[] {
         originAddress: p.inputs.originAddress ?? '',
         destinationAddress: p.inputs.destinationAddress ?? '',
         shiftNotes: p.inputs.shiftNotes ?? [],
+        // Projects budgeted before the split start empty rather than having
+        // their old single figure divided up by guesswork.
+        phaseBudgets: normalizePhaseBudgets(p.inputs.phaseBudgets),
       },
       // Backfill for projects saved before the checklist companion existed
       checklist: normalizeChecklist(p.checklist),
@@ -356,5 +362,32 @@ export function saveShiftTimes(times: ShiftTimeSettings): void {
     localStorage.setItem(STORAGE_KEY_SHIFT_TIMES, JSON.stringify(times));
   } catch (e) {
     console.error('Failed to save shift times', e);
+  }
+}
+
+
+// ─── Settings Layout ──────────────────────────────────────────────────────────
+
+/**
+ * The order the Settings submenus are shown in. A display preference rather
+ * than project data, so it stays out of AppState — only the Settings page
+ * reads it.
+ */
+export function loadSettingsOrder(): SettingsOrder {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS_ORDER);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as SettingsOrder) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveSettingsOrder(order: SettingsOrder): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_SETTINGS_ORDER, JSON.stringify(order));
+  } catch (e) {
+    console.error('Failed to save settings order', e);
   }
 }
