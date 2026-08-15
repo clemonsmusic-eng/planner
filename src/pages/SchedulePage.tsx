@@ -78,7 +78,21 @@ export function SchedulePage() {
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
   const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  /*
+   * The Save button follows any edit on this tab.
+   *
+   * It used to be raised by a setIsDirty(true) at each call site, and only one
+   * of them ever had it — assigning a crew member — so changing a shift's hours,
+   * its note, its date or its roles all went unacknowledged. Deriving it from
+   * the project object instead means every edit counts, including ones added
+   * later: each reducer action that changes a project produces a new one.
+   *
+   * These edits are already written to storage as they happen, so the button
+   * confirms rather than commits.
+   */
+  const [ackProject, setAckProject] = useState(activeProject);
+  useEffect(() => { setAckProject(activeProject); }, [activeProject?.id]);
+  const isDirty = !!activeProject && !!ackProject && activeProject !== ackProject;
 
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
@@ -229,7 +243,7 @@ export function SchedulePage() {
               onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
             />
             <button
-              onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
+              onClick={() => generateAndSaveSchedule(activeProject.id)}
               className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80"
             >
               Regenerate
@@ -395,7 +409,6 @@ export function SchedulePage() {
               memberId,
               memberName,
             });
-            setIsDirty(true);
             setMemberPickerEntry(null);
           }}
           onClose={() => setMemberPickerEntry(null)}
@@ -411,7 +424,7 @@ export function SchedulePage() {
         />
       )}
 
-      {isDirty && <FloatingSaveButton onSave={() => setIsDirty(false)} />}
+      {isDirty && <FloatingSaveButton onSave={() => setAckProject(activeProject)} />}
     </>
   );
 }
