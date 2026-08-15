@@ -24,13 +24,19 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/*
+        Header — the brand's teal gradient and tracked eyebrow, carried over
+        from the site masthead. Only Home wears it; the working pages keep
+        white headers so the app doesn't turn into a wall of teal.
+      */}
       <div
-        className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
+        className="sticky top-0 z-10 bg-gradient-to-br from-brand-mint to-teal-700 px-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)', paddingBottom: '16px' }}
       >
-        <p className="text-[11px] font-semibold text-ios-gray-500 uppercase tracking-wider">Smooth Transitions</p>
-        <h1 className="text-2xl font-bold text-teal-900">Move Planner</h1>
+        <p className="text-[11px] font-semibold text-white/80 uppercase tracking-[0.2em]">
+          Smooth Transitions
+        </p>
+        <h1 className="text-2xl font-medium text-white mt-0.5">Move Planner</h1>
       </div>
 
       {/* Content */}
@@ -82,7 +88,7 @@ export function HomePage() {
             <HomeButton
               label="Projects"
               count={state.projects.length}
-              colorClass="bg-teal-50 text-teal-700"
+              colorClass="bg-teal-600 text-white"
               onClick={() => goToProjects('all')}
               icon={
                 <path d="M19.5 21a3 3 0 003-3V9a3 3 0 00-3-3h-5.379a.75.75 0 01-.53-.22L11.47 3.66A2.25 2.25 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
@@ -90,7 +96,7 @@ export function HomePage() {
             />
             <HomeButton
               label="Calendar"
-              colorClass="bg-indigo-50 text-indigo-700"
+              colorClass="bg-teal-100 text-teal-700"
               onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'calendar' })}
               icon={
                 <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm-1.5 8.25v6.75a.75.75 0 00.75.75h10.5a.75.75 0 00.75-.75V10.5H5.25z" clipRule="evenodd" />
@@ -98,7 +104,7 @@ export function HomePage() {
             />
             <HomeButton
               label="Supply Inventory"
-              colorClass="bg-emerald-50 text-emerald-700"
+              colorClass="bg-teal-50 text-teal-600"
               onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'supplies' })}
               icon={
                 <path fillRule="evenodd" d="M2.25 2.25a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 00-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 000-1.5H5.378A2.25 2.25 0 017.5 15h11.218a.75.75 0 00.674-.421 60.358 60.358 0 002.96-7.228.75.75 0 00-.525-.965A60.864 60.864 0 005.68 4.509l-.232-.867A1.875 1.875 0 003.636 2.25H2.25zM3.75 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM16.5 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" clipRule="evenodd" />

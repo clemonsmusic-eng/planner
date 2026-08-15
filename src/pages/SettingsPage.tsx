@@ -1017,7 +1017,7 @@ function ChecklistSectionCard({
         className="w-full flex items-center gap-2 px-3 py-3 min-h-[52px] text-left"
       >
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">{section.name}</p>
+          <p className="text-sm font-semibold text-teal-900 truncate">{section.name}</p>
           <p className="text-xs text-ios-gray-500">
             {section.items.length} item{section.items.length === 1 ? '' : 's'}
             {section.requires && ` · needs ${section.requires}`}

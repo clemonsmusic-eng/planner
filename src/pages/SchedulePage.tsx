@@ -614,7 +614,7 @@ function EntryRow({
     >
       <span
         className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 ${
-          ROLE_COLORS[entry.role] ?? 'bg-gray-100 text-teal-700'
+          ROLE_COLORS[entry.role] ?? 'bg-ios-gray-100 text-teal-700'
         }`}
       >
         {entry.role}

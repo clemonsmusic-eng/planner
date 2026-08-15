@@ -64,16 +64,16 @@ export function ChecklistPage() {
   if (!activeProject || !view) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-        <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-          <CheckCircleIcon className="w-8 h-8 text-indigo-400" />
+        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+          <CheckCircleIcon className="w-8 h-8 text-teal-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">No Project Selected</h2>
+          <h2 className="text-xl font-bold text-teal-900 mb-1">No Project Selected</h2>
           <p className="text-ios-gray-600 text-sm">Pick a project to see its checklist.</p>
         </div>
         <button
           onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' })}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
         >
           Go to Projects
         </button>
@@ -111,7 +111,7 @@ export function ChecklistPage() {
         >
           <div className="flex items-center gap-2 mb-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-gray-900 leading-tight truncate">Checklist</h1>
+              <h1 className="text-xl font-bold text-teal-900 leading-tight truncate">Checklist</h1>
               <p className="text-xs text-ios-gray-600 truncate">
                 {activeProject.inputs.clientName || 'Untitled'}
                 {activeProject.inputs.community ? ` · ${activeProject.inputs.community}` : ''}
@@ -132,7 +132,7 @@ export function ChecklistPage() {
                 onClick={() => setFilter(id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   filter === id
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-teal-600 text-white'
                     : 'bg-ios-gray-100 text-ios-gray-600 active:bg-ios-gray-200'
                 }`}
               >
@@ -155,9 +155,9 @@ export function ChecklistPage() {
           <ProgressCard view={view} />
 
           {/* Standing instruction from the head of the PM Checklist */}
-          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100">
-            <InfoIcon className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-indigo-900 leading-snug">{CHECKLIST_STANDING_NOTE}</p>
+          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl bg-teal-50/70 border border-teal-100">
+            <InfoIcon className="w-4 h-4 text-teal-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-teal-900 leading-snug">{CHECKLIST_STANDING_NOTE}</p>
           </div>
 
           {view.isUndated && (
@@ -192,7 +192,7 @@ export function ChecklistPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h2 className="font-bold text-gray-900 text-sm truncate">{section.name}</h2>
+                        <h2 className="font-bold text-teal-900 text-sm truncate">{section.name}</h2>
                         {section.overdueCount > 0 && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">
                             {section.overdueCount}
@@ -249,7 +249,7 @@ export function ChecklistPage() {
               return (
                 <Card key={group.date ?? `undated-${gi}`} className="overflow-hidden">
                   <div className="px-4 py-2.5 bg-ios-gray-50 border-b border-ios-gray-100 flex items-center justify-between">
-                    <h2 className="font-bold text-gray-900 text-sm">
+                    <h2 className="font-bold text-teal-900 text-sm">
                       {group.date ? formatDateLabel(group.date) : 'No date'}
                     </h2>
                     <span className="text-xs text-ios-gray-500">{items.length}</span>
@@ -273,7 +273,7 @@ export function ChecklistPage() {
             {hiddenCount > 0 && (
               <button
                 onClick={() => restoreChecklistItems(activeProject.id)}
-                className="w-full py-2.5 text-xs font-semibold text-ios-gray-600 active:text-gray-900"
+                className="w-full py-2.5 text-xs font-semibold text-ios-gray-600 active:text-teal-900"
               >
                 Restore {hiddenCount} removed item{hiddenCount === 1 ? '' : 's'}
               </button>
@@ -315,7 +315,7 @@ function ProgressCard({ view }: { view: ChecklistView }) {
       <div className="flex items-center gap-4">
         <ProgressRing percent={pct} />
         <div className="flex-1 min-w-0">
-          <p className="text-2xl font-bold text-gray-900 leading-tight">
+          <p className="text-2xl font-bold text-teal-900 leading-tight">
             {view.completed}
             <span className="text-base font-semibold text-ios-gray-500"> / {view.total}</span>
           </p>
@@ -355,10 +355,10 @@ function ProgressRing({ percent }: { percent: number }) {
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="stroke-indigo-600 transition-all duration-300"
+          className="stroke-teal-600 transition-all duration-300"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900">
+      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-teal-900">
         {percent}%
       </span>
     </div>
@@ -422,7 +422,7 @@ function ItemRow({
         <span
           className={`w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center transition-colors ${
             item.done
-              ? 'bg-indigo-600 border-indigo-600'
+              ? 'bg-teal-600 border-teal-600'
               : overdue
               ? 'border-red-400'
               : 'border-ios-gray-300'
@@ -435,7 +435,7 @@ function ItemRow({
       <button onClick={onOpen} className="flex-1 min-w-0 text-left py-0.5">
         <p
           className={`text-sm leading-snug ${
-            item.done ? 'text-ios-gray-400 line-through' : 'text-gray-900'
+            item.done ? 'text-ios-gray-400 line-through' : 'text-teal-900'
           }`}
         >
           {item.text}
@@ -507,10 +507,10 @@ function ItemDetailSheet({
         <div className="sticky top-0 bg-white px-4 pt-3 pb-2 border-b border-ios-gray-100">
           <div className="w-10 h-1 bg-ios-gray-300 rounded-full mx-auto mb-3" />
           <div className="flex items-start justify-between gap-3">
-            <p className="text-base font-semibold text-gray-900 leading-snug">{item.text}</p>
+            <p className="text-base font-semibold text-teal-900 leading-snug">{item.text}</p>
             <button
               onClick={saveAndClose}
-              className="text-sm font-semibold text-indigo-600 flex-shrink-0 pt-0.5"
+              className="text-sm font-semibold text-teal-600 flex-shrink-0 pt-0.5"
             >
               Done
             </button>
@@ -523,7 +523,7 @@ function ItemDetailSheet({
             <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1">
               Scheduled From Plan
             </p>
-            <p className="text-sm text-gray-900">Due {offsetLabel}</p>
+            <p className="text-sm text-teal-900">Due {offsetLabel}</p>
             {item.offsetMode === 'workday' && item.offsetDays !== 0 && (
               <p className="text-xs text-ios-gray-500 mt-0.5">Counted in workdays (weekends skipped)</p>
             )}
@@ -539,12 +539,12 @@ function ItemDetailSheet({
                 type="date"
                 value={item.dueDate ?? ''}
                 onChange={(e) => setChecklistDueDate(projectId, item.id, e.target.value || null)}
-                className="flex-1 px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm text-gray-900 min-h-[44px]"
+                className="flex-1 px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm text-teal-900 min-h-[44px]"
               />
               {item.isDueDateOverridden && (
                 <button
                   onClick={() => setChecklistDueDate(projectId, item.id, null)}
-                  className="px-3 py-2.5 rounded-xl text-xs font-semibold text-indigo-600 border border-indigo-200 min-h-[44px] whitespace-nowrap"
+                  className="px-3 py-2.5 rounded-xl text-xs font-semibold text-teal-600 border border-teal-200 min-h-[44px] whitespace-nowrap"
                 >
                   Use Plan
                 </button>
@@ -567,7 +567,7 @@ function ItemDetailSheet({
             </div>
             <div className="flex-1">
               <p className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider mb-1.5">Section</p>
-              <span className="text-xs text-gray-900">{item.sectionName}</span>
+              <span className="text-xs text-teal-900">{item.sectionName}</span>
             </div>
           </div>
 
@@ -581,7 +581,7 @@ function ItemDetailSheet({
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="Add a note for this task…"
-              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm text-gray-900 resize-none"
+              className="w-full px-3 py-2.5 rounded-xl border border-ios-gray-200 text-sm text-teal-900 resize-none"
             />
           </div>
 
@@ -611,18 +611,18 @@ function ItemDetailSheet({
 function EmptyState({ onEdit }: { onEdit: () => void }) {
   return (
     <div className="flex flex-col items-center text-center py-12 gap-4">
-      <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-        <CheckCircleIcon className="w-8 h-8 text-indigo-400" />
+      <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center">
+        <CheckCircleIcon className="w-8 h-8 text-teal-400" />
       </div>
       <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Nothing on the Checklist</h2>
+        <h2 className="text-xl font-bold text-teal-900 mb-1">Nothing on the Checklist</h2>
         <p className="text-ios-gray-600 text-sm px-6">
           No template sections apply to this move type. Adjust the template in Settings.
         </p>
       </div>
       <button
         onClick={onEdit}
-        className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm min-h-[44px]"
+        className="px-4 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm min-h-[44px]"
       >
         Edit Template
       </button>

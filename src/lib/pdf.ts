@@ -168,7 +168,7 @@ export function buildTablePdf(options: PdfTableOptions): Blob {
     let y = pageH - margin;
 
     // Title
-    ops.push('BT /F2 15 Tf 0 0 0 rg');
+    ops.push('BT /F2 15 Tf 0.07 0.28 0.25 rg');
     ops.push(`1 0 0 1 ${margin} ${y - 12} Tm (${pdfString(options.title)}) Tj`);
     ops.push('ET');
     y -= options.subtitle ? 28 : 30;
@@ -182,9 +182,9 @@ export function buildTablePdf(options: PdfTableOptions): Blob {
 
     // Header band
     const headerTop = y;
-    ops.push('0.90 0.94 0.94 rg');
+    ops.push('0.82 0.94 0.91 rg');
     ops.push(`${margin} ${headerTop - headerRowHeight} ${printable} ${headerRowHeight} re f`);
-    ops.push('BT /F2 ' + headerSize + ' Tf 0 0 0 rg');
+    ops.push('BT /F2 ' + headerSize + ' Tf 0.05 0.30 0.26 rg');
     options.columns.forEach((col, i) => {
       const cx =
         col.align === 'center'

@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#4f46e5"/>
-  <text y=".9em" font-size="80" x="10" fill="white">🏠</text>
+  <!-- Brand mark: the outlined house from the Smooth Transitions logo. -->
+  <rect width="100" height="100" rx="22" fill="#0F8271"/>
+  <g fill="none" stroke="#ffffff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M24 47 L50 26 L76 47 L76 74 L24 74 Z"/>
+  </g>
+  <rect x="38" y="52" width="13" height="13" rx="2.5" fill="#ffffff"/>
 </svg>

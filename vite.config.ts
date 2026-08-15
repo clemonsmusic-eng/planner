@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Smooth Transitions Planner',
         short_name: 'ST Planner',
         description: 'Move Plan Builder for Smooth Transitions senior moving services',
-        theme_color: '#4f46e5',
-        background_color: '#f5f5f5',
+        theme_color: '#0F8271',
+        background_color: '#f4f7f6',
         display: 'standalone',
         orientation: 'portrait',
         // Must match `base` — the app is served from /planner/, not the domain
@@ -41,7 +41,8 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        // woff2 included so the brand type is present offline, not just online.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       }
     })
   ],

@@ -304,7 +304,7 @@ export function InputFormPage() {
               (inputs.status ?? 'active') === 'draft'
                 ? 'bg-amber-100 text-amber-700'
                 : (inputs.status ?? 'active') === 'archived'
-                ? 'bg-gray-200 text-gray-500'
+                ? 'bg-ios-gray-200 text-ios-gray-500'
                 : 'bg-green-100 text-green-700'
             }`}
           >
