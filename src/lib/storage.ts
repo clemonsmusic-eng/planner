@@ -1,4 +1,4 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
@@ -22,6 +22,7 @@ const STORAGE_KEY_AUCTION_SETTINGS = 'st-planner-auction-settings';
 const STORAGE_KEY_CHECKLIST        = 'st-planner-checklist-template-v3';
 const STORAGE_KEY_SUPPLIES         = 'st-planner-supplies';
 const STORAGE_KEY_SUPPLY_CATS      = 'st-planner-supply-categories';
+const STORAGE_KEY_SHIFT_TIMES      = 'st-planner-shift-times';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,10 @@ export function loadProjects(): Project[] {
         phaseDateMoves: p.inputs.phaseDateMoves ?? [],
         auction: { ...p.inputs.auction, lotCount: p.inputs.auction?.lotCount ?? 0 },
         contractedServices: p.inputs.contractedServices ?? [],
+        projectManagerId: p.inputs.projectManagerId ?? null,
+        originAddress: p.inputs.originAddress ?? '',
+        destinationAddress: p.inputs.destinationAddress ?? '',
+        shiftNotes: p.inputs.shiftNotes ?? [],
       },
       // Backfill for projects saved before the checklist companion existed
       checklist: normalizeChecklist(p.checklist),
@@ -319,5 +324,37 @@ export function saveSupplyCategories(categories: string[]): void {
     localStorage.setItem(STORAGE_KEY_SUPPLY_CATS, JSON.stringify(categories));
   } catch (e) {
     console.error('Failed to save supply categories', e);
+  }
+}
+
+
+// ─── Shift Times ──────────────────────────────────────────────────────────────
+
+export const DEFAULT_SHIFT_TIMES: ShiftTimeSettings = { am: '08:00', pm: '13:00' };
+
+/** Rejects anything that isn't HH:mm so a bad save can't poison every label. */
+function validTime(v: unknown, fallback: string): string {
+  return typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : fallback;
+}
+
+export function loadShiftTimes(): ShiftTimeSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SHIFT_TIMES);
+    if (!raw) return { ...DEFAULT_SHIFT_TIMES };
+    const parsed = JSON.parse(raw) as Partial<ShiftTimeSettings>;
+    return {
+      am: validTime(parsed.am, DEFAULT_SHIFT_TIMES.am),
+      pm: validTime(parsed.pm, DEFAULT_SHIFT_TIMES.pm),
+    };
+  } catch {
+    return { ...DEFAULT_SHIFT_TIMES };
+  }
+}
+
+export function saveShiftTimes(times: ShiftTimeSettings): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_SHIFT_TIMES, JSON.stringify(times));
+  } catch (e) {
+    console.error('Failed to save shift times', e);
   }
 }

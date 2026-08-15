@@ -105,6 +105,18 @@ export interface ManualShift {
   roles: RoleType[];
 }
 
+/**
+ * A free-text note against one shift. Kept on inputs rather than on the
+ * generated schedule for the same reason as added and removed shifts: the
+ * schedule is thrown away and rebuilt on every regenerate, and a note someone
+ * typed is not something to throw away with it.
+ */
+export interface ShiftNote {
+  phaseId: string;
+  date: string;
+  note: string;
+}
+
 /** A generator-placed shift the user deleted, likewise remembered across regeneration. */
 export interface RemovedShift {
   date: string;
@@ -158,6 +170,16 @@ export interface ProjectInputs {
   clientName: string;
   projectName: string;
   community: string;
+  /**
+   * Team member id of the PM who owns the job. Distinct from the PM the
+   * scheduler assigns to a given shift — that can vary day to day, this is who
+   * the job belongs to.
+   */
+  projectManagerId?: string | null;
+  /** Where the move starts and ends. Free text: these are postal addresses,
+   *  not entries from a list. */
+  originAddress?: string;
+  destinationAddress?: string;
   moveType: MoveType;
   status: ProjectStatus;
   // Dates
@@ -185,6 +207,18 @@ export interface ProjectInputs {
   /** Hand edits to the shift list, replayed whenever the plan regenerates. */
   addedShifts?: ManualShift[];
   removedShifts?: RemovedShift[];
+  /** Per-shift notes, keyed by phase and date. */
+  shiftNotes?: ShiftNote[];
+}
+
+/**
+ * When a shift starts. The app has only ever known AM, PM and Full Day; these
+ * turn that into a clock time, and the end comes from the shift's own hours so
+ * a 4-hour AM and a 6-hour AM don't claim the same window.
+ */
+export interface ShiftTimeSettings {
+  am: string;  // HH:mm
+  pm: string;  // HH:mm
 }
 
 // ─── Schedule ─────────────────────────────────────────────────────────────────
@@ -448,4 +482,6 @@ export interface AppState {
   supplies: SupplyItem[];
   /** Section names for the supply inventory, in display order. */
   supplyCategories: string[];
+  /** When AM and PM shifts start. */
+  shiftTimes: ShiftTimeSettings;
 }

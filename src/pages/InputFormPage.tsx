@@ -163,6 +163,20 @@ export function InputFormPage() {
     setSaved(false);
   }
 
+  /**
+   * Anyone the team sheet says can run a job — a PM or PM/Lead on any phase.
+   * If nobody is marked up yet the whole team is offered rather than an empty
+   * menu, so a new install can still name someone.
+   */
+  const pmCandidates = (() => {
+    const qualified = state.teamMembers.filter((m) =>
+      Object.values(m.phaseRoles).some(
+        (r) => Array.isArray(r) && r.some((role) => role === 'PM' || role === 'PM/Lead')
+      )
+    );
+    return qualified.length > 0 ? qualified : state.teamMembers;
+  })();
+
   const otherActiveUnlocked = state.projects.filter(
     (p) => p.id !== activeProject?.id && (p.inputs.status ?? 'active') === 'active' && !p.inputs.isLocked
   );
@@ -376,6 +390,39 @@ export function InputFormPage() {
               value={inputs.moveType}
               onChange={(v) => update('moveType', v as MoveType)}
               options={state.lists.find(l => l.id === 'move-types')?.items ?? []}
+            />
+          </FormField>
+          {/*
+            Who owns the job. The scheduler assigns a PM per shift and that can
+            change day to day; this is the one name the client and the community
+            deal with, so it's set here and not derived from the schedule.
+          */}
+          <FormField
+            label="Project Manager"
+            hint={pmCandidates.length === 0 ? 'No one on the team carries a PM role yet — set one in Settings.' : undefined}
+          >
+            <SelectField
+              value={inputs.projectManagerId ?? ''}
+              onChange={(v) => update('projectManagerId', v || null)}
+              options={[{ value: '', label: 'Unassigned' }, ...pmCandidates.map((m) => ({ value: m.id, label: m.name }))]}
+            />
+          </FormField>
+          <FormField label="Origin Address" hint="Where the move starts">
+            <input
+              type="text"
+              value={inputs.originAddress ?? ''}
+              onChange={(e) => update('originAddress', e.target.value)}
+              placeholder="Street, city, unit"
+              className={inputClass()}
+            />
+          </FormField>
+          <FormField label="Destination Address" hint="Where the move ends">
+            <input
+              type="text"
+              value={inputs.destinationAddress ?? ''}
+              onChange={(e) => update('destinationAddress', e.target.value)}
+              placeholder="Street, city, unit"
+              className={inputClass()}
             />
           </FormField>
         </Card>

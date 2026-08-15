@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -15,7 +15,8 @@ import {
   loadAuctionSettings, saveAuctionSettings,
   loadChecklistTemplate, saveChecklistTemplate,
   loadSupplies, saveSupplies,
-  loadSupplyCategories, saveSupplyCategories,
+  loadSupplyCategories,
+  loadShiftTimes, saveShiftTimes, DEFAULT_SHIFT_TIMES, saveSupplyCategories,
 } from '../lib/storage';
 import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -51,7 +52,9 @@ type Action =
   | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string }
   | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments }
   | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] }
-  | { type: 'UPDATE_SUPPLY_CATEGORIES'; categories: string[]; supplies?: SupplyItem[] };
+  | { type: 'UPDATE_SUPPLY_CATEGORIES'; categories: string[]; supplies?: SupplyItem[] }
+  | { type: 'UPDATE_SHIFT_TIMES'; times: ShiftTimeSettings }
+  | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
@@ -410,6 +413,22 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
 
+    /** Notes ride on inputs but must not invalidate the generated plan. */
+    case 'SET_SHIFT_NOTES': {
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId
+          ? { ...p, inputs: { ...p.inputs, shiftNotes: action.notes }, updatedAt: new Date().toISOString() }
+          : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    case 'UPDATE_SHIFT_TIMES': {
+      saveShiftTimes(action.times);
+      return { ...state, shiftTimes: action.times };
+    }
+
     default:
       return state;
   }
@@ -430,6 +449,7 @@ const initialState: AppState = {
   checklistTemplate: [],
   supplies: [],
   supplyCategories: [],
+  shiftTimes: DEFAULT_SHIFT_TIMES,
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -449,6 +469,7 @@ interface AppContextValue {
   restoreChecklistItems: (projectId: string) => void;
   resetChecklistProgress: (projectId: string) => void;
   updateDocuments: (projectId: string, fn: (docs: ProjectDocuments) => ProjectDocuments) => void;
+  setShiftNote: (projectId: string, phaseId: string, date: string, note: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -466,6 +487,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const checklistTemplate = loadChecklistTemplate();
     const supplies = loadSupplies();
     const supplyCategories = loadSupplyCategories();
+    const shiftTimes = loadShiftTimes();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -478,6 +500,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         checklistTemplate,
         supplies,
         supplyCategories,
+        shiftTimes,
         // Nothing is opened for you. Auto-selecting the first stored project
         // made whichever one happened to be first look like a default.
         activeProjectId: null,
@@ -621,6 +644,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Furniture rows and file metadata. Blobs go to IndexedDB via lib/fileStore;
   // only what's small enough for localStorage is written back through here.
 
+  /**
+   * Note against one shift. Stored on inputs beside the other hand edits, so
+   * regenerating the plan doesn't wipe what someone wrote; an empty note drops
+   * the row rather than leaving a blank one behind.
+   */
+  function setShiftNote(projectId: string, phaseId: string, date: string, note: string) {
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const existing = project.inputs.shiftNotes ?? [];
+    const rest = existing.filter((n) => !(n.phaseId === phaseId && n.date === date));
+    const trimmed = note.trim();
+    dispatch({
+      type: 'SET_SHIFT_NOTES',
+      projectId,
+      notes: trimmed ? [...rest, { phaseId, date, note: trimmed }] : rest,
+    });
+  }
+
   function updateDocuments(projectId: string, fn: (docs: ProjectDocuments) => ProjectDocuments) {
     const project = state.projects.find((p) => p.id === projectId);
     if (!project) return;
@@ -633,7 +674,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
         toggleChecklistItem, setChecklistDueDate, setChecklistNote,
         addChecklistItem, removeChecklistItem, restoreChecklistItems, resetChecklistProgress,
-        updateDocuments,
+        updateDocuments, setShiftNote,
       }}
     >
       {children}

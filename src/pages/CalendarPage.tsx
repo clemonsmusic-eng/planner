@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   format,
   addDays,
@@ -13,7 +13,8 @@ import {
   endOfWeek,
 } from 'date-fns';
 import { useApp } from '../store/AppContext';
-import type { Project, TeamMember, ExperienceLevel } from '../types';
+import { shiftTimeRange } from '../lib/dateUtils';
+import type { Project, TeamMember, ExperienceLevel, ShiftTimeSettings } from '../types';
 
 const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES_CAL  = new Set(['phase-6']);
@@ -36,6 +37,11 @@ interface CalendarJob {
   experienceCategory: 'packAndSort' | 'cleanout' | null;
   hours: number;
   isArchived: boolean;
+  /** The PM who owns the job, not whoever the scheduler put on this shift. */
+  projectManagerName: string | null;
+  originAddress: string;
+  destinationAddress: string;
+  note: string;
 }
 
 // ─── Project Color Palette ────────────────────────────────────────────────────
@@ -68,6 +74,9 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
   for (const project of projects) {
     if (!project.schedule) continue;
     const isArchived = project.inputs.status === 'archived';
+    const pmName = project.inputs.projectManagerId
+      ? teamMemberMap.get(project.inputs.projectManagerId)?.name ?? null
+      : null;
 
     for (const day of project.schedule.days) {
       const groups = new Map<string, CalendarJob>();
@@ -93,6 +102,13 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
             experienceCategory: expCat,
             hours: entry.hours,
             isArchived,
+            projectManagerName: pmName,
+            originAddress: project.inputs.originAddress ?? '',
+            destinationAddress: project.inputs.destinationAddress ?? '',
+            note:
+              (project.inputs.shiftNotes ?? []).find(
+                (n) => n.phaseId === entry.phaseId && n.date === day.date
+              )?.note ?? '',
           });
         }
         const job = groups.get(key)!;
@@ -440,15 +456,28 @@ function WeekView({
 
 // ─── Month View ───────────────────────────────────────────────────────────────
 
+/**
+ * The month grid.
+ *
+ * On a phone a cell is ~50px wide and can only carry dots. Above lg there is
+ * room for the shifts themselves, so each cell lists them — project, PM and
+ * shift type — and pointing at one opens the rest: crew, addresses, times and
+ * the shift note.
+ *
+ * Hover opens it and click pins it, because the same layout runs on an iPad in
+ * landscape where there is no hover at all.
+ */
 function MonthView({
   date,
   jobs,
   colorMap,
+  shiftTimes,
   onSelectDay,
 }: {
   date: Date;
   jobs: CalendarJob[];
   colorMap: Map<string, number>;
+  shiftTimes: ShiftTimeSettings;
   onSelectDay: (d: Date) => void;
 }) {
   const monthStart = startOfMonth(date);
@@ -458,10 +487,42 @@ function MonthView({
   const calDays = eachDayOfInterval({ start: calStart, end: calEnd });
   const today = new Date();
 
+  // Which chip's details are showing, and whether a click pinned them there.
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; below: boolean } | null>(null);
+  const openKey = pinned ?? hovered;
+
+  useEffect(() => {
+    if (!pinned) return;
+    // Clearing only the pin would fall straight back to the hover that opened
+    // it, and the card would sit there looking like Escape did nothing.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setPinned(null); setHovered(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pinned]);
+
   const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const jobKey = (j: CalendarJob) => `${j.projectId}:${j.date}:${j.phaseId}:${j.shift}`;
+  const openJob = openKey ? jobs.find((j) => jobKey(j) === openKey) ?? null : null;
+
+  /** Place the card against the chip, flipping above it near the window's foot. */
+  function show(key: string, el: HTMLElement, pin: boolean) {
+    const r = el.getBoundingClientRect();
+    const below = r.bottom + 260 < window.innerHeight;
+    setAnchor({
+      x: Math.min(Math.max(r.left, 12), window.innerWidth - 300),
+      y: below ? r.bottom + 6 : r.top - 6,
+      below,
+    });
+    if (pin) setPinned((k) => (k === key ? null : key));
+    else setHovered(key);
+  }
 
   return (
-    <div className="px-3 py-3">
+    <div className="px-3 py-3" onMouseLeave={() => setHovered(null)}>
       <div className="grid grid-cols-7 mb-1">
         {dayLabels.map((d) => (
           <div key={d} className="text-center text-[11px] font-semibold text-ios-gray-500 py-1">
@@ -470,7 +531,7 @@ function MonthView({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1">
+      <div className="grid grid-cols-7 gap-y-1 lg:gap-1">
         {calDays.map((day) => {
           const inMonth = isSameMonth(day, date);
           const isToday = isSameDay(day, today);
@@ -478,30 +539,151 @@ function MonthView({
           const projectIds = [...new Set(dayJobs.map((j) => j.projectId))];
 
           return (
-            <button
+            <div
               key={day.toISOString()}
-              onClick={() => onSelectDay(day)}
-              className={`flex flex-col items-center py-1 rounded-xl ${inMonth ? 'active:bg-ios-gray-100 lg:hover:bg-ios-gray-100' : ''}`}
-              disabled={!inMonth}
+              className={`flex flex-col rounded-xl lg:min-h-[112px] lg:p-1 lg:border ${
+                inMonth ? 'lg:border-ios-gray-200 lg:bg-white' : 'lg:border-transparent'
+              }`}
             >
-              <span
-                className={`text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-teal-600 text-white' : inMonth ? 'text-teal-900' : 'text-ios-gray-300'
+              <button
+                onClick={() => onSelectDay(day)}
+                disabled={!inMonth}
+                className={`flex flex-col items-center lg:items-start py-1 lg:py-0 rounded-xl ${
+                  inMonth ? 'active:bg-ios-gray-100 lg:hover:bg-transparent' : ''
                 }`}
+                aria-label={`Open ${format(day, 'EEEE, MMMM d')}`}
               >
-                {format(day, 'd')}
-              </span>
-              <div className="flex gap-0.5 h-2 items-center">
-                {projectIds.slice(0, 3).map((pid) => {
-                  const archived = dayJobs.some(j => j.projectId === pid && j.isArchived);
-                  const dotClass = archived ? 'bg-ios-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
-                  return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
+                <span
+                  className={`text-sm font-semibold w-8 h-8 lg:w-7 lg:h-7 flex items-center justify-center rounded-full ${
+                    isToday ? 'bg-teal-600 text-white' : inMonth ? 'text-teal-900' : 'text-ios-gray-300'
+                  }`}
+                >
+                  {format(day, 'd')}
+                </span>
+                {/* Phone: one dot per project, all a 50px cell has room for. */}
+                <div className="lg:hidden flex gap-0.5 h-2 items-center">
+                  {projectIds.slice(0, 3).map((pid) => {
+                    const archived = dayJobs.some((j) => j.projectId === pid && j.isArchived);
+                    const dotClass = archived
+                      ? 'bg-ios-gray-400'
+                      : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
+                    return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
+                  })}
+                </div>
+              </button>
+
+              {/* Desktop and iPad landscape: the shifts themselves. */}
+              <div className="hidden lg:flex flex-col gap-0.5 mt-0.5 min-w-0">
+                {dayJobs.slice(0, 3).map((job) => {
+                  const key = jobKey(job);
+                  const colors = job.isArchived
+                    ? { bg: 'bg-ios-gray-100', text: 'text-ios-gray-500', border: 'border-ios-gray-200' }
+                    : PROJECT_COLORS[(colorMap.get(job.projectId) ?? 0) % PROJECT_COLORS.length];
+                  return (
+                    <button
+                      key={key}
+                      onMouseEnter={(e) => show(key, e.currentTarget, false)}
+                      onClick={(e) => show(key, e.currentTarget, true)}
+                      aria-expanded={openKey === key}
+                      className={`w-full text-left px-1.5 py-1 rounded-md border ${colors.bg} ${colors.border} ${
+                        pinned === key ? 'ring-2 ring-teal-500' : ''
+                      }`}
+                    >
+                      <span className={`block text-[11px] font-semibold leading-tight truncate ${colors.text}`}>
+                        {job.projectName}
+                      </span>
+                      <span className="block text-[10px] leading-tight truncate text-ios-gray-600">
+                        {job.projectManagerName ?? 'No PM'} · {job.shift}
+                      </span>
+                    </button>
+                  );
                 })}
+                {dayJobs.length > 3 && (
+                  <button
+                    onClick={() => onSelectDay(day)}
+                    className="text-[10px] font-semibold text-ios-gray-500 text-left px-1.5 hover:text-teal-700"
+                  >
+                    +{dayJobs.length - 3} more
+                  </button>
+                )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
+
+      {openJob && anchor && (
+        <MonthJobDetail
+          job={openJob}
+          anchor={anchor}
+          shiftTimes={shiftTimes}
+          pinned={pinned !== null}
+          onClose={() => { setPinned(null); setHovered(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The expanded card: everything the chip had no room for. */
+function MonthJobDetail({
+  job,
+  anchor,
+  shiftTimes,
+  pinned,
+  onClose,
+}: {
+  job: CalendarJob;
+  anchor: { x: number; y: number; below: boolean };
+  shiftTimes: ShiftTimeSettings;
+  pinned: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {/* Only a pinned card gets a catcher; a hover one must not eat clicks. */}
+      {pinned && <div className="fixed inset-0 z-[54]" onClick={onClose} aria-hidden="true" />}
+      <div
+        role="dialog"
+        aria-label={`${job.projectName} — ${job.phaseName}`}
+        // A hover card must not swallow the pointer, but a pinned one is meant
+        // to be reached — someone will want to select the address out of it.
+        className={`fixed z-[56] w-72 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-xl border border-ios-gray-200 p-3 ${
+          pinned ? '' : 'pointer-events-none'
+        }`}
+        style={{
+          left: anchor.x,
+          top: anchor.below ? anchor.y : undefined,
+          bottom: anchor.below ? undefined : `calc(100vh - ${anchor.y}px)`,
+        }}
+      >
+        <p className="text-sm font-bold text-teal-900 leading-tight">{job.projectName}</p>
+        <p className="text-xs text-ios-gray-600 mb-2">{job.phaseName}</p>
+
+        <dl className="space-y-1.5 text-xs">
+          <DetailRow label="Shift">
+            {job.shift} · {shiftTimeRange(job.shift, job.hours, shiftTimes)} · {job.hours} hrs
+          </DetailRow>
+          <DetailRow label="PM">{job.projectManagerName ?? 'Unassigned'}</DetailRow>
+          <DetailRow label="Crew">
+            {job.memberNames.length > 0 ? job.memberNames.join(', ') : 'Nobody assigned yet'}
+          </DetailRow>
+          {job.originAddress && <DetailRow label="From">{job.originAddress}</DetailRow>}
+          {job.destinationAddress && <DetailRow label="To">{job.destinationAddress}</DetailRow>}
+          {job.note && <DetailRow label="Note">{job.note}</DetailRow>}
+        </dl>
+      </div>
+    </>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="w-12 flex-shrink-0 font-semibold text-ios-gray-500 uppercase tracking-wide text-[10px] pt-px">
+        {label}
+      </dt>
+      <dd className="flex-1 min-w-0 text-teal-900 break-words">{children}</dd>
     </div>
   );
 }
@@ -827,7 +1009,7 @@ export function CalendarPage() {
           />
         )}
         {view === 'month' && (
-          <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} onSelectDay={handleSelectDay} />
+          <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} shiftTimes={state.shiftTimes} onSelectDay={handleSelectDay} />
         )}
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
@@ -68,7 +68,7 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 export function SchedulePage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate, setShiftNote } = useApp();
   const addShift = useAddShift();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
@@ -315,6 +315,10 @@ export function SchedulePage() {
                   onRemoveRole={(entryId) => dispatch({ type: 'REMOVE_SCHEDULE_ROLE', projectId: activeProject.id, entryId })}
                   onMoveShift={(phaseId) => setDateMovePicker({ phaseId, originalDate: day.date })}
                   onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
+                  noteFor={(phaseId) =>
+                    (activeProject.inputs.shiftNotes ?? []).find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? ''
+                  }
+                  onSetNote={(phaseId, note) => setShiftNote(activeProject.id, phaseId, day.date, note)}
                 />
               ))}
               {isDirty && <FloatingSaveSpacer />}
@@ -422,6 +426,8 @@ function DaySection({
   onRemoveRole,
   onMoveShift,
   onRemoveShift,
+  noteFor,
+  onSetNote,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -435,6 +441,8 @@ function DaySection({
   onRemoveRole: (entryId: string) => void;
   onMoveShift: (phaseId: string) => void;
   onRemoveShift: (phaseId: string, phaseName: string) => void;
+  noteFor: (phaseId: string) => string;
+  onSetNote: (phaseId: string, note: string) => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -560,10 +568,71 @@ function DaySection({
                   Crew
                 </button>
               </div>
+              <ShiftNoteField
+                phaseName={phaseName}
+                note={noteFor(phaseEntries[0].phaseId)}
+                onSave={(note) => onSetNote(phaseEntries[0].phaseId, note)}
+              />
             </Card>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Note against one shift — what the crew needs to know before they arrive.
+ * Collapsed to a single line when empty so it costs nothing on a day with
+ * several shifts, and committed on blur rather than per keystroke so typing
+ * doesn't rewrite the project on every character.
+ */
+function ShiftNoteField({
+  phaseName,
+  note,
+  onSave,
+}: {
+  phaseName: string;
+  note: string;
+  onSave: (note: string) => void;
+}) {
+  const [open, setOpen] = useState(note.length > 0);
+  const [draft, setDraft] = useState(note);
+
+  // A regenerate or a note set elsewhere has to show up here.
+  useEffect(() => {
+    setDraft(note);
+    if (note.length > 0) setOpen(true);
+  }, [note]);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-1.5 px-3 py-2 border-t border-ios-gray-100 text-xs font-semibold text-ios-gray-500 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+          <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+        </svg>
+        Add a note
+      </button>
+    );
+  }
+
+  return (
+    <div className="px-3 py-2 border-t border-ios-gray-100">
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft.trim() !== note) onSave(draft);
+          if (draft.trim() === '') setOpen(false);
+        }}
+        rows={2}
+        placeholder="Gate code, parking, what to bring…"
+        aria-label={`Note for the ${phaseName} shift`}
+        className="w-full rounded-lg border border-ios-gray-200 px-2.5 py-2 text-sm text-teal-900 resize-y focus:outline-none focus:ring-2 focus:ring-teal-500"
+      />
     </div>
   );
 }

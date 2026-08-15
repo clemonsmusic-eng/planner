@@ -1127,7 +1127,7 @@ function ChecklistSectionCard({
   );
 }
 
-type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'checklist' | 'communities' | 'auctionDefaults' | 'teamExperience';
+type SectionKey = 'team' | 'phaseRoles' | 'lists' | 'templates' | 'checklist' | 'communities' | 'auctionDefaults' | 'teamExperience' | 'shiftTimes';
 
 export function SettingsPage() {
   const { state, dispatch } = useApp();
@@ -1456,6 +1456,54 @@ export function SettingsPage() {
         </AccordionSection>
 
         {/* ── Auction Defaults ──────────────────────────────────────────── */}
+        {/*
+          The app has only ever known AM, PM and Full Day. These turn that into
+          a clock time on the calendar; the end is the start plus the shift's own
+          hours, so nothing here has to be kept in step with the plan.
+        */}
+        <AccordionSection
+          title="Shift Times"
+          subtitle="When AM and PM shifts start"
+          open={openSections.has('shiftTimes')}
+          onToggle={() => toggleSection('shiftTimes')}
+        >
+          <div className="px-4 py-4 space-y-4">
+            <p className="text-xs text-ios-gray-500">
+              Used to show shift times on the calendar. A Full Day starts at the AM time.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="am-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
+                  AM starts
+                </label>
+                <input
+                  id="am-start"
+                  type="time"
+                  value={state.shiftTimes.am}
+                  onChange={(e) =>
+                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, am: e.target.value } })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+                />
+              </div>
+              <div>
+                <label htmlFor="pm-start" className="text-xs font-semibold text-ios-gray-600 uppercase tracking-wide mb-2 block">
+                  PM starts
+                </label>
+                <input
+                  id="pm-start"
+                  type="time"
+                  value={state.shiftTimes.pm}
+                  onChange={(e) =>
+                    e.target.value && dispatch({ type: 'UPDATE_SHIFT_TIMES', times: { ...state.shiftTimes, pm: e.target.value } })
+                  }
+                  className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+                />
+              </div>
+            </div>
+          </div>
+        </AccordionSection>
+
         <AccordionSection
           title="Auction Defaults"
           subtitle="Hourly rate and performance level for estimates"
