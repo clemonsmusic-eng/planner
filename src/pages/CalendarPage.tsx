@@ -481,7 +481,7 @@ function MonthView({
             <button
               key={day.toISOString()}
               onClick={() => onSelectDay(day)}
-              className={`flex flex-col items-center py-1 rounded-xl ${inMonth ? 'active:bg-ios-gray-100' : ''}`}
+              className={`flex flex-col items-center py-1 rounded-xl ${inMonth ? 'active:bg-ios-gray-100 lg:hover:bg-ios-gray-100' : ''}`}
               disabled={!inMonth}
             >
               <span
@@ -540,7 +540,7 @@ function FilterSheet({
     <>
       <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl"
+        className="fixed bottom-0 left-0 right-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-lg z-[61] bg-white rounded-t-2xl lg:rounded-2xl shadow-xl"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-ios-gray-200">
@@ -730,7 +730,7 @@ export function CalendarPage() {
           <h1 className="text-lg font-bold text-teal-900">Calendar</h1>
           <button
             onClick={() => setShowFilters(true)}
-            className="relative w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-600 active:bg-ios-gray-100"
+            className="relative w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
               <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
@@ -762,7 +762,7 @@ export function CalendarPage() {
         <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => navigate(-1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
@@ -773,7 +773,7 @@ export function CalendarPage() {
           </button>
           <button
             onClick={() => navigate(1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />

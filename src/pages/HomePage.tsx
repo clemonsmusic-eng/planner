@@ -30,7 +30,7 @@ export function HomePage() {
         white headers so the app doesn't turn into a wall of teal.
       */}
       <div
-        className="sticky top-0 z-10 bg-gradient-to-br from-brand-mint to-teal-700 px-4"
+        className="lg:hidden sticky top-0 z-10 bg-gradient-to-br from-brand-mint to-teal-700 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px)', paddingBottom: '16px' }}
       >
         <p className="text-[11px] font-semibold text-white/80 uppercase tracking-[0.2em]">
@@ -40,7 +40,7 @@ export function HomePage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 lg:pt-6 space-y-6">
         {/* Recent Active Projects */}
         <div>
           <h2 className="text-sm font-bold text-ios-gray-500 uppercase tracking-wider mb-2">
@@ -51,7 +51,7 @@ export function HomePage() {
               No active projects yet.
             </Card>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
               {recentActive.map((project) => (
                 <Card key={project.id} onClick={() => openProject(project)} className="p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -79,7 +79,7 @@ export function HomePage() {
           <h2 className="text-sm font-bold text-ios-gray-500 uppercase tracking-wider mb-2">
             Browse
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {/*
               One door to the project list. Active, draft and archived are
               collapsible categories on that page, so three buttons here were
@@ -145,7 +145,7 @@ function HomeButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-start gap-2 p-4 rounded-2xl shadow-sm bg-white border border-ios-gray-200 active:opacity-70 transition-opacity ${full ? 'col-span-2' : ''}`}
+      className={`flex flex-col items-start gap-2 p-4 rounded-2xl shadow-sm bg-white border border-ios-gray-200 active:opacity-70 lg:hover:opacity-80 transition-opacity ${full ? 'col-span-2' : ''}`}
     >
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorClass}`}>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">

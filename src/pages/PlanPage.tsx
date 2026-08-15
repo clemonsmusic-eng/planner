@@ -372,7 +372,7 @@ function SuggestedDatesCard({
                 )}
                 <button
                   onClick={() => onOverride(item.date)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-ios-gray-100 flex-shrink-0"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 flex-shrink-0"
                   aria-label="Override shift"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">

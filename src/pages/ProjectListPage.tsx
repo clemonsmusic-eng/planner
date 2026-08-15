@@ -104,7 +104,7 @@ export function ProjectListPage() {
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'home' })}
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full active:bg-ios-gray-100 text-ios-gray-600"
+              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 text-ios-gray-600"
               aria-label="Back to Home"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -122,7 +122,7 @@ export function ProjectListPage() {
         {filter !== 'all' ? (
           projects.length === 0
             ? <EmptyState onCreate={handleCreateProject} />
-            : <div className="space-y-3">{projects.map(renderCard)}</div>
+            : <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3">{projects.map(renderCard)}</div>
         ) : (
           <div className="space-y-3">
             <CategoryGroup label="Active" count={activeProjects.length} dotClass="bg-green-500" defaultOpen>
@@ -190,9 +190,9 @@ function CategoryGroup({
         </svg>
       </button>
       {open && (
-        <div className="border-t border-ios-gray-100 p-3 space-y-3">
+        <div className="border-t border-ios-gray-100 p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3">
           {count === 0
-            ? <p className="text-sm text-ios-gray-500 text-center py-3">No {label.toLowerCase()} projects.</p>
+            ? <p className="text-sm text-ios-gray-500 text-center py-3 lg:col-span-full">No {label.toLowerCase()} projects.</p>
             : children}
         </div>
       )}
@@ -304,7 +304,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </p>
       <button
         onClick={onCreate}
-        className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-semibold text-base active:opacity-80 transition-opacity min-h-[44px]"
+        className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-semibold text-base active:opacity-80 lg:hover:opacity-90 transition-opacity min-h-[44px]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
           <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />

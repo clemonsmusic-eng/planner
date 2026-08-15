@@ -209,7 +209,7 @@ function SupplyRow({
           <button
             onClick={() => onDraw(-1)}
             disabled={mine <= 0}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 disabled:opacity-30"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 disabled:opacity-30"
             aria-label={`Return one ${row.name}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -223,7 +223,7 @@ function SupplyRow({
           </span>
           <button
             onClick={() => onDraw(1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-teal-600 active:bg-teal-50"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-teal-600 active:bg-teal-50 lg:hover:bg-teal-50"
             aria-label={`Take one ${row.name}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -248,7 +248,7 @@ function SupplyRow({
                   <span className="text-sm font-semibold text-teal-900 tabular-nums">{e.quantity}</span>
                   <button
                     onClick={() => onRemoveEntry(e.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-red-600 flex-shrink-0"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
                     aria-label="Remove this entry"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">

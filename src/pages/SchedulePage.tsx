@@ -230,7 +230,7 @@ export function SchedulePage() {
             />
             <button
               onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
-              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70"
+              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80"
             >
               Regenerate
             </button>
@@ -240,7 +240,7 @@ export function SchedulePage() {
           <button
             onClick={addShift.openSheet}
             disabled={!schedule}
-            className="w-full flex items-center justify-center gap-1.5 mb-2 py-2 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[40px] active:bg-teal-50 disabled:opacity-40"
+            className="w-full lg:w-auto lg:px-5 lg:self-start flex items-center justify-center gap-1.5 mb-2 py-2 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[40px] active:bg-teal-50 lg:hover:bg-teal-50 disabled:opacity-40"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -478,7 +478,7 @@ function DaySection({
         </button>
         <button
           onClick={onOverride}
-          className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+          className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
           aria-label="Override shift"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -487,7 +487,7 @@ function DaySection({
         </button>
         <button
           onClick={onDateChange}
-          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
           aria-label="Move to different date"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -516,7 +516,7 @@ function DaySection({
               <div className="flex items-center gap-1 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
                 <button
                   onClick={() => onMoveShift(phaseEntries[0].phaseId)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 flex-shrink-0"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
                   aria-label={`Move ${phaseName} to a different date`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -525,7 +525,7 @@ function DaySection({
                 </button>
                 <button
                   onClick={() => onRemoveShift(phaseEntries[0].phaseId, phaseName)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 flex-shrink-0"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
                   aria-label={`Remove the ${phaseName} shift`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -542,7 +542,7 @@ function DaySection({
                 <button
                   onClick={() => onRemoveRole(phaseEntries[phaseEntries.length - 1].id)}
                   disabled={phaseEntries.length <= 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 disabled:opacity-30"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 disabled:opacity-30"
                   aria-label={`Remove a role from ${phaseName}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -551,7 +551,7 @@ function DaySection({
                 </button>
                 <button
                   onClick={() => onAddRole(phaseEntries[0].phaseId)}
-                  className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-teal-600 active:bg-teal-50 text-xs font-semibold"
+                  className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-teal-600 active:bg-teal-50 lg:hover:bg-teal-50 text-xs font-semibold"
                   aria-label={`Add a crew member to ${phaseName}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -700,7 +700,7 @@ function MemberPickerSheet({
     <>
       <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-lg z-[61] bg-white rounded-t-2xl lg:rounded-2xl shadow-xl flex flex-col"
         style={{ maxHeight: '75vh', paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
       >
         {/* Header */}
@@ -770,7 +770,7 @@ function FilterSheet({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl max-h-[60vh] flex flex-col">
+      <div className="relative mt-auto lg:m-auto lg:max-w-lg lg:w-full bg-white rounded-t-3xl lg:rounded-3xl max-h-[60vh] flex flex-col">
         <div className="px-4 py-4 border-b border-ios-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-bold">Filter Schedule</h2>
           <button onClick={onClose} className="text-teal-600 font-semibold">Done</button>
@@ -850,7 +850,7 @@ function DateMoveSheet({
     <>
       <div className="fixed inset-0 z-[60] bg-black/40" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl shadow-xl px-4 py-5"
+        className="fixed bottom-0 left-0 right-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-lg z-[61] bg-white rounded-t-2xl lg:rounded-2xl shadow-xl px-4 py-5"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
       >
         <h3 className="font-bold text-teal-900 mb-4">Move to Different Date</h3>

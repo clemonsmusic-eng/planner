@@ -23,7 +23,7 @@ export function ConfirmSheet({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl">
+      <div className="relative mt-auto lg:m-auto lg:max-w-lg lg:w-full bg-white rounded-t-3xl lg:rounded-3xl">
         <div className="px-5 pt-5 pb-4">
           <h2 className="text-lg font-bold text-teal-900 mb-1">{title}</h2>
           <p className="text-sm text-ios-gray-600 leading-snug">{message}</p>
@@ -31,7 +31,7 @@ export function ConfirmSheet({
         <div className="px-4 pb-4 space-y-2">
           <button
             onClick={onConfirm}
-            className="w-full min-h-[48px] rounded-xl bg-red-600 text-white font-semibold active:opacity-80"
+            className="w-full min-h-[48px] rounded-xl bg-red-600 text-white font-semibold active:opacity-80 lg:hover:opacity-90"
           >
             {confirmLabel}
           </button>

@@ -150,7 +150,7 @@ export function InputFormPage() {
         </div>
         <button
           onClick={() => { dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' }); dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' }); }}
-          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80 lg:hover:opacity-90"
         >
           Go to Projects
         </button>
@@ -325,7 +325,7 @@ export function InputFormPage() {
               isFormComplete
                 ? saved
                   ? 'bg-green-100 text-green-800'
-                  : 'bg-teal-600 text-white active:opacity-80'
+                  : 'bg-teal-600 text-white active:opacity-80 lg:hover:opacity-90'
                 : 'bg-ios-gray-100 text-ios-gray-500'
             }`}
           >
@@ -660,7 +660,7 @@ export function InputFormPage() {
 
           <button
             onClick={addDateOverride}
-            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-ios-gray-300 rounded-xl py-3 text-sm font-medium text-ios-gray-600 active:opacity-70 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-ios-gray-300 rounded-xl py-3 text-sm font-medium text-ios-gray-600 active:opacity-70 lg:hover:opacity-80 min-h-[44px]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -676,7 +676,7 @@ export function InputFormPage() {
             disabled={!isFormComplete}
             className={`w-full py-4 rounded-2xl font-bold text-base min-h-[56px] transition-colors ${
               isFormComplete
-                ? 'bg-teal-600 text-white active:opacity-80'
+                ? 'bg-teal-600 text-white active:opacity-80 lg:hover:opacity-90'
                 : 'bg-ios-gray-200 text-ios-gray-500'
             }`}
           >

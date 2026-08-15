@@ -73,7 +73,7 @@ export function AddShiftSheet({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl max-h-[85vh] flex flex-col">
+      <div className="relative mt-auto lg:m-auto lg:max-w-lg lg:w-full bg-white rounded-t-3xl lg:rounded-3xl max-h-[85vh] flex flex-col">
         <div className="px-4 py-4 border-b border-ios-gray-200 flex items-center justify-between flex-shrink-0">
           <h2 className="text-lg font-bold text-teal-900">Add Shift</h2>
           <button onClick={onClose} className="text-ios-gray-500 font-semibold flex-shrink-0">
@@ -162,7 +162,7 @@ export function AddShiftSheet({
                   <button
                     onClick={() => setRoles((rs) => rs.filter((_, idx) => idx !== i))}
                     disabled={roles.length <= 1}
-                    className="w-11 h-11 flex items-center justify-center rounded-xl text-ios-gray-500 active:bg-ios-gray-100 disabled:opacity-30 flex-shrink-0"
+                    className="w-11 h-11 flex items-center justify-center rounded-xl text-ios-gray-500 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 disabled:opacity-30 flex-shrink-0"
                     aria-label={`Remove role ${i + 1}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -173,7 +173,7 @@ export function AddShiftSheet({
               ))}
               <button
                 onClick={() => setRoles((rs) => [...rs, 'Specialist'])}
-                className="w-full min-h-[44px] rounded-xl border border-dashed border-teal-300 text-teal-600 text-sm font-semibold active:bg-teal-50"
+                className="w-full min-h-[44px] rounded-xl border border-dashed border-teal-300 text-teal-600 text-sm font-semibold active:bg-teal-50 lg:hover:bg-teal-50"
               >
                 + Add Role
               </button>
