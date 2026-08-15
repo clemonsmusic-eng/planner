@@ -167,7 +167,7 @@ export function SupplyInventoryPage() {
                   </button>
                   <button
                     onClick={() => setConfirmSection(category)}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-400 active:text-red-600 flex-shrink-0"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-400 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
                     aria-label={`Remove ${category} section`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -381,7 +381,7 @@ export function SupplyInventoryPage() {
 
                   <button
                     onClick={() => addItem(category as SupplyCategory)}
-                    className="w-full py-3 text-sm font-semibold text-teal-600 active:bg-teal-50"
+                    className="w-full py-3 text-sm font-semibold text-teal-600 active:bg-teal-50 lg:hover:bg-teal-50"
                   >
                     + Add to {category}
                   </button>
@@ -393,7 +393,7 @@ export function SupplyInventoryPage() {
 
         <button
           onClick={addSection}
-          className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50"
+          className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50 lg:hover:bg-teal-50"
         >
           + Add Section
         </button>

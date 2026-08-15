@@ -9,7 +9,7 @@ interface CardProps {
 export function Card({ children, className = '', onClick }: CardProps) {
   const base =
     'bg-white rounded-2xl shadow-sm border border-ios-gray-200';
-  const interactive = onClick ? 'cursor-pointer active:opacity-70 transition-opacity' : '';
+  const interactive = onClick ? 'cursor-pointer active:opacity-70 lg:hover:opacity-80 transition-opacity' : '';
   return (
     <div
       className={`${base} ${interactive} ${className}`}

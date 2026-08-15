@@ -69,7 +69,7 @@ export function FurnitureInventoryPage() {
         <button
           onClick={() => setExportOpen(true)}
           disabled={items.length === 0}
-          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold bg-ios-gray-100 text-ios-gray-600 active:opacity-70 disabled:opacity-40 flex items-center gap-1.5"
+          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold bg-ios-gray-100 text-ios-gray-600 active:opacity-70 lg:hover:opacity-80 disabled:opacity-40 flex items-center gap-1.5"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
             <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
@@ -79,7 +79,7 @@ export function FurnitureInventoryPage() {
         </button>
         <button
           onClick={addRow}
-          className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 active:opacity-70"
+          className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 active:opacity-70 lg:hover:opacity-80"
         >
           + Add Item
         </button>
@@ -215,7 +215,7 @@ export function FurnitureInventoryPage() {
         {shown.length > 0 && (
           <button
             onClick={addRow}
-            className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50"
+            className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50 lg:hover:bg-teal-50"
           >
             + Add Item
           </button>
@@ -261,7 +261,7 @@ function ExportSheet({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl">
+      <div className="relative mt-auto lg:m-auto lg:max-w-lg lg:w-full bg-white rounded-t-3xl lg:rounded-3xl">
         <div className="px-5 pt-5 pb-3">
           <h2 className="text-lg font-bold text-teal-900 mb-1">Export Inventory</h2>
           <p className="text-sm text-ios-gray-600">

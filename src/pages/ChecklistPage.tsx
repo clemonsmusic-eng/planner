@@ -133,7 +133,7 @@ export function ChecklistPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   filter === id
                     ? 'bg-teal-600 text-white'
-                    : 'bg-ios-gray-100 text-ios-gray-600 active:bg-ios-gray-200'
+                    : 'bg-ios-gray-100 text-ios-gray-600 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200'
                 }`}
               >
                 {label}
@@ -142,7 +142,7 @@ export function ChecklistPage() {
             <div className="w-px bg-ios-gray-200 mx-0.5 flex-shrink-0" />
             <button
               onClick={() => setGrouping(grouping === 'section' ? 'date' : 'section')}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-ios-gray-100 text-ios-gray-600 active:bg-ios-gray-200 flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-ios-gray-100 text-ios-gray-600 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex items-center gap-1"
             >
               {grouping === 'section' ? 'By Section' : 'By Date'}
               <SwapIcon className="w-3 h-3" />
@@ -501,11 +501,11 @@ function ItemDetailSheet({
     <>
       <div className="fixed inset-0 z-[60] bg-black/40" onClick={saveAndClose} aria-hidden="true" />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[61] bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto"
+        className="fixed bottom-0 left-0 right-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-lg z-[61] bg-white rounded-t-2xl lg:rounded-2xl max-h-[85vh] overflow-y-auto"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
       >
         <div className="sticky top-0 bg-white px-4 pt-3 pb-2 border-b border-ios-gray-100">
-          <div className="w-10 h-1 bg-ios-gray-300 rounded-full mx-auto mb-3" />
+          <div className="lg:hidden w-10 h-1 bg-ios-gray-300 rounded-full mx-auto mb-3" />
           <div className="flex items-start justify-between gap-3">
             <p className="text-base font-semibold text-teal-900 leading-snug">{item.text}</p>
             <button

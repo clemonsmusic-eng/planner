@@ -26,7 +26,7 @@ export function ShiftOverrideSheet({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative mt-auto bg-white rounded-t-3xl max-h-[70vh] flex flex-col">
+      <div className="relative mt-auto lg:m-auto lg:max-w-lg lg:w-full bg-white rounded-t-3xl lg:rounded-3xl max-h-[70vh] flex flex-col">
         <div className="px-4 py-4 border-b border-ios-gray-200 flex items-center justify-between">
           <div className="min-w-0">
             <h2 className="text-lg font-bold">Override Shift</h2>

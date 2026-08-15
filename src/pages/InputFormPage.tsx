@@ -150,7 +150,7 @@ export function InputFormPage() {
         </div>
         <button
           onClick={() => { dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' }); dispatch({ type: 'SET_ACTIVE_TAB', tab: 'projects' }); }}
-          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80"
+          className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px] active:opacity-80 lg:hover:opacity-90"
         >
           Go to Projects
         </button>
@@ -162,6 +162,20 @@ export function InputFormPage() {
     setInputs((prev) => prev ? { ...prev, [key]: value } : prev);
     setSaved(false);
   }
+
+  /**
+   * Anyone the team sheet says can run a job — a PM or PM/Lead on any phase.
+   * If nobody is marked up yet the whole team is offered rather than an empty
+   * menu, so a new install can still name someone.
+   */
+  const pmCandidates = (() => {
+    const qualified = state.teamMembers.filter((m) =>
+      Object.values(m.phaseRoles).some(
+        (r) => Array.isArray(r) && r.some((role) => role === 'PM' || role === 'PM/Lead')
+      )
+    );
+    return qualified.length > 0 ? qualified : state.teamMembers;
+  })();
 
   const otherActiveUnlocked = state.projects.filter(
     (p) => p.id !== activeProject?.id && (p.inputs.status ?? 'active') === 'active' && !p.inputs.isLocked
@@ -325,7 +339,7 @@ export function InputFormPage() {
               isFormComplete
                 ? saved
                   ? 'bg-green-100 text-green-800'
-                  : 'bg-teal-600 text-white active:opacity-80'
+                  : 'bg-teal-600 text-white active:opacity-80 lg:hover:opacity-90'
                 : 'bg-ios-gray-100 text-ios-gray-500'
             }`}
           >
@@ -376,6 +390,39 @@ export function InputFormPage() {
               value={inputs.moveType}
               onChange={(v) => update('moveType', v as MoveType)}
               options={state.lists.find(l => l.id === 'move-types')?.items ?? []}
+            />
+          </FormField>
+          {/*
+            Who owns the job. The scheduler assigns a PM per shift and that can
+            change day to day; this is the one name the client and the community
+            deal with, so it's set here and not derived from the schedule.
+          */}
+          <FormField
+            label="Project Manager"
+            hint={pmCandidates.length === 0 ? 'No one on the team carries a PM role yet — set one in Settings.' : undefined}
+          >
+            <SelectField
+              value={inputs.projectManagerId ?? ''}
+              onChange={(v) => update('projectManagerId', v || null)}
+              options={[{ value: '', label: 'Unassigned' }, ...pmCandidates.map((m) => ({ value: m.id, label: m.name }))]}
+            />
+          </FormField>
+          <FormField label="Origin Address" hint="Where the move starts">
+            <input
+              type="text"
+              value={inputs.originAddress ?? ''}
+              onChange={(e) => update('originAddress', e.target.value)}
+              placeholder="Street, city, unit"
+              className={inputClass()}
+            />
+          </FormField>
+          <FormField label="Destination Address" hint="Where the move ends">
+            <input
+              type="text"
+              value={inputs.destinationAddress ?? ''}
+              onChange={(e) => update('destinationAddress', e.target.value)}
+              placeholder="Street, city, unit"
+              className={inputClass()}
             />
           </FormField>
         </Card>
@@ -660,7 +707,7 @@ export function InputFormPage() {
 
           <button
             onClick={addDateOverride}
-            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-ios-gray-300 rounded-xl py-3 text-sm font-medium text-ios-gray-600 active:opacity-70 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-ios-gray-300 rounded-xl py-3 text-sm font-medium text-ios-gray-600 active:opacity-70 lg:hover:opacity-80 min-h-[44px]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -676,7 +723,7 @@ export function InputFormPage() {
             disabled={!isFormComplete}
             className={`w-full py-4 rounded-2xl font-bold text-base min-h-[56px] transition-colors ${
               isFormComplete
-                ? 'bg-teal-600 text-white active:opacity-80'
+                ? 'bg-teal-600 text-white active:opacity-80 lg:hover:opacity-90'
                 : 'bg-ios-gray-200 text-ios-gray-500'
             }`}
           >

@@ -109,7 +109,7 @@ export function FileList({
               </button>
               <button
                 onClick={() => setConfirmDelete(file)}
-                className="w-9 h-9 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-red-50 active:text-red-600 flex-shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-red-50 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
                 aria-label={`Delete ${file.name}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -133,7 +133,7 @@ export function FileList({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50 disabled:opacity-40"
+          className="w-full py-3 rounded-xl border border-dashed border-teal-300 text-teal-600 font-semibold text-sm min-h-[44px] active:bg-teal-50 lg:hover:bg-teal-50 disabled:opacity-40"
         >
           {addLabel}
         </button>
@@ -175,7 +175,7 @@ export function FileList({
                   href={preview.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-white/15 text-white text-sm font-semibold active:opacity-70"
+                  className="flex-shrink-0 px-4 py-2.5 rounded-xl bg-white/15 text-white text-sm font-semibold active:opacity-70 lg:hover:opacity-80"
                 >
                   Open in new tab
                 </a>
@@ -229,7 +229,7 @@ function Thumbnail({ file, onOpen }: { file: ProjectFile; onOpen: () => void }) 
   return (
     <button
       onClick={onOpen}
-      className="aspect-square rounded-xl overflow-hidden bg-ios-gray-100 active:opacity-70"
+      className="aspect-square rounded-xl overflow-hidden bg-ios-gray-100 active:opacity-70 lg:hover:opacity-80"
       aria-label={`Open ${file.name}`}
     >
       {url ? (

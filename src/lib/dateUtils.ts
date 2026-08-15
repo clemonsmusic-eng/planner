@@ -117,3 +117,33 @@ export function getDateRange(start: string, end: string): string[] {
 export function getWeekKey(iso: string): string {
   return format(parseISO(iso), 'yyyy-ww');
 }
+
+/**
+ * Clock window for a shift: its configured start, plus its own hours.
+ *
+ * Taking the end from the hours rather than a second setting means a 4-hour AM
+ * and a 6-hour AM don't both claim to finish at noon.
+ */
+export function shiftTimeRange(
+  shift: 'AM' | 'PM' | 'Full Day',
+  hours: number,
+  times: { am: string; pm: string }
+): string {
+  // A Full Day runs from the morning start, however long it turns out to be.
+  const start = shift === 'PM' ? times.pm : times.am;
+  const [h, m] = start.split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
+  const startMins = h * 60 + m;
+  const endMins = startMins + Math.round((hours || 0) * 60);
+  return hours > 0 ? `${clockLabel(startMins)}–${clockLabel(endMins)}` : clockLabel(startMins);
+}
+
+/** Minutes past midnight as "8:00 AM"; past midnight wraps rather than reading 25:00. */
+function clockLabel(totalMins: number): string {
+  const mins = ((totalMins % 1440) + 1440) % 1440;
+  const h24 = Math.floor(mins / 60);
+  const m = mins % 60;
+  const suffix = h24 < 12 ? 'AM' : 'PM';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
+}

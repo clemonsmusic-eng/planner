@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { useMenu } from './MenuContext';
 import { useAddShift } from './AddShiftContext';
 import { useProjectDocs } from './ProjectDocsContext';
+import { PROJECT_TABS, DOC_DESTINATIONS, DOC_TABS } from './navDestinations';
 import type { TabName } from '../types';
 
 // Width of the fixed left cluster (menu button + separator + folder button).
@@ -24,28 +25,9 @@ const IconFolder = () => (
   </svg>
 );
 
-const IconInput = () => (
+const IconDocs = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-  </svg>
-);
-
-const IconPlan = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path fillRule="evenodd" d="M6.75 2.25A.75.75 0 017.5 3v1.5h9V3A.75.75 0 0118 3v1.5h.75a3 3 0 013 3v11.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V7.5a3 3 0 013-3H6V3a.75.75 0 01.75-.75zm13.5 9a1.5 1.5 0 00-1.5-1.5H5.25a1.5 1.5 0 00-1.5 1.5v7.5a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5v-7.5z" clipRule="evenodd" />
-  </svg>
-);
-
-const IconSchedule = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path fillRule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0118 9.375v9.375a3 3 0 003-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 00-.673-.05A3 3 0 0015 1.5h-1.5a3 3 0 00-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6zM13.5 3A1.5 1.5 0 0012 4.5h4.5A1.5 1.5 0 0015 3h-1.5z" clipRule="evenodd" />
-    <path fillRule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 013 20.625V9.375zm9.586 4.594a.75.75 0 00-1.172-.938l-2.476 3.096-.908-.907a.75.75 0 00-1.06 1.06l1.5 1.5a.75.75 0 001.116-.062l3-3.75z" clipRule="evenodd" />
-  </svg>
-);
-
-const IconChecklist = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path fillRule="evenodd" d="M2.625 6.75a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0A.75.75 0 018.25 6h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75zM2.625 12a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zM7.5 12a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12A.75.75 0 017.5 12zm-4.875 5.25a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0zm4.875 0a.75.75 0 01.75-.75h12a.75.75 0 010 1.5h-12a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+    <path d="M19.5 21a3 3 0 003-3V9a3 3 0 00-3-3h-5.379a.75.75 0 01-.53-.22L11.47 3.66A2.25 2.25 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
   </svg>
 );
 
@@ -78,66 +60,6 @@ function NavBtn({
 const VSEP = () => (
   <div className="w-px bg-ios-gray-200 self-stretch my-2 flex-shrink-0" />
 );
-
-/** Tabs that live inside the project drawer. */
-const PROJECT_TABS: { tab: TabName; label: string; icon: React.ReactNode }[] = [
-  { tab: 'inputs',    label: 'Input',     icon: <IconInput /> },
-  { tab: 'schedule',  label: 'Schedule',  icon: <IconPlan /> },
-  { tab: 'plan',      label: 'Plan',      icon: <IconSchedule /> },
-  { tab: 'checklist', label: 'Checklist', icon: <IconChecklist /> },
-];
-
-const DOC_TABS = new Set<TabName>(['furniture', 'floorplans', 'photos', 'project-supplies']);
-
-const IconDocs = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-    <path d="M19.5 21a3 3 0 003-3V9a3 3 0 00-3-3h-5.379a.75.75 0 01-.53-.22L11.47 3.66A2.25 2.25 0 009.879 3H4.5a3 3 0 00-3 3v12a3 3 0 003 3h15z" />
-  </svg>
-);
-
-/** The documents menu entries, in the order they're used on a job. */
-const DOC_DESTINATIONS: { tab: TabName; label: string; hint: string; icon: React.ReactNode }[] = [
-  {
-    tab: 'furniture',
-    label: 'Furniture Inventory',
-    hint: 'Measurements, rooms, wishlist',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 014.25 2h11.5A2.25 2.25 0 0118 4.25v11.5A2.25 2.25 0 0115.75 18H4.25A2.25 2.25 0 012 15.75V4.25zM5 6.75A.75.75 0 015.75 6h8.5a.75.75 0 010 1.5h-8.5A.75.75 0 015 6.75zm0 3.5a.75.75 0 01.75-.75h8.5a.75.75 0 010 1.5h-8.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5h-5.5a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    tab: 'floorplans',
-    label: 'Floor Plans',
-    hint: 'Destination layout PDFs',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M2.5 3.75A1.25 1.25 0 013.75 2.5h12.5a1.25 1.25 0 011.25 1.25v12.5a1.25 1.25 0 01-1.25 1.25H3.75a1.25 1.25 0 01-1.25-1.25V3.75zM4 4v5h4V4H4zm5.5 0v5H16V4H9.5zM4 10.5V16h6.5v-5.5H4zm8 0V16h4v-5.5h-4z" clipRule="evenodd" />
-      </svg>
-    ),
-  },
-  {
-    tab: 'project-supplies',
-    label: 'Supplies',
-    hint: 'Drawn from the master inventory',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path d="M1 1.75A.75.75 0 011.75 1h1.628a1.75 1.75 0 011.734 1.51L5.18 3a65.25 65.25 0 0113.36 1.412.75.75 0 01.58.875 48.645 48.645 0 01-1.618 6.2.75.75 0 01-.712.513H6a2.503 2.503 0 00-2.292 1.5H16.25a.75.75 0 010 1.5H2.76a.75.75 0 01-.748-.807 4.002 4.002 0 012.716-3.486L3.626 2.716a.25.25 0 00-.248-.216H1.75A.75.75 0 011 1.75zM6 17.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-      </svg>
-    ),
-  },
-  {
-    tab: 'photos',
-    label: 'Photos',
-    hint: 'Before, after, inventory, lots',
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path d="M3.25 4A2.25 2.25 0 001 6.25v7.5A2.25 2.25 0 003.25 16h13.5A2.25 2.25 0 0019 13.75v-7.5A2.25 2.25 0 0016.75 4H3.25zm10 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3zM3 13.5l3.75-3.75 2.5 2.5 3-3L17 13.5v.25a.75.75 0 01-.75.75H3.75A.75.75 0 013 13.75v-.25z" />
-      </svg>
-    ),
-  },
-];
 
 export function Navigation() {
   const { state, dispatch } = useApp();
@@ -238,7 +160,7 @@ export function Navigation() {
   return (
     <>
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ios-gray-200"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-ios-gray-200"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/*
@@ -345,11 +267,11 @@ export function Navigation() {
         live for the second tap that closes it.
       */}
       {addShift.menuOpen && (
-        <div className="fixed inset-0 z-[45]" onClick={addShift.closeMenu} aria-hidden="true" />
+        <div className="lg:hidden fixed inset-0 z-[45]" onClick={addShift.closeMenu} aria-hidden="true" />
       )}
       <div
         aria-hidden={!addShift.menuOpen}
-        className="fixed z-[55]"
+        className="lg:hidden fixed z-[55]"
         style={{
           left: `${addShiftAnchorX}px`,
           bottom: 'calc(56px + env(safe-area-inset-bottom) + 8px)',
@@ -365,7 +287,7 @@ export function Navigation() {
         <button
           onClick={addShift.openSheet}
           tabIndex={addShift.menuOpen ? 0 : -1}
-          className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-xl border border-ios-gray-200 text-teal-600 active:bg-teal-50 whitespace-nowrap"
+          className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-xl border border-ios-gray-200 text-teal-600 active:bg-teal-50 lg:hover:bg-teal-50 whitespace-nowrap"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 flex-shrink-0">
             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
@@ -376,11 +298,11 @@ export function Navigation() {
 
       {/* Project documents menu — rises out of the project folder. */}
       {docs.isOpen && (
-        <div className="fixed inset-0 z-[45]" onClick={docs.close} aria-hidden="true" />
+        <div className="lg:hidden fixed inset-0 z-[45]" onClick={docs.close} aria-hidden="true" />
       )}
       <div
         aria-hidden={!docs.isOpen}
-        className="fixed z-[55] w-64 bg-white rounded-2xl shadow-xl border border-ios-gray-200 overflow-hidden"
+        className="lg:hidden fixed z-[55] w-64 bg-white rounded-2xl shadow-xl border border-ios-gray-200 overflow-hidden"
         style={{
           left: `${docsAnchorX}px`,
           maxWidth: 'calc(100vw - 16px)',
@@ -405,7 +327,7 @@ export function Navigation() {
                 key={tab}
                 onClick={() => { docs.close(); setTab(tab); }}
                 tabIndex={docs.isOpen ? 0 : -1}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:bg-ios-gray-100 ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 ${
                   isCurrent ? 'bg-teal-50' : ''
                 }`}
               >
