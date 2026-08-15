@@ -132,7 +132,7 @@ export function FurnitureInventoryPage() {
                   >
                     <HeartIcon
                       filled={row.wishlist}
-                      className={`w-5 h-5 ${row.wishlist ? 'text-gray-900' : 'text-ios-gray-300'}`}
+                      className={`w-5 h-5 ${row.wishlist ? 'text-teal-900' : 'text-ios-gray-300'}`}
                     />
                   </button>
                   <svg

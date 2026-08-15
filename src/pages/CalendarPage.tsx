@@ -147,7 +147,7 @@ function JobCard({
   isDragging?: boolean;
 }) {
   const c = job.isArchived
-    ? { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
+    ? { bg: 'bg-ios-gray-100', text: 'text-ios-gray-400', border: 'border-gray-200' }
     : PROJECT_COLORS[colorIdx % PROJECT_COLORS.length];
   const shiftLabel = job.shift === 'Full Day' ? 'Full' : job.shift;
 
@@ -164,7 +164,7 @@ function JobCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={`text-xs font-bold truncate ${c.text}`}>{job.phaseName}</p>
-          <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-gray-400' : 'text-teal-700'}`}>{job.projectName}</p>
+          <p className={`text-xs truncate mt-0.5 ${job.isArchived ? 'text-ios-gray-400' : 'text-teal-700'}`}>{job.projectName}</p>
           {job.memberNames.length > 0 && (
             <div className="mt-0.5 space-y-0.5">
               {job.memberNames.map((name, idx) => {
@@ -172,7 +172,7 @@ function JobCard({
                 const hasExp = expLevel && expLevel !== 'Average';
                 return (
                   <div key={idx} className="flex items-center gap-1">
-                    <span className={`text-[11px] truncate ${job.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>{name}</span>
+                    <span className={`text-[11px] truncate ${job.isArchived ? 'text-ios-gray-400' : 'text-ios-gray-600'}`}>{name}</span>
                     {hasExp && !job.isArchived && (
                       <span className={`text-[9px] font-bold px-1 py-0.5 rounded flex-shrink-0 leading-none ${
                         expLevel === 'High' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
@@ -380,7 +380,7 @@ function WeekView({
               <div className="flex gap-0.5 h-3 items-center">
                 {projectIds.slice(0, 4).map((pid) => {
                   const archived = dayJobs.some(j => j.projectId === pid && j.isArchived);
-                  const dotClass = archived ? 'bg-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
+                  const dotClass = archived ? 'bg-ios-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
                   return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
                 })}
               </div>
@@ -405,7 +405,7 @@ function WeekView({
             >
               {dayJobs.slice(0, 4).map((j, i) => {
                 const c = j.isArchived
-                  ? { bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-gray-400' }
+                  ? { bg: 'bg-ios-gray-100', border: 'border-gray-200', text: 'text-ios-gray-400' }
                   : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
                 const isDragging = dragJob?.projectId === j.projectId && dragJob?.phaseId === j.phaseId && dragJob?.date === j.date && dragJob?.shift === j.shift;
                 return (
@@ -494,7 +494,7 @@ function MonthView({
               <div className="flex gap-0.5 h-2 items-center">
                 {projectIds.slice(0, 3).map((pid) => {
                   const archived = dayJobs.some(j => j.projectId === pid && j.isArchived);
-                  const dotClass = archived ? 'bg-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
+                  const dotClass = archived ? 'bg-ios-gray-400' : PROJECT_COLORS[(colorMap.get(pid) ?? 0) % PROJECT_COLORS.length].dot;
                   return <span key={pid} className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />;
                 })}
               </div>
@@ -579,7 +579,7 @@ function FilterSheet({
               <div className="space-y-1">
                 {projects.map((p) => {
                   const c = p.isArchived
-                    ? { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' }
+                    ? { bg: 'bg-ios-gray-100', text: 'text-ios-gray-500', dot: 'bg-ios-gray-400' }
                     : PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length];
                   const active = projectFilter === p.id;
                   return (
@@ -785,9 +785,9 @@ export function CalendarPage() {
         {projectOptions.length > 0 && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             {projectOptions.map((p) => {
-              const dotClass = p.isArchived ? 'bg-gray-400' : PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length].dot;
+              const dotClass = p.isArchived ? 'bg-ios-gray-400' : PROJECT_COLORS[p.colorIdx % PROJECT_COLORS.length].dot;
               return (
-                <span key={p.id} className={`flex items-center gap-1 text-[10px] ${p.isArchived ? 'text-gray-400' : 'text-ios-gray-600'}`}>
+                <span key={p.id} className={`flex items-center gap-1 text-[10px] ${p.isArchived ? 'text-ios-gray-400' : 'text-ios-gray-600'}`}>
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
                   {p.name}
                 </span>
