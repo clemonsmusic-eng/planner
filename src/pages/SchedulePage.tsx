@@ -319,6 +319,9 @@ export function SchedulePage() {
                     (activeProject.inputs.shiftNotes ?? []).find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? ''
                   }
                   onSetNote={(phaseId, note) => setShiftNote(activeProject.id, phaseId, day.date, note)}
+                  onSetHours={(phaseId, hours) =>
+                    dispatch({ type: 'SET_SHIFT_HOURS', projectId: activeProject.id, date: day.date, phaseId, hours })
+                  }
                 />
               ))}
               {isDirty && <FloatingSaveSpacer />}
@@ -428,6 +431,7 @@ function DaySection({
   onRemoveShift,
   noteFor,
   onSetNote,
+  onSetHours,
 }: {
   day: ScheduleDay;
   collapsed: boolean;
@@ -443,6 +447,7 @@ function DaySection({
   onRemoveShift: (phaseId: string, phaseName: string) => void;
   noteFor: (phaseId: string) => string;
   onSetNote: (phaseId: string, note: string) => void;
+  onSetHours: (phaseId: string, hours: number) => void;
 }) {
   const hasConflict = day.entries.some(
     (e) => e.status === 'needs-assignment' || e.status === 'conflict' || e.status === 'over-max'
@@ -540,13 +545,27 @@ function DaySection({
                     <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
                   </svg>
                 </button>
-                <span className="text-xs text-ios-gray-500 flex-1 text-right pr-1">
-                  {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
-                  {' · '}
-                  <span className="font-semibold text-teal-700">
-                    {formatHours(phaseEntries.reduce((sum, e) => sum + e.hours, 0))} hrs
+                <div className="flex-1 flex items-center justify-end gap-1.5 pr-1 min-w-0">
+                  <span className="text-xs text-ios-gray-500 truncate">
+                    {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
                   </span>
-                </span>
+                  {/*
+                    Hours per person, not the shift total: it's what the
+                    generator assigns to each role, and the total below follows
+                    from it and the crew size.
+                  */}
+                  <ShiftHoursInput
+                    hours={phaseEntries[0].hours}
+                    label={phaseName}
+                    onChange={(h) => onSetHours(phaseEntries[0].phaseId, h)}
+                  />
+                  <span className="text-xs text-ios-gray-500 whitespace-nowrap">
+                    ea ·{' '}
+                    <span className="font-semibold text-teal-700">
+                      {formatHours(phaseEntries.reduce((sum, e) => sum + e.hours, 0))} hrs
+                    </span>
+                  </span>
+                </div>
                 <button
                   onClick={() => onRemoveRole(phaseEntries[phaseEntries.length - 1].id)}
                   disabled={phaseEntries.length <= 1}
@@ -578,6 +597,49 @@ function DaySection({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Hours per person on one shift.
+ *
+ * Committed on blur rather than per keystroke: every change recomputes the
+ * plan's totals and rewrites the project, which is not something to do while
+ * someone is still typing the number.
+ */
+function ShiftHoursInput({
+  hours,
+  label,
+  onChange,
+}: {
+  hours: number;
+  label: string;
+  onChange: (hours: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(hours));
+  useEffect(() => { setDraft(String(hours)); }, [hours]);
+
+  function commit() {
+    const parsed = parseFloat(draft);
+    if (!Number.isFinite(parsed) || parsed <= 0) { setDraft(String(hours)); return; }
+    const rounded = Math.max(0.5, Math.round(parsed * 2) / 2);
+    if (rounded !== hours) onChange(rounded);
+    setDraft(String(rounded));
+  }
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      min={0.5}
+      step={0.5}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      aria-label={`Hours per person for ${label}`}
+      className="w-12 text-center text-xs font-semibold text-teal-700 rounded-lg border border-ios-gray-300 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    />
   );
 }
 

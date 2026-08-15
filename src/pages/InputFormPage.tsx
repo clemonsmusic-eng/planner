@@ -170,6 +170,10 @@ export function InputFormPage() {
    * menu, so a new install can still name someone.
    */
   const budgetTotal = inputs ? totalBudgetedHours(inputs.phaseBudgets) : 0;
+  // Read from the project, not the draft: the lock button dispatches against
+  // the stored project, so a draft-derived flag would ignore an unlock and the
+  // form would stay disabled with no way back.
+  const isLocked = !!activeProject?.inputs.isLocked;
 
   const pmCandidates = (() => {
     const qualified = state.teamMembers.filter((m) =>
@@ -186,10 +190,19 @@ export function InputFormPage() {
 
   function saveAndGenerate(allProjects: boolean) {
     if (!inputs || !activeProject) return;
-    dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, inputs });
+    /*
+     * Saving locks the inputs. Once a plan has been generated off these numbers
+     * the schedule, the checklist dates and the crew bookings all hang off them,
+     * so changing one by accident quietly invalidates the lot. The lock is the
+     * button in the header, and it covers this tab only — the Schedule tab stays
+     * editable, which is where a plan is meant to be adjusted.
+     */
+    const locked: ProjectInputs = { ...inputs, isLocked: true };
+    setInputs(locked);
+    dispatch({ type: 'UPDATE_PROJECT', id: activeProject.id, inputs: locked });
     // Hand the edited inputs straight to the generator: waiting on the dispatch
     // to land in state was what made a save plan the previous edit.
-    generateAndSaveSchedule(activeProject.id, inputs);
+    generateAndSaveSchedule(activeProject.id, locked);
     if (allProjects) {
       for (const p of otherActiveUnlocked) {
         generateAndSaveSchedule(p.id);
@@ -352,7 +365,18 @@ export function InputFormPage() {
       </div>
 
       {/* Form */}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
+      {/*
+        A disabled fieldset turns off every control inside it, which is what the
+        lock has to mean if it is set automatically. It has to be the scroll
+        container itself: with display:contents Chromium keeps the attribute but
+        stops disabling the descendants, so the lock would look applied and
+        change nothing. min-w-0 undoes the fieldset's min-content default, which
+        otherwise refuses to shrink inside the flex column.
+      */}
+      <fieldset
+        disabled={isLocked}
+        className={`flex-1 overflow-y-auto min-w-0 px-4 pb-8 ${isLocked ? 'opacity-60' : ''}`}
+      >
         {/* Section: Client Info */}
         <SectionHeader
           title="Client Info"
@@ -574,7 +598,13 @@ export function InputFormPage() {
           ))}
         </Card>
 
-        {/* Section: Cleanout */}
+        {/*
+          Cleanout only exists if it was budgeted. The hours are what was sold,
+          so they decide whether there's a cleanout and how big it is — there is
+          nothing to configure until one is priced.
+        */}
+        {inputs.phaseBudgets.dispersals > 0 && (
+        <>
         <SectionHeader
           title="Cleanout"
           icon={
@@ -584,31 +614,14 @@ export function InputFormPage() {
           }
         />
         <Card className="p-4 space-y-4">
-          {/* Cleanout Toggle */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between min-h-[44px]">
-              <div>
-                <p className="font-medium text-teal-900">Cleanout</p>
-                <p className="text-xs text-ios-gray-600">Post-move cleanout service</p>
-              </div>
-              <button
-                onClick={() =>
-                  update('cleanout', { ...inputs.cleanout, enabled: !inputs.cleanout.enabled })
-                }
-                className={`relative w-12 h-7 rounded-full transition-colors ${
-                  inputs.cleanout.enabled ? 'bg-teal-600' : 'bg-ios-gray-300'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                    inputs.cleanout.enabled ? 'translate-x-5' : ''
-                  }`}
-                />
-              </button>
-            </div>
+            <p className="text-xs text-ios-gray-600">
+              Sized by the {inputs.phaseBudgets.dispersals} budgeted
+              {inputs.phaseBudgets.dispersals === 1 ? ' hour' : ' hours'} of Dispersals &amp; Cleanout —
+              enough days are scheduled to spend them.
+            </p>
 
-            {inputs.cleanout.enabled && (
-              <div className="space-y-3 pl-2 border-l-2 border-teal-200">
+            <div className="space-y-3 pl-2 border-l-2 border-teal-200">
                 <FormField label="Cleanout Type">
                   <SelectField
                     value={inputs.cleanout.type || ''}
@@ -677,11 +690,12 @@ export function InputFormPage() {
                     className={inputClass()}
                   />
                 </FormField>
-              </div>
-            )}
+            </div>
           </div>
 
         </Card>
+        </>
+        )}
 
         {/* Section: Schedule Overrides */}
         <SectionHeader
@@ -764,10 +778,11 @@ export function InputFormPage() {
             </p>
           )}
         </div>
-        {!saved && <FloatingSaveSpacer />}
-      </div>
+        {!saved && !isLocked && <FloatingSaveSpacer />}
+      </fieldset>
 
-      {!saved && <FloatingSaveButton onSave={handleSaveAndGenerate} label="Save & Generate" />}
+      {/* Outside the fieldset: unlocking is the one control a lock must not disable. */}
+      {!saved && !isLocked && <FloatingSaveButton onSave={handleSaveAndGenerate} label="Save & Generate" />}
 
       {/*
         Save Prompt Modal. The backdrop and the dialog have to be ordered
