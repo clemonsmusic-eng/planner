@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
 import { BUDGET_GROUPS, totalBudgetedHours } from '../lib/budgets';
+import { lotPrepAllowance } from '../lib/scheduling';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { LockButton } from '../components/LockButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
@@ -644,6 +645,10 @@ export function InputFormPage() {
                   const lotCount = inputs.auction.lotCount ?? 0;
                   const estHours = lotCount > 0 ? Math.round(lotCount * minPerLot / 60 * 10) / 10 : null;
                   const estCost = estHours !== null ? Math.round(estHours * hourlyRate) : null;
+                  // What the allowance actually leaves for lot prep, once the
+                  // fixed pickup day and its prep are covered.
+                  const allowance = lotPrepAllowance(inputs.phaseBudgets, state.phaseTemplates, true);
+                  const overBudget = estHours !== null && estHours > allowance;
                   return (
                     <div className="space-y-3">
                       <p className="text-xs text-teal-600 font-medium">
@@ -675,6 +680,16 @@ export function InputFormPage() {
                             <span className="text-xs text-ios-gray-600">Labor Value</span>
                             <span className="text-sm font-bold text-teal-700">${estCost?.toLocaleString()} <span className="text-xs font-normal text-ios-gray-500">@ ${hourlyRate}/hr</span></span>
                           </div>
+                        </div>
+                      )}
+                      {overBudget && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          <p className="text-xs text-amber-800 leading-snug">
+                            <span className="font-semibold">Lot prep will be capped at {allowance} hrs.</span>{' '}
+                            This many lots is worth {estHours} hrs, but Dispersals &amp; Cleanout only
+                            leaves {allowance} once pickup day and its prep are covered. Raise the budget
+                            to schedule the rest.
+                          </p>
                         </div>
                       )}
                     </div>
