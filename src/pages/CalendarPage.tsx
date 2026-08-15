@@ -356,6 +356,7 @@ function WeekView({
   date,
   jobs,
   colorMap,
+  shiftTimes,
   onSelectDay,
   dragJob,
   dragOverDate,
@@ -367,6 +368,7 @@ function WeekView({
   date: Date;
   jobs: CalendarJob[];
   colorMap: Map<string, number>;
+  shiftTimes: ShiftTimeSettings;
   onSelectDay: (d: Date) => void;
   dragJob: CalendarJob | null;
   dragOverDate: string | null;
@@ -425,7 +427,7 @@ function WeekView({
           return (
             <div
               key={day.toISOString()}
-              className={`min-h-[120px] p-1 space-y-1 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
+              className={`min-h-[120px] lg:min-h-[420px] p-1 space-y-1 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
               onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
               onDrop={() => onDayDrop(dateStr)}
               onDragLeave={() => onDayDragOver('')}
@@ -441,14 +443,35 @@ function WeekView({
                     draggable={!j.isArchived}
                     onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onJobDragStart(j); }}
                     onDoubleClick={() => onJobDoubleClick(j)}
-                    className={`rounded px-1 py-0.5 border cursor-grab active:cursor-grabbing select-none transition-opacity ${c.bg} ${c.border} ${isDragging ? 'opacity-40' : ''}`}
+                    className={`rounded px-1 py-0.5 lg:px-1.5 lg:py-1 border cursor-grab active:cursor-grabbing select-none transition-opacity ${c.bg} ${c.border} ${isDragging ? 'opacity-40' : ''}`}
                   >
-                    <p className={`text-[9px] font-semibold leading-tight truncate ${c.text}`}>
+                    {/*
+                      A phone column is ~50px wide, so it gets the phase and a
+                      couple of names. A desktop or landscape-iPad column has
+                      room for the job itself: whose it is, who is running it,
+                      when the shift runs and how long.
+                    */}
+                    <p className={`hidden lg:block text-[11px] font-bold leading-tight truncate ${c.text}`}>
+                      {j.projectName}
+                    </p>
+                    <p className={`text-[9px] lg:text-[10px] font-semibold leading-tight truncate ${c.text}`}>
                       {j.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
                     </p>
+                    <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
+                      {j.shift} · {shiftTimeRange(j.shift, j.hours, shiftTimes)}
+                    </p>
+                    <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
+                      PM: {j.projectManagerName ?? 'Unassigned'}
+                    </p>
                     {j.memberNames.length > 0 && (
-                      <p className="text-[8px] text-ios-gray-600 truncate leading-tight">
+                      <p className="text-[8px] lg:text-[10px] text-ios-gray-600 truncate leading-tight">
+                        <span className="hidden lg:inline">Crew: </span>
                         {j.memberNames.slice(0, 2).join(', ')}{j.memberNames.length > 2 ? ` +${j.memberNames.length - 2}` : ''}
+                      </p>
+                    )}
+                    {j.note && (
+                      <p className="hidden lg:block text-[10px] text-ios-gray-500 italic leading-tight truncate" title={j.note}>
+                        {j.note}
                       </p>
                     )}
                   </div>
@@ -1012,6 +1035,7 @@ export function CalendarPage() {
             date={currentDate}
             jobs={filteredJobs}
             colorMap={colorMap}
+            shiftTimes={state.shiftTimes}
             onSelectDay={handleSelectDay}
             dragJob={dragJob}
             dragOverDate={dragOverDate}

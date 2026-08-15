@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
-import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
-import { LockButton } from '../components/LockButton';
 import { formatDateLabel } from '../lib/dateUtils';
 import { SERVICE_CATALOG } from '../lib/data';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
@@ -22,9 +20,8 @@ function ChevronDownIcon() {
 
 
 export function PlanPage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride } = useApp();
+  const { state, dispatch, activeProject, generateAndSaveSchedule } = useApp();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [overrideDate, setOverrideDate] = useState<string | null>(null);
 
   if (!activeProject) {
     return (
@@ -105,10 +102,6 @@ export function PlanPage() {
                 </div>
               )}
             </div>
-            <LockButton
-              isLocked={!!activeProject.inputs.isLocked}
-              onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
-            />
           </div>
         </div>
 
@@ -121,29 +114,20 @@ export function PlanPage() {
             />
           ) : (
             <>
-              <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
               <SuggestedDatesCard
                 schedule={schedule}
                 overrides={activeProject.inputs.dateOverrides}
-                onOverride={(date) => setOverrideDate(date)}
               />
               <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} />
               <MoveDaySnapshotCard schedule={schedule} teamMembers={state.teamMembers} moveDate={activeProject.inputs.targetMoveDate} />
+              {/* Budget sits with the hours it is measured against. */}
+              <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
               <TeamHoursCard teamHours={schedule.teamHours} />
             </>
           )}
         </div>
       </div>
 
-      {/* Shift Override Sheet */}
-      {overrideDate && (
-        <ShiftOverrideSheet
-          date={overrideDate}
-          current={activeProject.inputs.dateOverrides.find((o) => o.date === overrideDate)?.shift ?? null}
-          onSelect={(shift) => setShiftOverride(activeProject.id, overrideDate, shift)}
-          onClose={() => setOverrideDate(null)}
-        />
-      )}
     </>
   );
 }
@@ -243,7 +227,7 @@ function JobSummaryCard({
 
   return (
     <CollapsibleCard
-      title="Job Summary"
+      title="Project Hourly Budget"
       trailing={
         <StatusBadge
           label={schedule.status}
@@ -315,14 +299,18 @@ function JobSummaryCard({
   );
 }
 
+/**
+ * Dates as generated. Read-only by design: the Plan tab is the summary a PM
+ * shows a client, and every date on it is produced by the schedule, so editing
+ * one here and the shift itself on the Schedule tab were two ways to change the
+ * same thing that could disagree.
+ */
 function SuggestedDatesCard({
   schedule,
   overrides,
-  onOverride,
 }: {
   schedule: ScheduleResult;
   overrides: DateOverride[];
-  onOverride: (date: string) => void;
 }) {
   const { suggestedDates } = schedule;
 
@@ -402,15 +390,6 @@ function SuggestedDatesCard({
                     {override.shift}
                   </span>
                 )}
-                <button
-                  onClick={() => onOverride(item.date)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 flex-shrink-0"
-                  aria-label="Override shift"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
-                  </svg>
-                </button>
               </div>
             );
           })}

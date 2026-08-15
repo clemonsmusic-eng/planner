@@ -51,6 +51,7 @@ type Action =
   | { type: 'REMOVE_SCHEDULE_ROLE'; projectId: string; entryId: string }
   | { type: 'ADD_SHIFT'; projectId: string; shift: NewShift }
   | { type: 'REMOVE_SHIFT'; projectId: string; date: string; phaseId: string }
+  | { type: 'SET_SHIFT_HOURS'; projectId: string; date: string; phaseId: string; hours: number }
   | { type: 'UPDATE_DOCUMENTS'; projectId: string; documents: ProjectDocuments }
   | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] }
   | { type: 'UPDATE_SUPPLY_CATEGORIES'; categories: string[]; supplies?: SupplyItem[] }
@@ -379,6 +380,34 @@ function reducer(state: AppState, action: Action): AppState {
         const days = p.schedule.days
           .map((day) => ({ ...day, entries: day.entries.filter((e) => e.id !== action.entryId) }))
           .filter((day) => day.entries.length > 0);
+        return {
+          ...p,
+          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
+        };
+      });
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    /**
+     * Hours for one shift, applied to every role on it — the figure is hours
+     * per person, which is what the generator assigns and what the man-hour
+     * totals are built from.
+     */
+    case 'SET_SHIFT_HOURS': {
+      const hours = Math.max(0.5, action.hours);
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId || !p.schedule) return p;
+        const days = p.schedule.days.map((d) =>
+          d.date === action.date
+            ? {
+                ...d,
+                entries: d.entries.map((e) =>
+                  e.phaseId === action.phaseId ? { ...e, hours } : e
+                ),
+              }
+            : d
+        );
         return {
           ...p,
           schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),

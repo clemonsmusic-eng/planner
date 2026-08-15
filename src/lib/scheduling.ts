@@ -13,6 +13,7 @@ import type {
   PhaseTemplate,
   ListCategory,
   AuctionAppSettings,
+  PhaseBudgetHours,
 } from '../types';
 import {
   addWorkdays,
@@ -126,6 +127,27 @@ const AUCTION_PICKUP_TEAM_SIZE = 4;
 const AUCTION_PICKUP_HOURS = 8;
 const AUCTION_PREP_TEAM_SIZE = 3;
 
+/**
+ * Hours the dispersal allowance leaves for lot prep, once the auction's fixed
+ * pickup commitments are covered.
+ *
+ * Exported so the Inputs tab can say why a lot count larger than the budget
+ * won't all be scheduled, using the same arithmetic the generator uses rather
+ * than a second copy of it.
+ */
+export function lotPrepAllowance(
+  phaseBudgets: PhaseBudgetHours,
+  phaseTemplates: PhaseTemplate[],
+  auctionEnabled: boolean
+): number {
+  if (!auctionEnabled) return poolBudget(phaseBudgets, 'dispersal');
+  const prep = phaseTemplates.find((t) => t.id === 'phase-pickup-prep');
+  const fixed =
+    AUCTION_PICKUP_HOURS * AUCTION_PICKUP_TEAM_SIZE +
+    (prep?.minHours ?? 3) * (prep?.minTeamSize ?? 3);
+  return Math.max(0, poolBudget(phaseBudgets, 'dispersal') - fixed);
+}
+
 export function generateSchedule(
   inputs: ProjectInputs,
   teamMembers: TeamMember[],
@@ -207,9 +229,9 @@ export function generateSchedule(
   const h51 = th('phase-5-1', 8);
   const h52 = th('phase-5-2', 4);
 
-  // Auction cleanout estimated hours (computed from lot count × min/lot performance)
-  const auctionEstHours: number = (() => {
-    if (cleanout.type !== 'Full - Auction' || !auction.lotCount || auction.lotCount <= 0) return 0;
+  // What the lot count says the auction prep is worth, before any budget.
+  const auctionEstHoursRaw: number = (() => {
+    if (!auction.enabled || cleanout.type !== 'Full - Auction' || !auction.lotCount || auction.lotCount <= 0) return 0;
     const minPerLot = AUCTION_MIN_PER_LOT[auctionSettings?.performanceLevel ?? 'Average'] ?? 18;
     return Math.round((auction.lotCount * minPerLot) / 60 * 10) / 10;
   })();
@@ -299,13 +321,60 @@ export function generateSchedule(
     }
   }
 
-  // Regular cleanout (phase-6) — scheduled when cleanout is enabled regardless of auction
+  /*
+   * Cleanout is sized by its budget rather than by a toggle and a template.
+   *
+   * The dispersal allowance is what was sold, so it decides both whether there
+   * is a cleanout at all and how much of one: hours left after any auction
+   * commitments are spread over as many days as it takes at the phase's own
+   * daily maximum. No hours, no cleanout.
+   */
+  /*
+   * The dispersal allowance, spent in priority order.
+   *
+   * Pickup day and its prep are fixed: if there is an auction, the buyers turn
+   * up on a date and a crew has to be there, so they are a floor in the same way
+   * AM Move Day is. Lot prep is the part that flexes — the lot count says what
+   * it is worth, but the allowance says what was sold, so it takes the smaller
+   * of the two. Cleanout then gets whatever is left.
+   *
+   * Without this cap a big lot count quietly booked days nobody had paid for:
+   * 300 lots at 18 min each is 90 hours of prep against a 40-hour allowance.
+   */
+  const dispersalPool = poolBudget(phaseBudgets, 'dispersal');
+  const auctionPickupHours = auction.enabled ? AUCTION_PICKUP_HOURS * AUCTION_PICKUP_TEAM_SIZE : 0;
+  const pickupPrepTemplate = phaseTemplates.find((t) => t.id === 'phase-pickup-prep');
+  const auctionPickupPrepHours = auction.enabled
+    ? (pickupPrepTemplate?.minHours ?? 3) * (pickupPrepTemplate?.minTeamSize ?? 3)
+    : 0;
+
+  const lotPrepBudget = Math.max(0, dispersalPool - auctionPickupHours - auctionPickupPrepHours);
+  const auctionEstHours = Math.min(auctionEstHoursRaw, lotPrepBudget);
+  const cleanoutBudget = Math.max(0, lotPrepBudget - auctionEstHours);
+  const cleanoutTeam = templateSize('phase-6', 2);
+  const cleanoutMaxPerPerson = phaseTemplates.find((t) => t.id === 'phase-6')?.maxHours ?? 6;
+
   const cleanoutDates: string[] = [];
-  if (cleanout.enabled) {
-    const cleanoutStart = cleanout.startDate
-      ? parseISO(cleanout.startDate)
-      : addWorkdays(moveDayDate, 2);
-    cleanoutDates.push(toISODate(cleanoutStart));
+  let cleanoutHoursPerPerson = 0;
+  if (cleanoutBudget > 0 && cleanoutTeam > 0) {
+    const perDay = cleanoutTeam * cleanoutMaxPerPerson;
+    // Half-hours are the finest granularity the rest of the app shows, so the
+    // per-person figure is floored to one: rounding it up bought hours the
+    // allowance didn't have. Day count is capped at what the budget can pay for
+    // at that minimum, so a small allowance means fewer days, not free ones.
+    const affordableDays = Math.floor(cleanoutBudget / (cleanoutTeam * 0.5));
+    if (affordableDays >= 1) {
+      const dayCount = Math.min(Math.max(1, Math.ceil(cleanoutBudget / perDay)), affordableDays);
+      cleanoutHoursPerPerson = Math.max(
+        0.5,
+        Math.floor((cleanoutBudget / (dayCount * cleanoutTeam)) * 2) / 2
+      );
+      let cur = cleanout.startDate ? parseISO(cleanout.startDate) : addWorkdays(moveDayDate, 2);
+      for (let i = 0; i < dayCount; i++) {
+        cleanoutDates.push(toISODate(cur));
+        cur = addWorkdays(cur, 1);
+      }
+    }
   }
 
   // Auction dates and lot prep scheduling
@@ -460,9 +529,9 @@ export function generateSchedule(
   // Phase 5-2 – PM Move Day (budget-scaled team size)
   if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
 
-  // Phase 6 – Cleanout (if enabled, single day regardless of auction)
+  // Phase 6 – Cleanout, as many days as its budget buys
   for (const dateStr of cleanoutDates) {
-    addPhaseOnDate('phase-6', parseISO(dateStr));
+    addPhaseOnDate('phase-6', parseISO(dateStr), cleanoutTeam, cleanoutHoursPerPerson);
   }
 
   // Lot Prep – auction only, driven by auction estimate
