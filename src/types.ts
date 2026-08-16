@@ -530,6 +530,6 @@ export interface AppState {
    * progress, not a saved plan.
    */
   scheduleDraft: Project | null;
-  /** Which level this device is signed in at, and the passcode guarding it. */
-  access: { level: 'admin' | 'pm' | 'team'; passcode: string };
+  /** Which level this device is signed in at, and the passcodes guarding them. */
+  access: { level: 'admin' | 'pm' | 'team'; passcodes: { pm: string; admin: string } };
 }

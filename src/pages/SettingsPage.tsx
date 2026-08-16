@@ -6,6 +6,7 @@ import {
 } from '../lib/settingsLayout';
 import { loadSettingsOrder, saveSettingsOrder } from '../lib/storage';
 import { GRIP_PATH, useReorder } from '../lib/useReorder';
+import { ACCESS_LABELS, GUARDED_LEVELS } from '../lib/access';
 import type { ServiceCategory } from '../types';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
@@ -1765,6 +1766,52 @@ export function SettingsPage() {
         </>
       ),
     },
+  };
+
+  /*
+   * The passcodes that guard stepping up to each level. Edited here rather
+   * than in the access sheet itself, because changing them is an admin act and
+   * Settings is the one place only an admin can reach.
+   */
+  SUBS.passcodes = {
+    title: 'Passcodes',
+    subtitle: 'What someone types to step up a level',
+    body: (
+      <div className="px-4 py-3 space-y-3">
+        <p className="text-xs text-ios-gray-500">
+          Team Member needs no passcode — dropping down is always allowed, so a device can be handed
+          over in one tap. These guard the way back up.
+        </p>
+        {GUARDED_LEVELS.map((guarded) => (
+          <div key={guarded}>
+            <label className="block text-xs font-semibold text-teal-800 mb-1" htmlFor={`pass-${guarded}`}>
+              {ACCESS_LABELS[guarded]}
+            </label>
+            <input
+              id={`pass-${guarded}`}
+              value={state.access.passcodes[guarded]}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_ACCESS',
+                  access: {
+                    ...state.access,
+                    passcodes: { ...state.access.passcodes, [guarded]: e.target.value },
+                  },
+                })
+              }
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 text-base text-teal-900"
+            />
+          </div>
+        ))}
+        <p className="text-[11px] text-ios-gray-500 leading-snug">
+          Shown in the clear because whoever can read this page already has admin on this device.
+          Saved as you type.
+        </p>
+      </div>
+    ),
   };
 
   const serviceOrder = useReorder(

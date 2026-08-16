@@ -129,9 +129,17 @@ export function PlanPage() {
                 teamMembers={state.teamMembers}
                 moveDate={schedule.suggestedDates.moveDay || activeProject.inputs.targetMoveDate}
               />
-              {/* Budget sits with the hours it is measured against. */}
-              <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
-              <TeamHoursCard teamHours={schedule.teamHours} />
+              {/*
+                Budget sits with the hours it is measured against — and both
+                are kept off a Team Member's plan: what a job costs and what
+                everyone else is working are not a crew member's business.
+              */}
+              {can(state.access.level, 'viewCosts') && (
+                <>
+                  <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
+                  <TeamHoursCard teamHours={schedule.teamHours} />
+                </>
+              )}
             </>
           )}
         </div>

@@ -1,4 +1,4 @@
-import type { AccessLevel } from './access';
+import { DEFAULT_PASSCODES, type AccessLevel, type Passcodes } from './access';
 import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings, ServiceCategory } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
@@ -435,21 +435,38 @@ export function saveServices(services: ServiceCategory[]): void {
  */
 export interface AccessState {
   level: AccessLevel;
-  /** Empty when no admin has set one, which leaves switching unguarded. */
-  passcode: string;
+  /** One passcode per level that can be stepped up to. */
+  passcodes: Passcodes;
 }
 
-const DEFAULT_ACCESS: AccessState = { level: 'admin', passcode: '' };
+/**
+ * A device that has never been set up is a Team Member.
+ *
+ * The most limited level is the safe default: a phone picked up off a van seat
+ * shows the schedule and nothing else until someone types a passcode into it.
+ */
+const DEFAULT_ACCESS: AccessState = { level: 'team', passcodes: DEFAULT_PASSCODES };
 
 export function loadAccess(): AccessState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ACCESS);
     if (!raw) return DEFAULT_ACCESS;
-    const parsed = JSON.parse(raw) as Partial<AccessState>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     const level = parsed.level;
+    const stored = (parsed.passcodes ?? {}) as Partial<Passcodes>;
     return {
-      level: level === 'admin' || level === 'pm' || level === 'team' ? level : 'admin',
-      passcode: typeof parsed.passcode === 'string' ? parsed.passcode : '',
+      level: level === 'admin' || level === 'pm' || level === 'team' ? level : 'team',
+      passcodes: {
+        // A single `passcode` is what the first version stored; it guarded
+        // every step up, so it carries over as the admin one.
+        admin:
+          typeof stored.admin === 'string' && stored.admin
+            ? stored.admin
+            : typeof parsed.passcode === 'string' && parsed.passcode
+            ? parsed.passcode
+            : DEFAULT_PASSCODES.admin,
+        pm: typeof stored.pm === 'string' && stored.pm ? stored.pm : DEFAULT_PASSCODES.pm,
+      },
     };
   } catch {
     return DEFAULT_ACCESS;

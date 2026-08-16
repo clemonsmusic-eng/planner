@@ -15,19 +15,30 @@ export interface ExportSection {
   hint: string;
 }
 
+export type Audience = 'client' | 'internal';
+
 export interface ExportFormat {
   key: string;
   label: string;
   hint: string;
-  /** What this format can carry. A format with no choices lists none. */
+  /** What this format can carry internally. A format with no choices lists none. */
   sections: ExportSection[];
-  run: (included: Set<string>) => Promise<void> | void;
+  /** What the client version of this format contains, said in one line. */
+  clientHint: string;
+  run: (audience: Audience, included: Set<string>) => Promise<void> | void;
 }
 
 export function ExportButton({ formats, label = 'Export' }: { formats: ExportFormat[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [formatKey, setFormatKey] = useState(formats[0]?.key ?? '');
+  /*
+   * A client version is a fixed, narrow document rather than a starting point
+   * to prune — the whole risk being avoided is a costing or a crew list going
+   * out by accident because a box was left ticked. Only Internal opens the
+   * list of what to include.
+   */
+  const [audience, setAudience] = useState<Audience>('client');
   // Choices are kept per format, so switching to compare and back doesn't
   // silently reset what was already ticked.
   const [chosen, setChosen] = useState<Record<string, Set<string>>>({});
@@ -52,7 +63,7 @@ export function ExportButton({ formats, label = 'Export' }: { formats: ExportFor
   async function run() {
     setBusy(true);
     try {
-      await format.run(included);
+      await format.run(audience, included);
       setOpen(false);
     } finally {
       setBusy(false);
@@ -103,9 +114,29 @@ export function ExportButton({ formats, label = 'Export' }: { formats: ExportFor
                 ))}
               </div>
               <p className="text-xs text-ios-gray-500 mt-1.5">{format.hint}</p>
+
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ios-gray-500 mt-4 mb-1.5">
+                Audience
+              </p>
+              <div className="flex gap-2">
+                {(['client', 'internal'] as Audience[]).map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => setAudience(a)}
+                    className={`flex-1 min-h-[44px] px-2 rounded-xl text-sm font-semibold capitalize transition-colors ${
+                      a === audience ? 'bg-teal-600 text-white' : 'bg-ios-gray-100 text-ios-gray-600'
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+              {audience === 'client' && (
+                <p className="text-xs text-ios-gray-500 mt-1.5">{format.clientHint}</p>
+              )}
             </div>
 
-            {format.sections.length > 0 && (
+            {audience === 'internal' && format.sections.length > 0 && (
               <div className="flex-1 overflow-y-auto px-4 pb-2 min-h-0">
                 <div className="flex items-baseline justify-between gap-2 mb-1.5">
                   <p className="text-[11px] font-bold uppercase tracking-wide text-ios-gray-500">
@@ -165,7 +196,7 @@ export function ExportButton({ formats, label = 'Export' }: { formats: ExportFor
               </button>
               <button
                 onClick={run}
-                disabled={busy || (format.sections.length > 0 && included.size === 0)}
+                disabled={busy || (audience === 'internal' && format.sections.length > 0 && included.size === 0)}
                 className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold disabled:opacity-40"
               >
                 {busy ? 'Exporting…' : `Export ${format.label}`}

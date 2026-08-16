@@ -906,7 +906,7 @@ export function CalendarPage() {
 
   function handleJobDoubleClick(job: CalendarJob) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id: job.projectId });
-    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
+    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'plan' });
   }
 
   function handleDayDrop(dateStr: string) {
