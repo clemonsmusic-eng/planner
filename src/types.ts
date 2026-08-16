@@ -247,6 +247,8 @@ export interface ProjectInputs {
   removedShifts?: RemovedShift[];
   /** Per-shift notes, keyed by phase and date. */
   shiftNotes?: ShiftNote[];
+  /** People outside the team this job goes through. */
+  contacts?: ProjectContact[];
 }
 
 /**
@@ -314,6 +316,48 @@ export interface SuggestedDates {
   auctionStart: string | null;
   auctionPickupPrep: string | null;
   auctionPickup: string | null;
+}
+
+/**
+ * Someone outside the team a job goes through — a community's sales office, a
+ * disposal firm, a specialist mover. Kept in one book rather than retyped into
+ * each project, because the same handful of people recur across every job at a
+ * community.
+ */
+export interface CrmContact {
+  id: string;
+  /** From the CRM Contact Type list in Settings, so it stays editable. */
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A contact attached to one project.
+ *
+ * A copy rather than a pointer. The CRM entry can be edited or deleted long
+ * after a job is agreed, and neither should quietly rewrite what a project
+ * recorded — `crmId` only says where it came from, so the CRM can be offered
+ * as the source of an update rather than being one.
+ */
+export interface ProjectContact {
+  id: string;
+  crmId: string | null;
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
@@ -488,6 +532,48 @@ export interface SupplyItem {
   consumable: boolean;
 }
 
+/**
+ * Someone outside the team a job goes through — a community's sales office, a
+ * disposal firm, a specialist mover. Kept in one book rather than retyped into
+ * each project, because the same handful of people recur across every job at a
+ * community.
+ */
+export interface CrmContact {
+  id: string;
+  /** From the CRM Contact Type list in Settings, so it stays editable. */
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A contact attached to one project.
+ *
+ * A copy rather than a pointer. The CRM entry can be edited or deleted long
+ * after a job is agreed, and neither should quietly rewrite what a project
+ * recorded — `crmId` only says where it came from, so the CRM can be offered
+ * as the source of an update rather than being one.
+ */
+export interface ProjectContact {
+  id: string;
+  crmId: string | null;
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
+}
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
@@ -502,7 +588,7 @@ export interface Project {
 // ─── App State ────────────────────────────────────────────────────────────────
 export type TabName =
   | 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist'
-  | 'settings' | 'calendar'
+  | 'settings' | 'calendar' | 'crm'
   | 'furniture' | 'floorplans' | 'photos'
   | 'supplies' | 'project-supplies';
 
@@ -524,6 +610,8 @@ export interface AppState {
   shiftTimes: ShiftTimeSettings;
   /** The contractable services offered, grouped by category. */
   services: ServiceCategory[];
+  /** The contact book, shared across every project. */
+  crmContacts: CrmContact[];
   /**
    * Uncommitted Schedule tab edits. Held here rather than in the page so they
    * survive switching tabs, and deliberately not persisted — a draft is work in

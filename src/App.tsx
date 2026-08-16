@@ -18,6 +18,7 @@ import { FloorPlansPage } from './pages/FloorPlansPage';
 import { PhotosPage } from './pages/PhotosPage';
 import { SupplyInventoryPage } from './pages/SupplyInventoryPage';
 import { ProjectSuppliesPage } from './pages/ProjectSuppliesPage';
+import { CrmPage } from './pages/CrmPage';
 
 function AppContent() {
   const { state } = useApp();
@@ -32,6 +33,7 @@ function AppContent() {
       case 'checklist': return <ChecklistPage />;
       case 'settings':  return <SettingsPage />;
       case 'calendar':  return <CalendarPage />;
+      case 'crm':       return <CrmPage />;
       case 'furniture': return <FurnitureInventoryPage />;
       case 'floorplans':return <FloorPlansPage />;
       case 'photos':    return <PhotosPage />;

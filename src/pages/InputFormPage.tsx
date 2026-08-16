@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
+import { ProjectContacts } from '../components/ProjectContacts';
 import { SelectField } from '../components/SelectField';
 import { BUDGET_GROUPS, totalBudgetedHours } from '../lib/budgets';
 import { lotPrepAllowance } from '../lib/scheduling';
@@ -452,6 +453,17 @@ export function InputFormPage() {
               onChange={(e) => update('destinationAddress', e.target.value)}
               placeholder="Street, city, unit"
               className={inputClass()}
+            />
+          </FormField>
+
+          {/*
+            Everyone outside the team this job goes through. Pulled from the
+            CRM where they are already known, typed in where they aren't.
+          */}
+          <FormField label="Contacts">
+            <ProjectContacts
+              contacts={inputs.contacts ?? []}
+              onChange={(contacts) => update('contacts', contacts)}
             />
           </FormField>
         </Card>

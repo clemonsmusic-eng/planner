@@ -39,6 +39,8 @@ export type Capability =
   | 'settings'
   /** The shared supply inventory, which is stock control rather than a job. */
   | 'supplies'
+  /** The contact book, shared across every project. */
+  | 'crm'
   /** Create, edit and delete projects, and edit the Input tab. */
   | 'editProjects'
   /** Remove a project outright. */
@@ -57,6 +59,7 @@ const MATRIX: Record<AccessLevel, Capability[]> = {
   admin: [
     'settings',
     'supplies',
+    'crm',
     'editProjects',
     'deleteProjects',
     'editSchedule',
@@ -79,7 +82,9 @@ export function can(level: AccessLevel, capability: Capability): boolean {
 /** Tabs a level may open. Everything not listed is hidden and unreachable. */
 const HIDDEN_TABS: Record<AccessLevel, TabName[]> = {
   admin: [],
-  pm: ['settings', 'supplies'],
+  // The contact book is the business's, not a job's — it outlives any project
+  // and is edited far less often than it is read, so it stays with an admin.
+  pm: ['settings', 'supplies', 'crm'],
   // A Team Member gets the calendar, the schedule and the plan, and nothing
   // else — the level was defined by what it can see, not by what it can edit.
   team: [
@@ -87,6 +92,7 @@ const HIDDEN_TABS: Record<AccessLevel, TabName[]> = {
     'inputs',
     'projects',
     'supplies',
+    'crm',
     'checklist',
     'furniture',
     'floorplans',
