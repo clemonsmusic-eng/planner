@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
+import { ExportPlanButton } from '../components/ExportPlanButton';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { formatDateLabel } from '../lib/dateUtils';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
@@ -101,6 +102,7 @@ export function PlanPage() {
                 </div>
               )}
             </div>
+            {schedule && <ExportPlanButton project={activeProject} schedule={schedule} />}
           </div>
         </div>
 

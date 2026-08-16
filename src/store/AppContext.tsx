@@ -59,6 +59,8 @@ type Action =
   | { type: 'UPDATE_SERVICES'; services: ServiceCategory[] }
   | { type: 'SET_SCHEDULE_DRAFT'; project: Project | null }
   | { type: 'COMMIT_SCHEDULE_DRAFT' }
+  /** Swap a project wholesale — what an import produces is a whole project. */
+  | { type: 'REPLACE_PROJECT'; project: Project }
   | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
@@ -303,6 +305,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, scheduleDraft: action.project };
 
     /** Write the draft over its project — the only path from draft to stored. */
+    case 'REPLACE_PROJECT': {
+      const projects = state.projects.map((p) => (p.id === action.project.id ? action.project : p));
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
     case 'COMMIT_SCHEDULE_DRAFT': {
       const draft = state.scheduleDraft;
       if (!draft) return state;

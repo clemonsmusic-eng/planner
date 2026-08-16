@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import type { Project, ProjectInputs } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
+import { ImportSheet } from '../components/ImportSheet';
 
 function createDefaultInputs(): ProjectInputs {
   return {
@@ -50,6 +51,7 @@ const FILTER_LABELS: Record<string, string> = {
 export function ProjectListPage() {
   const { state, dispatch } = useApp();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   function handleCreateProject() {
     const project = createNewProject();
@@ -114,7 +116,21 @@ export function ProjectListPage() {
             </button>
             <h1 className="text-2xl font-bold text-teal-900 truncate">{FILTER_LABELS[filter] ?? 'Projects'}</h1>
           </div>
-          <span className="flex-shrink-0 text-sm text-ios-gray-600">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Import can create the project it fills, so it lives with the
+                project list rather than inside one. */}
+            <button
+              onClick={() => setImporting(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-teal-600 text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" />
+                <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+              </svg>
+              Import
+            </button>
+            <span className="text-sm text-ios-gray-600 hidden sm:inline">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
       </div>
 
@@ -151,6 +167,8 @@ export function ProjectListPage() {
           </svg>
         </button>
       )}
+
+      {importing && <ImportSheet onClose={() => setImporting(false)} />}
     </div>
   );
 }
