@@ -12,6 +12,8 @@ import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
 import { totalBudgetedHours } from '../lib/budgets';
 import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
 import { useIsWideLayout } from '../lib/useMediaQuery';
+import { can } from '../lib/access';
+import { ExportScheduleButton } from '../components/ExportPlanButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType, ProjectInputs } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -85,7 +87,13 @@ export function SchedulePage() {
   const draft = state.scheduleDraft?.id === storedProject?.id ? state.scheduleDraft : null;
   const activeProject = draft ?? storedProject;
   const isDirty = !!draft;
-  const scheduleLocked = !!activeProject?.inputs.scheduleLocked;
+  /*
+   * A Team Member sees the schedule but does not change it, which is exactly
+   * what the schedule lock already means — so read-only access rides on the
+   * same flag rather than growing a second disabled path beside it.
+   */
+  const readOnly = !can(state.access.level, 'editSchedule');
+  const scheduleLocked = readOnly || !!activeProject?.inputs.scheduleLocked;
 
   /** Route an edit into the draft, starting one from the stored project. */
   function edit(e: ScheduleEdit) {
@@ -234,8 +242,13 @@ export function SchedulePage() {
     <>
       <div className="flex flex-col h-full">
         {/* Header */}
+        {/*
+          Above the day headers below, which are sticky at z-10 and come later
+          in the DOM — without this the project picker and the export menu both
+          open behind the list they sit over.
+        */}
         <div
-          className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
+          className="sticky top-0 z-20 bg-white border-b border-ios-gray-200 px-4"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
         >
           <div className="flex items-center gap-2 mb-2">
@@ -283,13 +296,16 @@ export function SchedulePage() {
                 </div>
               )}
             </div>
-            <LockButton
+            {schedule && can(state.access.level, 'exportFiles') && (
+              <ExportScheduleButton project={activeProject} schedule={schedule} />
+            )}
+            {!readOnly && <LockButton
               isLocked={scheduleLocked}
               onToggle={() =>
                 dispatch({ type: 'SET_LOCK', projectId: activeProject.id, which: 'schedule', locked: !scheduleLocked })
               }
-            />
-            <button
+            />}
+            {!readOnly && <button
               onClick={() => {
                 dispatch({ type: 'SET_SCHEDULE_DRAFT', project: null });
                 generateAndSaveSchedule(activeProject.id);
@@ -298,7 +314,7 @@ export function SchedulePage() {
               className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80 disabled:opacity-40"
             >
               Regenerate
-            </button>
+            </button>}
           </div>
 
           {/*
@@ -326,7 +342,7 @@ export function SchedulePage() {
           )}
 
           {/* Add a shift the generator didn't place */}
-          <button
+          {!readOnly && <button
             onClick={addShift.openSheet}
             disabled={!schedule}
             className="w-full lg:w-auto lg:px-5 lg:self-start flex items-center justify-center gap-1.5 mb-2 py-2 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[40px] active:bg-teal-50 lg:hover:bg-teal-50 disabled:opacity-40"
@@ -335,7 +351,7 @@ export function SchedulePage() {
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
             </svg>
             Add Shift
-          </button>
+          </button>}
 
           {/* Filter bar */}
           <div className="flex items-center gap-2">
@@ -551,6 +567,8 @@ export function SchedulePage() {
         <AddShiftSheet
           phaseTemplates={state.phaseTemplates}
           defaultDate={schedule?.days[0]?.date ?? activeProject.inputs.targetMoveDate}
+          teamMembers={state.teamMembers}
+          projects={state.projects}
           onAdd={(shift) => edit({ kind: 'addShift', shift })}
           onClose={addShift.closeSheet}
         />

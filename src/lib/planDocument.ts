@@ -103,12 +103,30 @@ function moveDayCrew(schedule: ScheduleResult, teamMembers: TeamMember[], moveDa
   return { pm: nameFor('PM'), assistPm: nameFor('Assist PM'), specialists, size: entries.length };
 }
 
+/**
+ * The sections a Plan document can be built from, in the order they appear.
+ *
+ * Exported so the export sheet can offer them by name without keeping its own
+ * copy of the list — a section added here shows up as a tick box on its own.
+ */
+export const PLAN_SECTIONS: { key: string; label: string; hint: string }[] = [
+  { key: 'project', label: 'Project details', hint: 'Client, community, PM, addresses' },
+  { key: 'dates', label: 'Dates', hint: 'Every milestone, its shift and its notes' },
+  { key: 'services', label: 'Services contracted', hint: 'What the client is paying for' },
+  { key: 'moveDay', label: 'Move day snapshot', hint: 'Who is on move day' },
+  { key: 'budget', label: 'Project hourly budget', hint: 'Scheduled against each allowance' },
+  { key: 'teamHours', label: 'Team hours', hint: 'Hours per person on this project' },
+];
+
+export const ALL_PLAN_SECTIONS = new Set(PLAN_SECTIONS.map((s) => s.key));
+
 export function buildPlanDocument(
   project: Project,
   schedule: ScheduleResult,
   teamMembers: TeamMember[],
   serviceCatalog: ServiceCategory[],
-  shiftTimes: ShiftTimeSettings
+  shiftTimes: ShiftTimeSettings,
+  sections: Set<string> = ALL_PLAN_SECTIONS
 ): DocumentModel {
   const { inputs } = project;
   const client = inputs.clientName || 'Untitled project';
@@ -117,128 +135,134 @@ export function buildPlanDocument(
     ? teamMembers.find((m) => m.id === inputs.projectManagerId)?.name ?? 'Unassigned'
     : 'Unassigned';
 
-  const blocks: DocBlock[] = [];
-
-  // ── Project ──────────────────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Project' });
-  blocks.push({
-    kind: 'fields',
-    rows: [
-      ['Client', dash(client)],
-      ['Community', dash(inputs.community)],
-      ['Project Type', dash(inputs.moveType)],
-      ['Project Manager', pmName],
-      ['Origin', dash(inputs.originAddress)],
-      ['Destination', dash(inputs.destinationAddress)],
-      ['Target Move Date', inputs.targetMoveDate ? formatDateLabel(inputs.targetMoveDate) : '-'],
-      ['Status', dash(inputs.status)],
-    ],
-  });
-
-  // ── Dates ────────────────────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Dates' });
   const dates = dateRows(schedule, inputs, shiftTimes);
-  if (dates.length === 0) {
-    blocks.push({ kind: 'paragraph', text: 'No dates scheduled yet.', muted: true });
-  } else {
-    blocks.push({
-      kind: 'table',
-      columns: [
-        { header: 'Milestone', weight: 20 },
-        { header: 'Date', weight: 20 },
-        { header: 'Shift', weight: 9, align: 'center' },
-        { header: 'Time', weight: 19 },
-        { header: 'Notes', weight: 32 },
-      ],
-      rows: dates,
-    });
-  }
-
-  // ── Services Contracted ──────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Services Contracted' });
+  const crew = moveDayCrew(schedule, teamMembers, moveDate);
+  const budgeted = totalBudgetedHours(inputs.phaseBudgets);
   const selected = new Set(inputs.contractedServices ?? []);
-  const groups = serviceCatalog
+  const serviceGroups = serviceCatalog
     .map(({ category, services }) => ({ label: category, items: services.filter((s) => selected.has(s)) }))
     .filter((g) => g.items.length > 0);
-  if (groups.length === 0) {
-    blocks.push({ kind: 'paragraph', text: 'No services selected.', muted: true });
-  } else {
-    blocks.push({ kind: 'bullets', groups });
-  }
 
-  // ── Move Day Snapshot ────────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Move Day Snapshot' });
-  const crew = moveDayCrew(schedule, teamMembers, moveDate);
-  blocks.push({
-    kind: 'fields',
-    rows: [
-      ['Date', moveDate ? formatDateLabel(moveDate) : '-'],
-      ['PM', crew.pm],
-      ['Assist PM', crew.assistPm],
-      ['Specialists', crew.specialists.length > 0 ? crew.specialists.join(', ') : '-'],
-      ['Total Team', `${crew.size} member${crew.size === 1 ? '' : 's'}`],
+  /*
+   * Each section is built whole and filed under its key, then only the chosen
+   * ones are laid end to end. Building them separately is what lets the export
+   * sheet leave one out without every section growing a condition around it.
+   */
+  const bySection: Record<string, DocBlock[]> = {
+    project: [
+      { kind: 'heading', text: 'Project' },
+      {
+        kind: 'fields',
+        rows: [
+          ['Client', dash(client)],
+          ['Community', dash(inputs.community)],
+          ['Project Type', dash(inputs.moveType)],
+          ['Project Manager', pmName],
+          ['Origin', dash(inputs.originAddress)],
+          ['Destination', dash(inputs.destinationAddress)],
+          ['Target Move Date', inputs.targetMoveDate ? formatDateLabel(inputs.targetMoveDate) : '-'],
+          ['Status', dash(inputs.status)],
+        ],
+      },
     ],
-  });
 
-  // ── Project Hourly Budget ────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Project Hourly Budget' });
-  const budgeted = totalBudgetedHours(inputs.phaseBudgets);
-  blocks.push({
-    kind: 'fields',
-    rows: [
-      ['Status', schedule.status],
-      ['Scheduled', `${hours(schedule.totalScheduledHours)} hrs`],
-      ['Budget', `${hours(budgeted)} hrs`],
-      [
-        'Remaining',
-        `${schedule.remainingHours < 0 ? '-' : '+'}${hours(Math.abs(schedule.remainingHours))} hrs`,
-      ],
-      ['Scheduled vs Budget', `${Math.round(schedule.percentScheduled)}%`],
+    dates: [
+      { kind: 'heading', text: 'Dates' },
+      dates.length === 0
+        ? { kind: 'paragraph', text: 'No dates scheduled yet.', muted: true }
+        : {
+            kind: 'table',
+            columns: [
+              { header: 'Milestone', weight: 20 },
+              { header: 'Date', weight: 20 },
+              { header: 'Shift', weight: 9, align: 'center' },
+              { header: 'Time', weight: 19 },
+              { header: 'Notes', weight: 32 },
+            ],
+            rows: dates,
+          },
     ],
-  });
-  blocks.push({
-    kind: 'table',
-    columns: [
-      { header: 'Allowance', weight: 46 },
-      { header: 'Scheduled', weight: 18, align: 'center' },
-      { header: 'Budget', weight: 18, align: 'center' },
-      { header: 'Remaining', weight: 18, align: 'center' },
-    ],
-    rows: BUDGET_POOLS.map(({ pool, label }) => {
-      const budget = poolBudget(inputs.phaseBudgets, pool);
-      const used = poolScheduled(schedule, pool);
-      return [
-        label,
-        hours(used),
-        budget > 0 ? hours(budget) : '-',
-        budget > 0 ? `${budget - used < 0 ? '-' : '+'}${hours(Math.abs(budget - used))}` : '-',
-      ];
-    }),
-  });
 
-  // ── Team Hours ───────────────────────────────────────────────────────────
-  blocks.push({ kind: 'heading', text: 'Team Hours' });
-  if (schedule.teamHours.length === 0) {
-    blocks.push({ kind: 'paragraph', text: 'Nobody is assigned yet.', muted: true });
-  } else {
-    blocks.push({
-      kind: 'table',
-      columns: [
-        { header: 'Team Member', weight: 70 },
-        { header: 'Hours on this project', weight: 30, align: 'center' },
-      ],
-      rows: [...schedule.teamHours]
-        .sort((a, b) => b.scheduledHours - a.scheduledHours)
-        .map((t) => [t.memberName, hours(t.scheduledHours)]),
-    });
-  }
+    services: [
+      { kind: 'heading', text: 'Services Contracted' },
+      serviceGroups.length === 0
+        ? { kind: 'paragraph', text: 'No services selected.', muted: true }
+        : { kind: 'bullets', groups: serviceGroups },
+    ],
+
+    moveDay: [
+      { kind: 'heading', text: 'Move Day Snapshot' },
+      {
+        kind: 'fields',
+        rows: [
+          ['Date', moveDate ? formatDateLabel(moveDate) : '-'],
+          ['PM', crew.pm],
+          ['Assist PM', crew.assistPm],
+          ['Specialists', crew.specialists.length > 0 ? crew.specialists.join(', ') : '-'],
+          ['Total Team', `${crew.size} member${crew.size === 1 ? '' : 's'}`],
+        ],
+      },
+    ],
+
+    budget: [
+      { kind: 'heading', text: 'Project Hourly Budget' },
+      {
+        kind: 'fields',
+        rows: [
+          ['Status', schedule.status],
+          ['Scheduled', `${hours(schedule.totalScheduledHours)} hrs`],
+          ['Budget', `${hours(budgeted)} hrs`],
+          [
+            'Remaining',
+            `${schedule.remainingHours < 0 ? '-' : '+'}${hours(Math.abs(schedule.remainingHours))} hrs`,
+          ],
+          ['Scheduled vs Budget', `${Math.round(schedule.percentScheduled)}%`],
+        ],
+      },
+      {
+        kind: 'table',
+        columns: [
+          { header: 'Allowance', weight: 46 },
+          { header: 'Scheduled', weight: 18, align: 'center' },
+          { header: 'Budget', weight: 18, align: 'center' },
+          { header: 'Remaining', weight: 18, align: 'center' },
+        ],
+        rows: BUDGET_POOLS.map(({ pool, label }) => {
+          const budget = poolBudget(inputs.phaseBudgets, pool);
+          const used = poolScheduled(schedule, pool);
+          return [
+            label,
+            hours(used),
+            budget > 0 ? hours(budget) : '-',
+            budget > 0 ? `${budget - used < 0 ? '-' : '+'}${hours(Math.abs(budget - used))}` : '-',
+          ];
+        }),
+      },
+    ],
+
+    teamHours: [
+      { kind: 'heading', text: 'Team Hours' },
+      schedule.teamHours.length === 0
+        ? { kind: 'paragraph', text: 'Nobody is assigned yet.', muted: true }
+        : {
+            kind: 'table',
+            columns: [
+              { header: 'Team Member', weight: 70 },
+              { header: 'Hours on this project', weight: 30, align: 'center' },
+            ],
+            rows: [...schedule.teamHours]
+              .sort((a, b) => b.scheduledHours - a.scheduledHours)
+              .map((t) => [t.memberName, hours(t.scheduledHours)]),
+          },
+    ],
+  };
 
   return {
     title: `${client} — Plan`,
     subtitle: [inputs.community, inputs.moveType, moveDate ? `Move ${formatDateLabel(moveDate)}` : null]
       .filter(Boolean)
       .join('  ·  '),
-    blocks,
+    blocks: PLAN_SECTIONS.filter((s) => sections.has(s.key)).flatMap((s) => bySection[s.key]),
   };
 }
 

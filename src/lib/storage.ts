@@ -1,3 +1,4 @@
+import type { AccessLevel } from './access';
 import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings, ServiceCategory } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
@@ -28,6 +29,7 @@ const STORAGE_KEY_SUPPLY_CATS      = 'st-planner-supply-categories';
 const STORAGE_KEY_SHIFT_TIMES      = 'st-planner-shift-times';
 const STORAGE_KEY_SETTINGS_ORDER   = 'st-planner-settings-order';
 const STORAGE_KEY_SERVICES         = 'st-planner-services';
+const STORAGE_KEY_ACCESS           = 'st-planner-access';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -419,5 +421,45 @@ export function saveServices(services: ServiceCategory[]): void {
     localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(services));
   } catch (e) {
     console.error('Failed to save services', e);
+  }
+}
+
+
+// ─── Access level ─────────────────────────────────────────────────────────────
+
+/**
+ * The level this device is signed in at, and the passcode that guards stepping
+ * up from Team Member. Kept together because they are read and written as one
+ * decision, and stored on the device rather than in a project: it says who is
+ * holding this phone, not anything about the work.
+ */
+export interface AccessState {
+  level: AccessLevel;
+  /** Empty when no admin has set one, which leaves switching unguarded. */
+  passcode: string;
+}
+
+const DEFAULT_ACCESS: AccessState = { level: 'admin', passcode: '' };
+
+export function loadAccess(): AccessState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_ACCESS);
+    if (!raw) return DEFAULT_ACCESS;
+    const parsed = JSON.parse(raw) as Partial<AccessState>;
+    const level = parsed.level;
+    return {
+      level: level === 'admin' || level === 'pm' || level === 'team' ? level : 'admin',
+      passcode: typeof parsed.passcode === 'string' ? parsed.passcode : '',
+    };
+  } catch {
+    return DEFAULT_ACCESS;
+  }
+}
+
+export function saveAccess(access: AccessState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_ACCESS, JSON.stringify(access));
+  } catch {
+    /* storage full or blocked; the level simply won't persist */
   }
 }

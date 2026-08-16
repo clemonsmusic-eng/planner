@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ACCESS_LABELS, canOpenTab } from '../lib/access';
+import { AccessSheet } from './AccessSheet';
 import { useApp } from '../store/AppContext';
 import { useAddShift } from './AddShiftContext';
 import {
@@ -25,6 +27,8 @@ export const SIDEBAR_WIDTH_CLASS = 'w-64';
  */
 export function Sidebar() {
   const { state, dispatch } = useApp();
+  const level = state.access.level;
+  const [accessOpen, setAccessOpen] = useState(false);
   const addShift = useAddShift();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
@@ -65,10 +69,10 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto py-3">
         {/* Global destinations */}
         <nav className="px-2 space-y-0.5" aria-label="Main">
-          {NAV_DESTINATIONS.map((d) => (
+          {NAV_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
             <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
           ))}
-          <SidebarLink
+          {canOpenTab(level, 'projects') && <SidebarLink
             dest={{
               tab: 'projects',
               label: 'Projects',
@@ -83,7 +87,7 @@ export function Sidebar() {
               dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' });
               go('projects');
             }}
-          />
+          />}
         </nav>
 
         {/* Open project — its working tabs and its documents, all visible */}
@@ -91,17 +95,21 @@ export function Sidebar() {
           <>
             <SidebarHeading className="mt-5">{projectName}</SidebarHeading>
             <nav className="px-2 space-y-0.5" aria-label="Project">
-              {PROJECT_TABS.map((d) => (
+              {PROJECT_TABS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
                 <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
               ))}
             </nav>
 
-            <SidebarHeading className="mt-4">Files</SidebarHeading>
-            <nav className="px-2 space-y-0.5" aria-label="Project files">
-              {DOC_DESTINATIONS.map((d) => (
-                <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
-              ))}
-            </nav>
+            {DOC_DESTINATIONS.some((d) => canOpenTab(level, d.tab)) && (
+              <>
+                <SidebarHeading className="mt-4">Files</SidebarHeading>
+                <nav className="px-2 space-y-0.5" aria-label="Project files">
+                  {DOC_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
+                    <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
+                  ))}
+                </nav>
+              </>
+            )}
           </>
         )}
 
@@ -150,6 +158,23 @@ export function Sidebar() {
           </>
         )}
       </div>
+
+      {/* The level this device works at, always reachable from the rail. */}
+      <button
+        onClick={() => setAccessOpen(true)}
+        className="flex-shrink-0 border-t border-ios-gray-200 px-4 py-3 text-left hover:bg-ios-gray-50"
+      >
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-ios-gray-500">
+          Signed in as
+        </span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-teal-800">
+          {ACCESS_LABELS[level]}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-ios-gray-400">
+            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+          </svg>
+        </span>
+      </button>
+      {accessOpen && <AccessSheet onClose={() => setAccessOpen(false)} />}
     </aside>
   );
 }

@@ -5,6 +5,7 @@ import {
   type SettingsGroup as SettingsGroupDef, type SettingsGroupKey, type SettingsOrder,
 } from '../lib/settingsLayout';
 import { loadSettingsOrder, saveSettingsOrder } from '../lib/storage';
+import { GRIP_PATH, useReorder } from '../lib/useReorder';
 import type { ServiceCategory } from '../types';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
@@ -947,6 +948,14 @@ function ListCategoryCard({
   const [expanded, setExpanded] = useState(false);
   const [newItem, setNewItem] = useState('');
 
+  // Order is meaning here — these lists populate pickers, and the first entry
+  // is the default — so the entries drag into the order they should be offered.
+  const reorder = useReorder(
+    list.items,
+    (items) => onChange({ ...list, items }),
+    `list-${list.id}`
+  );
+
   function addItem() {
     const trimmed = newItem.trim();
     if (!trimmed) return;
@@ -990,11 +999,27 @@ function ListCategoryCard({
           {/* Items */}
           <div className="space-y-1">
             {list.items.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 min-h-[40px] border border-ios-gray-200">
-                <span className="text-sm text-teal-900 flex-1 py-2">{item}</span>
+              <div
+                key={`${item}-${idx}`}
+                {...reorder.rowProps(idx)}
+                className={`flex items-center gap-1 bg-white rounded-lg pr-3 min-h-[40px] border ${
+                  reorder.dragIndex === idx ? 'border-teal-400 ring-2 ring-teal-200' : 'border-ios-gray-200'
+                }`}
+              >
+                <span
+                  {...reorder.handleProps(idx)}
+                  aria-label={`Reorder ${item}`}
+                  className="w-8 self-stretch flex items-center justify-center text-ios-gray-300 lg:hover:text-ios-gray-500 flex-shrink-0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d={GRIP_PATH} />
+                  </svg>
+                </span>
+                <span className="text-sm text-teal-900 flex-1 py-2 min-w-0 truncate">{item}</span>
                 <button
                   onClick={() => removeItem(idx)}
-                  className="w-7 h-7 flex items-center justify-center text-ios-gray-400 hover:text-red-500 rounded-lg"
+                  className="w-7 h-7 flex items-center justify-center text-ios-gray-400 hover:text-red-500 rounded-lg flex-shrink-0"
+                  aria-label={`Remove ${item}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                     <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -1742,10 +1767,19 @@ export function SettingsPage() {
     },
   };
 
+  const serviceOrder = useReorder(
+    services,
+    (next) => { setServices(next); setIsDirty(true); },
+    'service-categories'
+  );
+
   /*
    * The service catalogue, edited as one list per category. Each category
    * reuses the parameter-list editor rather than growing a second one — the
    * shape is the same, a name and the entries under it.
+   *
+   * Categories drag into order as well as the services inside them, because
+   * this order is the order the Input tab offers them in.
    */
   SUBS.services = {
     title: 'Services Contracted',
@@ -1756,7 +1790,22 @@ export function SettingsPage() {
           What a client can contract. These populate the Services Contracted picker on a project's Input tab.
         </p>
         {services.map((cat, catIdx) => (
-          <div key={`${cat.category}-${catIdx}`} className="flex items-start gap-2">
+          <div
+            key={`${cat.category}-${catIdx}`}
+            {...serviceOrder.rowProps(catIdx)}
+            className={`flex items-start gap-1 rounded-xl ${
+              serviceOrder.dragIndex === catIdx ? 'ring-2 ring-teal-300' : ''
+            }`}
+          >
+            <span
+              {...serviceOrder.handleProps(catIdx)}
+              aria-label={`Reorder ${cat.category}`}
+              className="w-7 h-11 flex items-center justify-center text-ios-gray-300 lg:hover:text-ios-gray-500 flex-shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d={GRIP_PATH} />
+              </svg>
+            </span>
             <div className="flex-1 min-w-0">
               <ListCategoryCard
                 list={{ id: cat.category, name: cat.category, items: cat.services }}

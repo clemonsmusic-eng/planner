@@ -163,20 +163,26 @@ export function applyScheduleEdit(
     }
 
     case 'addShift': {
-      const { date, phaseId, phaseName, shift, hours, roles } = edit.shift;
-      const entries = roles.map((role, i) => ({
-        id: newEntryId(i),
-        date,
-        phaseName,
-        phaseId,
-        role,
-        assignedMember: null,
-        assignedMemberName: null,
-        shift,
-        hours,
-        status: 'needs-assignment' as AssignmentStatus,
-        warnings: [],
-      }));
+      const { date, phaseId, phaseName, shift, hours, roles, assigned } = edit.shift;
+      const entries = roles.map((role, i) => {
+        // The sheet can crew a shift as it is built; a slot left open here is
+        // one nobody qualified for, and stays open rather than being guessed.
+        const memberId = assigned?.[i] ?? null;
+        const member = memberId ? teamMembers.find((m) => m.id === memberId) ?? null : null;
+        return {
+          id: newEntryId(i),
+          date,
+          phaseName,
+          phaseId,
+          role,
+          assignedMember: member?.id ?? null,
+          assignedMemberName: member?.name ?? null,
+          shift,
+          hours,
+          status: (member ? 'assigned' : 'needs-assignment') as AssignmentStatus,
+          warnings: [],
+        };
+      });
       const existing = schedule.days.find((d) => d.date === date);
       const days = existing
         ? schedule.days.map((d) => (d.date === date ? { ...d, entries: [...d.entries, ...entries] } : d))
