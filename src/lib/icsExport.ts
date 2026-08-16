@@ -1,4 +1,4 @@
-import { shiftsOf } from './scheduleDocument';
+import { ALL_ICS_SECTIONS, shiftsOf } from './scheduleDocument';
 import type { Project, ScheduleResult, ShiftTimeSettings } from '../types';
 
 /**
@@ -60,7 +60,8 @@ const startMinutes = (shift: 'AM' | 'PM' | 'Full Day', times: ShiftTimeSettings)
 export function buildScheduleIcs(
   project: Project,
   schedule: ScheduleResult,
-  shiftTimes: ShiftTimeSettings
+  shiftTimes: ShiftTimeSettings,
+  include: Set<string> = ALL_ICS_SECTIONS
 ): Blob {
   const client = project.inputs.clientName || 'Project';
   const rows = shiftsOf(schedule.days, project);
@@ -81,20 +82,23 @@ export function buildScheduleIcs(
     // The crew and the note are what someone reads off a calendar entry when
     // they are already on their way, so both go in the description.
     const description = [
-      row.crew.length > 0
-        ? row.crew.map((c) => `${c.role}: ${c.name}`).join('\n')
-        : 'Nobody assigned yet',
-      row.note.trim(),
+      include.has('crew')
+        ? row.crew.length > 0
+          ? row.crew.map((c) => `${c.role}: ${c.name}`).join('\n')
+          : 'Nobody assigned yet'
+        : '',
+      include.has('notes') ? row.note.trim() : '',
     ]
       .filter(Boolean)
       .join('\n\n');
 
     // A move day ends at the destination; every other shift is at the origin.
     const moveDay = row.phaseId === 'phase-5-1' || row.phaseId === 'phase-5-2';
-    const location =
-      (moveDay ? project.inputs.destinationAddress : project.inputs.originAddress) ||
-      project.inputs.originAddress ||
-      '';
+    const location = include.has('location')
+      ? (moveDay ? project.inputs.destinationAddress : project.inputs.originAddress) ||
+        project.inputs.originAddress ||
+        ''
+      : '';
 
     lines.push(
       'BEGIN:VEVENT',
@@ -105,7 +109,7 @@ export function buildScheduleIcs(
       `DTSTART:${stamp(row.date, start)}`,
       `DTEND:${stamp(row.date, end)}`,
       fold(`SUMMARY:${escapeText(`${client} — ${row.phaseName}`)}`),
-      fold(`DESCRIPTION:${escapeText(description)}`),
+      ...(description ? [fold(`DESCRIPTION:${escapeText(description)}`)] : []),
       ...(location ? [fold(`LOCATION:${escapeText(location)}`)] : []),
       'END:VEVENT'
     );

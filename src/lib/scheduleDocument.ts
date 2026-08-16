@@ -46,84 +46,117 @@ export function shiftsOf(days: ScheduleDay[], project: Project): ShiftRow[] {
   return rows;
 }
 
+/** The sections a Schedule document can be built from, in document order. */
+export const SCHEDULE_SECTIONS: { key: string; label: string; hint: string }[] = [
+  { key: 'summary', label: 'Summary', hint: 'Community, type, days and hours' },
+  { key: 'shifts', label: 'Shifts', hint: 'Every date, time and crew' },
+  { key: 'notes', label: 'Shift notes', hint: 'What was written against each shift' },
+  { key: 'teamHours', label: 'Team hours', hint: 'Hours per person on this project' },
+];
+
+export const ALL_SCHEDULE_SECTIONS = new Set(SCHEDULE_SECTIONS.map((s) => s.key));
+
+/** What a calendar file can carry beyond the date, time and shift name. */
+export const ICS_SECTIONS: { key: string; label: string; hint: string }[] = [
+  { key: 'crew', label: 'Crew', hint: 'Who is on each shift, by role' },
+  { key: 'notes', label: 'Shift notes', hint: 'Gate codes, parking, anything written down' },
+  { key: 'location', label: 'Address', hint: 'Origin, or the destination on move day' },
+];
+
+export const ALL_ICS_SECTIONS = new Set(ICS_SECTIONS.map((s) => s.key));
+
 export function buildScheduleDocument(
   project: Project,
   schedule: ScheduleResult,
-  shiftTimes: ShiftTimeSettings
+  shiftTimes: ShiftTimeSettings,
+  sections: Set<string> = ALL_SCHEDULE_SECTIONS
 ): DocumentModel {
   const client = project.inputs.clientName || 'Untitled project';
   const rows = shiftsOf(schedule.days, project);
   const budget = totalBudgetedHours(project.inputs.phaseBudgets);
+  const noted = rows.filter((r) => r.note.trim());
 
-  const blocks: DocBlock[] = [
-    {
-      kind: 'fields',
-      rows: [
-        ['Community', project.inputs.community || '-'],
-        ['Project Type', project.inputs.moveType || '-'],
-        ['Days Scheduled', String(schedule.days.length)],
-        [
-          'Hours',
-          budget > 0
-            ? `${hours(schedule.totalScheduledHours)} of ${hours(budget)} budgeted (${Math.round(schedule.percentScheduled)}%)`
-            : `${hours(schedule.totalScheduledHours)} scheduled`,
+  /*
+   * Built per section and laid end to end, so leaving one out of an export is
+   * a matter of not including it rather than a condition wrapped around it.
+   */
+  const bySection: Record<string, DocBlock[]> = {
+    summary: [
+      {
+        kind: 'fields',
+        rows: [
+          ['Community', project.inputs.community || '-'],
+          ['Project Type', project.inputs.moveType || '-'],
+          ['Days Scheduled', String(schedule.days.length)],
+          [
+            'Hours',
+            budget > 0
+              ? `${hours(schedule.totalScheduledHours)} of ${hours(budget)} budgeted (${Math.round(schedule.percentScheduled)}%)`
+              : `${hours(schedule.totalScheduledHours)} scheduled`,
+          ],
         ],
-      ],
-    },
-  ];
+      },
+    ],
 
-  if (rows.length === 0) {
-    blocks.push({ kind: 'paragraph', text: 'No shifts scheduled yet.', muted: true });
-  } else {
-    blocks.push({ kind: 'heading', text: 'Shifts' });
-    blocks.push({
-      kind: 'table',
-      columns: [
-        { header: 'Date', weight: 16 },
-        { header: 'Shift', weight: 24 },
-        { header: 'Time', weight: 18 },
-        { header: 'Hrs', weight: 6, align: 'center' },
-        { header: 'Crew', weight: 36 },
-      ],
-      rows: rows.map((r) => [
-        formatDateLabel(r.date),
-        r.phaseName,
-        // The slot name is dropped: "9:00 AM-1:00 PM" already says which half
-        // of the day it is, and repeating it cost the column a second line.
-        shiftTimeRange(r.shift, r.hoursEach, shiftTimes),
-        hours(r.hoursEach),
-        r.crew.map((c) => `${c.name} (${c.role})`).join(', '),
-      ]),
-    });
+    shifts:
+      rows.length === 0
+        ? [{ kind: 'paragraph', text: 'No shifts scheduled yet.', muted: true }]
+        : [
+            { kind: 'heading', text: 'Shifts' },
+            {
+              kind: 'table',
+              columns: [
+                { header: 'Date', weight: 16 },
+                { header: 'Shift', weight: 24 },
+                { header: 'Time', weight: 18 },
+                { header: 'Hrs', weight: 6, align: 'center' },
+                { header: 'Crew', weight: 36 },
+              ],
+              rows: rows.map((r) => [
+                formatDateLabel(r.date),
+                r.phaseName,
+                // The slot name is dropped: "9:00 AM-1:00 PM" already says which
+                // half of the day it is, and repeating it cost a second line.
+                shiftTimeRange(r.shift, r.hoursEach, shiftTimes),
+                hours(r.hoursEach),
+                r.crew.map((c) => `${c.name} (${c.role})`).join(', '),
+              ]),
+            },
+          ],
 
     // Notes are set out under the table rather than squeezed into a column:
     // they are sentences, and a table cell three words wide mangles them.
-    const noted = rows.filter((r) => r.note.trim());
-    if (noted.length > 0) {
-      blocks.push({ kind: 'heading', text: 'Shift Notes' });
-      blocks.push({
-        kind: 'bullets',
-        groups: noted.map((r) => ({
-          label: `${formatDateLabel(r.date)} · ${r.phaseName}`,
-          items: [r.note.trim()],
-        })),
-      });
-    }
-  }
+    notes:
+      noted.length === 0
+        ? []
+        : [
+            { kind: 'heading', text: 'Shift Notes' },
+            {
+              kind: 'bullets',
+              groups: noted.map((r) => ({
+                label: `${formatDateLabel(r.date)} · ${r.phaseName}`,
+                items: [r.note.trim()],
+              })),
+            },
+          ],
 
-  if (schedule.teamHours.length > 0) {
-    blocks.push({ kind: 'heading', text: 'Team Hours' });
-    blocks.push({
-      kind: 'table',
-      columns: [
-        { header: 'Team Member', weight: 70 },
-        { header: 'Hours on this project', weight: 30, align: 'center' },
-      ],
-      rows: [...schedule.teamHours]
-        .sort((a, b) => b.scheduledHours - a.scheduledHours)
-        .map((t) => [t.memberName, hours(t.scheduledHours)]),
-    });
-  }
+    teamHours:
+      schedule.teamHours.length === 0
+        ? []
+        : [
+            { kind: 'heading', text: 'Team Hours' },
+            {
+              kind: 'table',
+              columns: [
+                { header: 'Team Member', weight: 70 },
+                { header: 'Hours on this project', weight: 30, align: 'center' },
+              ],
+              rows: [...schedule.teamHours]
+                .sort((a, b) => b.scheduledHours - a.scheduledHours)
+                .map((t) => [t.memberName, hours(t.scheduledHours)]),
+            },
+          ],
+  };
 
   const first = schedule.days[0]?.date;
   const last = schedule.days[schedule.days.length - 1]?.date;
@@ -135,6 +168,6 @@ export function buildScheduleDocument(
     ]
       .filter(Boolean)
       .join('  ·  '),
-    blocks,
+    blocks: SCHEDULE_SECTIONS.filter((s) => sections.has(s.key)).flatMap((s) => bySection[s.key]),
   };
 }
