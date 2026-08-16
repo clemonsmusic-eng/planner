@@ -11,6 +11,7 @@ import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
 import { DEFAULT_SUPPLIES, DEFAULT_SUPPLY_CATEGORIES, normalizeSupplies, normalizeCategories } from './supplies';
 import { normalizePhaseBudgets } from './budgets';
+import { normalizeProjectContacts } from './contacts';
 import type { SettingsOrder } from './settingsLayout';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
@@ -52,6 +53,8 @@ export function loadProjects(): Project[] {
         originAddress: p.inputs.originAddress ?? '',
         destinationAddress: p.inputs.destinationAddress ?? '',
         shiftNotes: p.inputs.shiftNotes ?? [],
+        // Contacts were copied onto the project before they were linked to it.
+        contacts: normalizeProjectContacts(p.inputs.contacts),
         // Projects budgeted before the split start empty rather than having
         // their old single figure divided up by guesswork.
         phaseBudgets: normalizePhaseBudgets(p.inputs.phaseBudgets),

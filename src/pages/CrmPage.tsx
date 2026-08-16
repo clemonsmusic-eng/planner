@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { FormField } from '../components/FormField';
 import { SelectField } from '../components/SelectField';
+import { contactSummary, emptyContactDetails, projectsUsingContact } from '../lib/contacts';
 import type { CrmContact } from '../types';
 
 /**
@@ -14,23 +15,12 @@ import type { CrmContact } from '../types';
  * recur across every move at a community.
  */
 
-export const emptyCrmContact = (): CrmContact => ({
+const emptyCrmContact = (): CrmContact => ({
+  ...emptyContactDetails(),
   id: crypto.randomUUID(),
-  contactType: '',
-  company: '',
-  name: '',
-  workPhone: '',
-  cellPhone: '',
-  email: '',
-  serviceDescription: '',
-  notes: '',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
-
-/** A one-line summary for a collapsed row and for the picker on the Input tab. */
-export const contactSummary = (c: { company: string; name: string }) =>
-  [c.company, c.name].filter(Boolean).join(' · ') || 'Untitled contact';
 
 export function CrmPage() {
   const { state, dispatch } = useApp();
@@ -58,6 +48,9 @@ export function CrmPage() {
         contactSummary(a).localeCompare(contactSummary(b))
     );
   }, [state.crmContacts, query]);
+
+  /** The projects that would break if this entry went. */
+  const usedBy = (id: string) => projectsUsingContact(state.projects, id);
 
   function write(contacts: CrmContact[]) {
     dispatch({ type: 'UPDATE_CRM_CONTACTS', contacts });
@@ -184,7 +177,22 @@ export function CrmPage() {
 
                   <div className="pt-1">
                     {confirmDelete === contact.id ? (
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
+                        {/*
+                          Projects link to this entry rather than copying it, so
+                          deleting it breaks those rows. Named before it happens.
+                        */}
+                        {usedBy(contact.id).length > 0 && (
+                          <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
+                            Used by {usedBy(contact.id).length} project
+                            {usedBy(contact.id).length === 1 ? '' : 's'} (
+                            {usedBy(contact.id)
+                              .map((p) => p.inputs.clientName || 'Untitled')
+                              .join(', ')}
+                            ). Deleting leaves those rows pointing at nothing.
+                          </p>
+                        )}
+                        <div className="flex gap-2">
                         <button
                           onClick={() => setConfirmDelete(null)}
                           className="flex-1 py-2.5 rounded-xl border border-ios-gray-300 text-ios-gray-600 text-sm font-semibold"
@@ -200,6 +208,7 @@ export function CrmPage() {
                         >
                           Delete Contact
                         </button>
+                        </div>
                       </div>
                     ) : (
                       <button

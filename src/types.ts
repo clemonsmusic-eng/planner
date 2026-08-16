@@ -324,8 +324,14 @@ export interface SuggestedDates {
  * each project, because the same handful of people recur across every job at a
  * community.
  */
-export interface CrmContact {
+export interface CrmContact extends ContactDetails {
   id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The fields that describe a contact, wherever it is kept. */
+export interface ContactDetails {
   /** From the CRM Contact Type list in Settings, so it stays editable. */
   contactType: string;
   company: string;
@@ -335,29 +341,23 @@ export interface CrmContact {
   email: string;
   serviceDescription: string;
   notes: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
  * A contact attached to one project.
  *
- * A copy rather than a pointer. The CRM entry can be edited or deleted long
- * after a job is agreed, and neither should quietly rewrite what a project
- * recorded — `crmId` only says where it came from, so the CRM can be offered
- * as the source of an update rather than being one.
+ * A link, not a copy: a row with a `crmId` reads through to the CRM entry, so
+ * correcting a phone number once fixes it on every job that firm is on. The
+ * price is that the CRM is the single record — deleting an entry that projects
+ * point at is warned about rather than done quietly.
+ *
+ * `details` is only filled in for a one-off, kept on this project because it
+ * was deliberately not filed in the book.
  */
 export interface ProjectContact {
   id: string;
   crmId: string | null;
-  contactType: string;
-  company: string;
-  name: string;
-  workPhone: string;
-  cellPhone: string;
-  email: string;
-  serviceDescription: string;
-  notes: string;
+  details?: ContactDetails;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
@@ -538,8 +538,14 @@ export interface SupplyItem {
  * each project, because the same handful of people recur across every job at a
  * community.
  */
-export interface CrmContact {
+export interface CrmContact extends ContactDetails {
   id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The fields that describe a contact, wherever it is kept. */
+export interface ContactDetails {
   /** From the CRM Contact Type list in Settings, so it stays editable. */
   contactType: string;
   company: string;
@@ -549,29 +555,23 @@ export interface CrmContact {
   email: string;
   serviceDescription: string;
   notes: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
  * A contact attached to one project.
  *
- * A copy rather than a pointer. The CRM entry can be edited or deleted long
- * after a job is agreed, and neither should quietly rewrite what a project
- * recorded — `crmId` only says where it came from, so the CRM can be offered
- * as the source of an update rather than being one.
+ * A link, not a copy: a row with a `crmId` reads through to the CRM entry, so
+ * correcting a phone number once fixes it on every job that firm is on. The
+ * price is that the CRM is the single record — deleting an entry that projects
+ * point at is warned about rather than done quietly.
+ *
+ * `details` is only filled in for a one-off, kept on this project because it
+ * was deliberately not filed in the book.
  */
 export interface ProjectContact {
   id: string;
   crmId: string | null;
-  contactType: string;
-  company: string;
-  name: string;
-  workPhone: string;
-  cellPhone: string;
-  email: string;
-  serviceDescription: string;
-  notes: string;
+  details?: ContactDetails;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────

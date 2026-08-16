@@ -2,42 +2,20 @@ import { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { FormField } from './FormField';
 import { SelectField } from './SelectField';
-import { contactSummary, emptyCrmContact } from '../pages/CrmPage';
-import type { CrmContact, ProjectContact } from '../types';
+import { contactSummary, emptyContactDetails, resolveContact } from '../lib/contacts';
+import type { ContactDetails, CrmContact, ProjectContact } from '../types';
 
 /**
  * The people a project goes through.
  *
- * Contacts are copied onto the project rather than pointed at, so an edit or a
- * deletion in the CRM months later cannot quietly rewrite what a job recorded.
- * `crmId` only remembers where one came from.
+ * A row links to the CRM rather than copying it, so correcting a phone number
+ * once fixes it on every job that firm is on. Editing a linked row here writes
+ * straight back to the book — which is said on the row, because an edit made
+ * inside one project changing every other one is not something to discover.
+ *
+ * A one-off — a contact deliberately not filed in the book — keeps its details
+ * on the project instead, and edits only itself.
  */
-
-const blankContact = (): ProjectContact => ({
-  id: crypto.randomUUID(),
-  crmId: null,
-  contactType: '',
-  company: '',
-  name: '',
-  workPhone: '',
-  cellPhone: '',
-  email: '',
-  serviceDescription: '',
-  notes: '',
-});
-
-const fromCrm = (c: CrmContact): ProjectContact => ({
-  id: crypto.randomUUID(),
-  crmId: c.id,
-  contactType: c.contactType,
-  company: c.company,
-  name: c.name,
-  workPhone: c.workPhone,
-  cellPhone: c.cellPhone,
-  email: c.email,
-  serviceDescription: c.serviceDescription,
-  notes: c.notes,
-});
 
 export function ProjectContacts({
   contacts,
@@ -48,8 +26,29 @@ export function ProjectContacts({
   onChange: (contacts: ProjectContact[]) => void;
   disabled?: boolean;
 }) {
+  const { state, dispatch } = useApp();
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+
+  /** An edit goes to the book for a linked row, and to the project otherwise. */
+  function edit(row: ProjectContact, patch: Partial<ContactDetails>) {
+    if (row.crmId) {
+      dispatch({
+        type: 'UPDATE_CRM_CONTACTS',
+        contacts: state.crmContacts.map((c) =>
+          c.id === row.crmId ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c
+        ),
+      });
+      return;
+    }
+    onChange(
+      contacts.map((c) =>
+        c.id === row.id
+          ? { ...c, details: { ...(c.details ?? emptyContactDetails()), ...patch } }
+          : c
+      )
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -59,45 +58,51 @@ export function ProjectContacts({
         </p>
       )}
 
-      {contacts.map((contact) => (
-        <div key={contact.id} className="rounded-xl border border-ios-gray-200 overflow-hidden">
-          <div className="flex items-center gap-2 bg-ios-gray-50 px-3 py-2">
-            <button
-              type="button"
-              onClick={() => setOpenId((id) => (id === contact.id ? null : contact.id))}
-              aria-expanded={openId === contact.id}
-              className="flex-1 min-w-0 text-left"
-            >
-              <p className="text-sm font-semibold text-teal-900 truncate">{contactSummary(contact)}</p>
-              <p className="text-xs text-ios-gray-500 truncate">
-                {contact.contactType || 'No type'}
-                {contact.crmId ? ' · from CRM' : ''}
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(contacts.filter((c) => c.id !== contact.id))}
-              aria-label={`Remove ${contactSummary(contact)}`}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
-          </div>
-
-          {openId === contact.id && (
-            <div className="px-3 py-3">
-              <ContactFields
-                value={contact}
-                onChange={(patch) =>
-                  onChange(contacts.map((c) => (c.id === contact.id ? { ...c, ...patch } : c)))
-                }
-              />
+      {contacts.map((row) => {
+        const { details, missing, linked } = resolveContact(row, state.crmContacts);
+        return (
+          <div key={row.id} className="rounded-xl border border-ios-gray-200 overflow-hidden">
+            <div className="flex items-center gap-2 bg-ios-gray-50 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setOpenId((id) => (id === row.id ? null : row.id))}
+                aria-expanded={openId === row.id}
+                className="flex-1 min-w-0 text-left"
+              >
+                <p className="text-sm font-semibold text-teal-900 truncate">
+                  {missing ? 'Contact removed from the CRM' : contactSummary(details)}
+                </p>
+                <p className="text-xs text-ios-gray-500 truncate">
+                  {missing
+                    ? 'Remove this row, or add the contact back to the CRM'
+                    : `${details.contactType || 'No type'}${linked ? ' · linked to the CRM' : ' · one-off'}`}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange(contacts.filter((c) => c.id !== row.id))}
+                aria-label={`Remove ${contactSummary(details)}`}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
             </div>
-          )}
-        </div>
-      ))}
+
+            {openId === row.id && !missing && (
+              <div className="px-3 py-3">
+                {linked && (
+                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 mb-3">
+                    This contact lives in the CRM. Changes here update it everywhere it is used.
+                  </p>
+                )}
+                <ContactFields value={details} onChange={(patch) => edit(row, patch)} />
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       <button
         type="button"
@@ -119,12 +124,12 @@ export function ProjectContacts({
 }
 
 /** The editable body of one contact, shared by the row and the new-contact sheet. */
-function ContactFields({
+export function ContactFields({
   value,
   onChange,
 }: {
-  value: Omit<ProjectContact, 'id' | 'crmId'>;
-  onChange: (patch: Partial<ProjectContact>) => void;
+  value: ContactDetails;
+  onChange: (patch: Partial<ContactDetails>) => void;
 }) {
   const { state } = useApp();
   const types = state.lists.find((l) => l.id === 'crm-contact-type')?.items ?? [];
@@ -184,9 +189,9 @@ function ContactFields({
 /**
  * Adding a contact: pick one out of the CRM, or type a new one.
  *
- * A new contact can be filed in the CRM at the same time, which is the only
- * way the book ever fills up — nobody goes to a separate page to enter the
- * mover they are already typing into a job.
+ * A new contact filed in the book comes back as a link, so the project and the
+ * CRM stay one record from the moment it is created. Left unfiled it is a
+ * one-off, kept on this project alone — which is what that choice means now.
  */
 function AddContactSheet({
   onAdd,
@@ -198,7 +203,7 @@ function AddContactSheet({
   const { state, dispatch } = useApp();
   const [mode, setMode] = useState<'crm' | 'new'>(state.crmContacts.length > 0 ? 'crm' : 'new');
   const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState<ProjectContact>(blankContact);
+  const [draft, setDraft] = useState<ContactDetails>(emptyContactDetails);
   const [alsoSave, setAlsoSave] = useState(true);
 
   const matches = state.crmContacts.filter((c) => {
@@ -208,20 +213,17 @@ function AddContactSheet({
   });
 
   function addNew() {
-    onAdd(draft);
     if (alsoSave) {
       const saved: CrmContact = {
-        ...emptyCrmContact(),
-        contactType: draft.contactType,
-        company: draft.company,
-        name: draft.name,
-        workPhone: draft.workPhone,
-        cellPhone: draft.cellPhone,
-        email: draft.email,
-        serviceDescription: draft.serviceDescription,
-        notes: draft.notes,
+        ...draft,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       dispatch({ type: 'UPDATE_CRM_CONTACTS', contacts: [...state.crmContacts, saved] });
+      onAdd({ id: crypto.randomUUID(), crmId: saved.id });
+    } else {
+      onAdd({ id: crypto.randomUUID(), crmId: null, details: draft });
     }
     onClose();
   }
@@ -283,7 +285,7 @@ function AddContactSheet({
                       key={c.id}
                       type="button"
                       onClick={() => {
-                        onAdd(fromCrm(c));
+                        onAdd({ id: crypto.randomUUID(), crmId: c.id });
                         onClose();
                       }}
                       className="w-full text-left rounded-xl border border-ios-gray-200 px-3 py-2.5 active:bg-ios-gray-50 lg:hover:bg-ios-gray-50"
@@ -309,9 +311,11 @@ function AddContactSheet({
                   className="w-5 h-5 flex-shrink-0 accent-teal-600"
                 />
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-teal-900">Also add to the CRM</span>
+                  <span className="block text-sm font-semibold text-teal-900">Add to the CRM</span>
                   <span className="block text-xs text-ios-gray-500">
-                    So the next project can pull them in rather than retyping.
+                    {alsoSave
+                      ? 'Filed in the book and linked, so every project stays in step.'
+                      : 'Kept on this project alone.'}
                   </span>
                 </span>
               </label>
