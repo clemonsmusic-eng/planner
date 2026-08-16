@@ -10,6 +10,8 @@ import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
 import { totalBudgetedHours } from '../lib/budgets';
+import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
+import { useIsWideLayout } from '../lib/useMediaQuery';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType, ProjectInputs } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -83,6 +85,7 @@ export function SchedulePage() {
   const draft = state.scheduleDraft?.id === storedProject?.id ? state.scheduleDraft : null;
   const activeProject = draft ?? storedProject;
   const isDirty = !!draft;
+  const scheduleLocked = !!activeProject?.inputs.scheduleLocked;
 
   /** Route an edit into the draft, starting one from the stored project. */
   function edit(e: ScheduleEdit) {
@@ -104,10 +107,37 @@ export function SchedulePage() {
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [overrideDate, setOverrideDate] = useState<string | null>(null);
-  const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
+  // No phaseId means the whole day moves; the header button acts on the date.
+  const [dateMovePicker, setDateMovePicker] = useState<{ phaseId?: string; originalDate: string } | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
   const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
+  const [copyPicker, setCopyPicker] = useState<{ phaseId?: string; fromDate: string; label: string } | null>(null);
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
+
+  /*
+   * The wide layout puts a month calendar beside the list and lets a shift be
+   * dragged onto a day. A drop re-dates the shift and touches nothing else —
+   * the crew, hours, roles and note all come across untouched.
+   */
+  const isWide = useIsWideLayout();
+  const { drag, dragHandle } = useShiftDrag(isWide && !scheduleLocked, (payload, toDate) =>
+    edit({ kind: 'moveShift', fromDate: payload.date, toDate, phaseId: payload.phaseId })
+  );
+  const [focusDate, setFocusDate] = useState<string | null>(null);
+
+  /** Clicking a day in the calendar opens it in the list and scrolls it in. */
+  function revealDay(date: string) {
+    setFocusDate(date);
+    setCollapsedDays((prev) => {
+      if (!prev.has(date)) return prev;
+      const next = new Set(prev);
+      next.delete(date);
+      return next;
+    });
+    requestAnimationFrame(() =>
+      document.getElementById(`sched-day-${date}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    );
+  }
 
   if (!activeProject) {
     return (
@@ -133,7 +163,6 @@ export function SchedulePage() {
   }
 
   const schedule = activeProject.schedule;
-  const scheduleLocked = !!activeProject.inputs.scheduleLocked;
   const budgetHours = totalBudgetedHours(activeProject.inputs.phaseBudgets);
   const budgetPct = budgetHours > 0 ? Math.round(((schedule?.totalScheduledHours ?? 0) / budgetHours) * 100) : 0;
 
@@ -345,7 +374,25 @@ export function SchedulePage() {
           the schedule lock has to mean. It is the scroll container itself
           because Chromium stops propagating disabled through display:contents.
         */}
-        <fieldset disabled={scheduleLocked} className={`flex-1 overflow-y-auto min-w-0 ${scheduleLocked ? 'opacity-60' : ''}`}>
+        <fieldset
+          disabled={scheduleLocked}
+          className={`flex-1 min-w-0 flex flex-col lg:flex-row overflow-hidden ${scheduleLocked ? 'opacity-60' : ''}`}
+        >
+          {/* Calendar rail — wide layout only; the phone keeps the plain list. */}
+          {schedule && (
+            <div className="hidden lg:block lg:w-[360px] xl:w-[400px] flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50">
+              <ScheduleCalendar
+                days={schedule.days}
+                activeDate={focusDate}
+                onPickDate={revealDay}
+                dropDate={drag?.over ?? null}
+                dragging={!!drag}
+                disabled={scheduleLocked}
+              />
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto min-w-0">
           {!schedule ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center">
               <p className="text-ios-gray-600 text-sm">No schedule generated yet.</p>
@@ -376,12 +423,18 @@ export function SchedulePage() {
                   onToggle={() => toggleDay(day.date)}
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
                   onOverride={() => setOverrideDate(day.date)}
-                  onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
+                  onDateChange={() => setDateMovePicker({ originalDate: day.date })}
+                  onCopyDay={() => setCopyPicker({ fromDate: day.date, label: day.label })}
+                  onCopyShift={(phaseId, phaseName) =>
+                    setCopyPicker({ phaseId, fromDate: day.date, label: `${phaseName} · ${day.label}` })
+                  }
+                  dragHandle={dragHandle}
                   memberMap={memberMap}
                   onPickMember={setMemberPickerEntry}
                   onAddRole={(phaseId) => edit({ kind: 'addRole', date: day.date, phaseId, role: 'Specialist' })}
                   onRemoveRole={(entryId) => edit({ kind: 'removeRole', entryId })}
                   onMoveShift={(phaseId) => setDateMovePicker({ phaseId, originalDate: day.date })}
+                  highlighted={focusDate === day.date}
                   onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
                   noteFor={(phaseId) =>
                     (activeProject.inputs.shiftNotes ?? []).find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? ''
@@ -395,8 +448,11 @@ export function SchedulePage() {
               {isDirty && <FloatingSaveSpacer />}
             </div>
           )}
+          </div>
         </fieldset>
       </div>
+
+      <DragGhost drag={drag} />
 
       {/* Filter Sheet */}
       {showFilterSheet && (
@@ -432,26 +488,37 @@ export function SchedulePage() {
 
       {dateMovePicker && (
         <DateMoveSheet
+          title="Move to Different Date"
+          confirmLabel="Move"
           originalDate={dateMovePicker.originalDate}
-          // Moves this phase only — a day may hold a second shift that stays put.
-          onMove={(newDate) => {
-            const existing = activeProject.inputs.phaseDateMoves ?? [];
-            replan({
-              ...activeProject.inputs,
-              phaseDateMoves: [
-                ...existing.filter(
-                  (m) => !(m.phaseId === dateMovePicker.phaseId && m.originalDate === dateMovePicker.originalDate)
-                ),
-                {
-                  id: crypto.randomUUID(),
-                  phaseId: dateMovePicker.phaseId,
-                  originalDate: dateMovePicker.originalDate,
-                  newDate,
-                },
-              ],
-            });
-          }}
+          // Re-dates the entries as they stand rather than regenerating, so a
+          // move keeps the crew and hours already set on the shift.
+          onMove={(newDate) =>
+            edit({
+              kind: 'moveShift',
+              fromDate: dateMovePicker.originalDate,
+              toDate: newDate,
+              phaseId: dateMovePicker.phaseId,
+            })
+          }
           onClose={() => setDateMovePicker(null)}
+        />
+      )}
+
+      {copyPicker && (
+        <DateMoveSheet
+          title={`Copy ${copyPicker.label}`}
+          confirmLabel="Copy"
+          originalDate={copyPicker.fromDate}
+          onMove={(newDate) =>
+            edit({
+              kind: 'duplicateShift',
+              fromDate: copyPicker.fromDate,
+              toDate: newDate,
+              phaseId: copyPicker.phaseId,
+            })
+          }
+          onClose={() => setCopyPicker(null)}
         />
       )}
 
@@ -507,6 +574,10 @@ function DaySection({
   onRemoveRole,
   onMoveShift,
   onRemoveShift,
+  onCopyDay,
+  onCopyShift,
+  dragHandle,
+  highlighted,
   noteFor,
   onSetNote,
   onSetHours,
@@ -523,6 +594,10 @@ function DaySection({
   onRemoveRole: (entryId: string) => void;
   onMoveShift: (phaseId: string) => void;
   onRemoveShift: (phaseId: string, phaseName: string) => void;
+  onCopyDay: () => void;
+  onCopyShift: (phaseId: string, phaseName: string) => void;
+  dragHandle: (payload: DragPayload) => Record<string, unknown>;
+  highlighted: boolean;
   noteFor: (phaseId: string) => string;
   onSetNote: (phaseId: string, note: string) => void;
   onSetHours: (phaseId: string, hours: number) => void;
@@ -534,11 +609,11 @@ function DaySection({
   const visitTypes = [...new Map(day.entries.map((e) => [e.phaseId, e.phaseName])).values()];
 
   return (
-    <div>
+    <div id={`sched-day-${day.date}`} className={highlighted ? 'ring-2 ring-inset ring-teal-400 rounded-lg' : ''}>
       {/* Sticky section header */}
       <div
         className="sticky top-0 z-10 w-full flex items-center px-4 py-2.5 bg-ios-gray-100 border-b border-ios-gray-200"
-        style={{ top: '0' }}
+        {...dragHandle({ date: day.date, label: day.label })}
       >
         <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -576,6 +651,20 @@ function DaySection({
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
           </svg>
         </button>
+        {/*
+          Copy sits on the date line because that is what a copy changes: the
+          same shifts, run again on another day.
+        */}
+        <button
+          onClick={onCopyDay}
+          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
+          aria-label={`Copy ${day.label} to another date`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.62V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+            <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+          </svg>
+        </button>
         <button
           onClick={onDateChange}
           className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
@@ -591,7 +680,11 @@ function DaySection({
         <div className="px-4 py-2 space-y-2">
           {groupEntriesByPhase(day.entries).map(({ phaseName, entries: phaseEntries }) => (
             <Card key={phaseName} className="overflow-hidden">
-              <div className="px-3 py-2 bg-ios-gray-100 border-b border-ios-gray-200">
+              {/* The phase bar doubles as the grab handle for this one shift. */}
+              <div
+                className="px-3 py-2 bg-ios-gray-100 border-b border-ios-gray-200"
+                {...dragHandle({ date: day.date, phaseId: phaseEntries[0].phaseId, label: `${phaseName} · ${day.label}` })}
+              >
                 <p className="text-xs font-bold text-teal-700 uppercase tracking-wide">{phaseName}</p>
               </div>
               <div className="divide-y divide-ios-gray-100">
@@ -615,6 +708,16 @@ function DaySection({
                   </svg>
                 </button>
                 <button
+                  onClick={() => onCopyShift(phaseEntries[0].phaseId, phaseName)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
+                  aria-label={`Copy the ${phaseName} shift to another date`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.62V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                    <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+                  </svg>
+                </button>
+                <button
                   onClick={() => onRemoveShift(phaseEntries[0].phaseId, phaseName)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
                   aria-label={`Remove the ${phaseName} shift`}
@@ -624,7 +727,9 @@ function DaySection({
                   </svg>
                 </button>
                 <div className="flex-1 flex items-center justify-end gap-1.5 pr-1 min-w-0">
-                  <span className="text-xs text-ios-gray-500 truncate">
+                  {/* Hidden in the narrow band of the split layout, where the
+                      calendar rail leaves this row no room for it. */}
+                  <span className="text-xs text-ios-gray-500 whitespace-nowrap lg:hidden xl:inline">
                     {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
                   </span>
                   {/*
@@ -1047,10 +1152,14 @@ function FilterOption({
 
 function DateMoveSheet({
   originalDate,
+  title,
+  confirmLabel,
   onMove,
   onClose,
 }: {
   originalDate: string;
+  title: string;
+  confirmLabel: string;
   onMove: (newDate: string) => void;
   onClose: () => void;
 }) {
@@ -1062,7 +1171,7 @@ function DateMoveSheet({
         className="fixed bottom-0 left-0 right-0 lg:inset-auto lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-full lg:max-w-lg z-[61] bg-white rounded-t-2xl lg:rounded-2xl shadow-xl px-4 py-5"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}
       >
-        <h3 className="font-bold text-teal-900 mb-4">Move to Different Date</h3>
+        <h3 className="font-bold text-teal-900 mb-4">{title}</h3>
         <input
           type="date"
           value={newDate}
@@ -1075,7 +1184,7 @@ function DateMoveSheet({
             onClick={() => { if (newDate && newDate !== originalDate) onMove(newDate); onClose(); }}
             className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold"
           >
-            Move
+            {confirmLabel}
           </button>
         </div>
       </div>
