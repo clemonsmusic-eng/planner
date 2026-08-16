@@ -42,7 +42,22 @@ export default defineConfig({
       },
       workbox: {
         // woff2 included so the brand type is present offline, not just online.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // The PDF reader is only used when importing a PDF, and between the
+        // library and its worker it is larger than the whole rest of the app.
+        // Precaching it would triple what every install downloads to buy an
+        // occasional feature, so it is fetched on demand and cached then.
+        globIgnores: ['**/pdf-*.js', '**/pdf.worker*', '**/__vite-browser-external*'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/assets\/(pdf-|pdf\.worker).*\.m?js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pdf-reader',
+              expiration: { maxEntries: 4 },
+            },
+          },
+        ],
       }
     })
   ],
