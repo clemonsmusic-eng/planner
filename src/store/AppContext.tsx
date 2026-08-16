@@ -5,6 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
+import { canOpenTab, fallbackTab } from '../lib/access';
 import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
 import {
   loadProjects, saveProjects,
@@ -18,6 +19,7 @@ import {
   loadSupplyCategories,
   loadShiftTimes, saveShiftTimes, DEFAULT_SHIFT_TIMES, saveSupplyCategories,
   loadServices, saveServices,
+  loadAccess, saveAccess, type AccessState,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
@@ -61,6 +63,7 @@ type Action =
   | { type: 'COMMIT_SCHEDULE_DRAFT' }
   /** Swap a project wholesale — what an import produces is a whole project. */
   | { type: 'REPLACE_PROJECT'; project: Project }
+  | { type: 'SET_ACCESS'; access: AccessState }
   | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
@@ -305,6 +308,16 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, scheduleDraft: action.project };
 
     /** Write the draft over its project — the only path from draft to stored. */
+    case 'SET_ACCESS': {
+      saveAccess(action.access);
+      // Dropping to a narrower level while standing on a tab it can't open
+      // would leave a blank screen, so the move takes the view with it.
+      const activeTab = canOpenTab(action.access.level, state.activeTab)
+        ? state.activeTab
+        : fallbackTab(action.access.level);
+      return { ...state, access: action.access, activeTab };
+    }
+
     case 'REPLACE_PROJECT': {
       const projects = state.projects.map((p) => (p.id === action.project.id ? action.project : p));
       saveProjects(projects);
@@ -354,6 +367,7 @@ const initialState: AppState = {
   shiftTimes: DEFAULT_SHIFT_TIMES,
   services: [],
   scheduleDraft: null,
+  access: { level: 'admin', passcode: '' },
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -394,6 +408,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const supplyCategories = loadSupplyCategories();
     const shiftTimes = loadShiftTimes();
     const services = loadServices();
+    const access = loadAccess();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -408,6 +423,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supplyCategories,
         shiftTimes,
         services,
+        access,
         // Nothing is opened for you. Auto-selecting the first stored project
         // made whichever one happened to be first look like a default.
         activeProjectId: null,

@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import type { PhaseTemplate, RoleType } from '../types';
+import { useEffect, useState } from 'react';
+import type { PhaseTemplate, Project, RoleType, TeamMember } from '../types';
 import type { NewShift } from '../store/AppContext';
 import { toISODate } from '../lib/dateUtils';
+import { autoAssignCrew, candidatesFor, membersBookedOn } from '../lib/crewMatching';
 
 const ROLE_OPTIONS: RoleType[] = ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'];
 const SHIFT_OPTIONS: NewShift['shift'][] = ['AM', 'PM', 'Full Day'];
@@ -31,11 +32,15 @@ function rolesForTemplate(tpl: PhaseTemplate): RoleType[] {
 export function AddShiftSheet({
   phaseTemplates,
   defaultDate,
+  teamMembers,
+  projects,
   onAdd,
   onClose,
 }: {
   phaseTemplates: PhaseTemplate[];
   defaultDate: string;
+  teamMembers: TeamMember[];
+  projects: Project[];
   onAdd: (shift: NewShift) => void;
   onClose: () => void;
 }) {
@@ -46,6 +51,16 @@ export function AddShiftSheet({
   const [shift, setShift] = useState<NewShift['shift']>(initial ? shiftForTemplate(initial) : 'AM');
   const [hours, setHours] = useState(initial?.minHours ?? 4);
   const [roles, setRoles] = useState<RoleType[]>(initial ? rolesForTemplate(initial) : ['PM', 'Specialist']);
+  /** Who works each role, parallel to `roles`. Null is an open slot. */
+  const [assigned, setAssigned] = useState<(string | null)[]>([]);
+  const [autoNote, setAutoNote] = useState<string | null>(null);
+
+  // Changing the date, shift or phase invalidates every pick: availability and
+  // phase approval are exactly what those three decide.
+  useEffect(() => {
+    setAssigned([]);
+    setAutoNote(null);
+  }, [date, shift, phaseKey]);
 
   const isCustom = phaseKey === CUSTOM_PHASE;
   const template = phaseTemplates.find((t) => t.id === phaseKey);
@@ -65,6 +80,51 @@ export function AddShiftSheet({
 
   function setRoleAt(index: number, role: RoleType) {
     setRoles((rs) => rs.map((r, i) => (i === index ? role : r)));
+    // The person who qualified for the old role may not qualify for the new one.
+    setAssigned((as) => as.map((a, i) => (i === index ? null : a)));
+    setAutoNote(null);
+  }
+
+  const assignedFor = (i: number) => assigned[i] ?? null;
+
+  /** Crew the whole shift the way the generator would. */
+  function autoAssign() {
+    const { assigned: picks, unfilled } = autoAssignCrew({
+      roles,
+      phaseId: isCustom ? phaseKey : template?.id ?? phaseKey,
+      date,
+      shift,
+      teamMembers,
+      projects,
+    });
+    setAssigned(picks.map((m) => m?.id ?? null));
+    const filled = picks.filter(Boolean).length;
+    setAutoNote(
+      unfilled.length === 0
+        ? `Assigned ${filled} of ${roles.length}.`
+        : `Assigned ${filled} of ${roles.length}. Nobody approved and free for: ${[...new Set(unfilled)].join(', ')}.`
+    );
+  }
+
+  /**
+   * Who can still be picked for one slot.
+   *
+   * Anyone already on this shift is excluded, as is anyone booked elsewhere
+   * that day — the same rule auto-assign follows, so the menu never offers a
+   * choice auto-assign would have refused to make.
+   */
+  function optionsFor(index: number) {
+    const onThisShift = new Set(assigned.filter((a, i): a is string => !!a && i !== index));
+    const elsewhere = membersBookedOn(projects, date, shift);
+    for (const id of elsewhere) onThisShift.add(id);
+    return candidatesFor(
+      roles[index],
+      isCustom ? phaseKey : template?.id ?? phaseKey,
+      date,
+      shift,
+      teamMembers,
+      onThisShift
+    ).map((c) => c.member);
   }
 
   return (
@@ -148,17 +208,58 @@ export function AddShiftSheet({
           {/* Crew */}
           <Field label={`Crew — ${roles.length} ${roles.length === 1 ? 'role' : 'roles'}`}>
             <div className="space-y-2">
+              <button
+                onClick={autoAssign}
+                disabled={!date || !phaseName}
+                className="w-full min-h-[44px] rounded-xl bg-teal-50 text-teal-700 text-sm font-semibold active:bg-teal-100 lg:hover:bg-teal-100 disabled:opacity-40 flex items-center justify-center gap-1.5"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M10 1a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 1zM5.05 3.05a.75.75 0 011.06 0l1.062 1.06A.75.75 0 116.11 5.173L5.05 4.11a.75.75 0 010-1.06zm9.9 0a.75.75 0 010 1.06l-1.06 1.062a.75.75 0 01-1.062-1.061l1.061-1.06a.75.75 0 011.06 0zM10 6a4 4 0 100 8 4 4 0 000-8zM1 10a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5A.75.75 0 011 10zm15 0a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5A.75.75 0 0116 10z" />
+                </svg>
+                Auto-assign Crew
+              </button>
+              {autoNote && <p className="text-xs text-ios-gray-600">{autoNote}</p>}
+
               {roles.map((role, i) => (
                 <div key={i} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 space-y-1.5">
                   <select
                     value={role}
                     onChange={(e) => setRoleAt(i, e.target.value as RoleType)}
-                    className="flex-1 min-h-[44px] rounded-xl border border-ios-gray-300 px-3 text-base bg-white appearance-none"
+                    className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 px-3 text-base bg-white appearance-none"
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
                   </select>
+                  <select
+                    value={assignedFor(i) ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value || null;
+                      setAssigned((as) => {
+                        const next = [...as];
+                        while (next.length < roles.length) next.push(null);
+                        next[i] = id;
+                        return next;
+                      });
+                      setAutoNote(null);
+                    }}
+                    aria-label={`Who works role ${i + 1}`}
+                    className="w-full min-h-[40px] rounded-xl border border-ios-gray-300 px-3 text-sm bg-white appearance-none text-teal-900"
+                  >
+                    <option value="">Unassigned</option>
+                    {/* A pick made before something changed stays selectable
+                        rather than silently resetting to Unassigned. */}
+                    {assignedFor(i) && !optionsFor(i).some((m) => m.id === assignedFor(i)) && (
+                      <option value={assignedFor(i)!}>
+                        {teamMembers.find((m) => m.id === assignedFor(i))?.name ?? 'Assigned'} (unavailable)
+                      </option>
+                    )}
+                    {optionsFor(i).map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                  </div>
                   <button
                     onClick={() => setRoles((rs) => rs.filter((_, idx) => idx !== i))}
                     disabled={roles.length <= 1}
@@ -172,7 +273,7 @@ export function AddShiftSheet({
                 </div>
               ))}
               <button
-                onClick={() => setRoles((rs) => [...rs, 'Specialist'])}
+                onClick={() => { setRoles((rs) => [...rs, 'Specialist']); setAutoNote(null); }}
                 className="w-full min-h-[44px] rounded-xl border border-dashed border-teal-300 text-teal-600 text-sm font-semibold active:bg-teal-50 lg:hover:bg-teal-50"
               >
                 + Add Role
@@ -181,7 +282,8 @@ export function AddShiftSheet({
           </Field>
 
           <p className="text-xs text-ios-gray-500">
-            Roles are added unassigned — pick who works them on the schedule.
+            Only people approved for this phase role, free that day and not already booked, are offered.
+            A slot left unassigned can be filled on the schedule.
           </p>
         </div>
 
@@ -196,6 +298,7 @@ export function AddShiftSheet({
                 shift,
                 hours,
                 roles,
+                assigned: roles.map((_, i) => assigned[i] ?? null),
               });
               onClose();
             }}

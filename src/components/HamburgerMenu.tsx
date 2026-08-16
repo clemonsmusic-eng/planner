@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ACCESS_LABELS, can, canOpenTab } from '../lib/access';
+import { AccessSheet } from './AccessSheet';
 import { useMenu } from './MenuContext';
 import { useApp } from '../store/AppContext';
 import { emptyPhaseBudgets } from '../lib/budgets';
@@ -11,6 +13,8 @@ import { NAV_DESTINATIONS } from './navDestinations';
 export function HamburgerMenu() {
   const { isOpen, close } = useMenu();
   const { state, dispatch } = useApp();
+  const level = state.access.level;
+  const [accessOpen, setAccessOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [draftOpen, setDraftOpen] = useState(false);
   // Open by default — the active list is what the menu is usually for.
@@ -256,7 +260,7 @@ export function HamburgerMenu() {
             )}
 
             {/* New project button */}
-            <button
+            {can(level, 'editProjects') && <button
               onClick={createProject}
               className="w-full flex items-center gap-3 px-3 py-3 mt-1 rounded-xl text-left text-teal-600 active:bg-teal-50 lg:hover:bg-teal-50"
             >
@@ -264,13 +268,13 @@ export function HamburgerMenu() {
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
               </svg>
               <span className="text-sm font-semibold">New Project</span>
-            </button>
+            </button>}
           </div>
         </div>
 
         {/* Destinations — pinned to the bottom, directly above the hamburger */}
         <div className="flex-shrink-0 border-t border-ios-gray-200 p-2 space-y-0.5">
-          {NAV_DESTINATIONS.map(({ tab, label, icon }) => {
+          {NAV_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map(({ tab, label, icon }) => {
             const isCurrent = state.activeTab === tab;
             return (
               <button
@@ -288,8 +292,22 @@ export function HamburgerMenu() {
               </button>
             );
           })}
+          <button
+            onClick={() => setAccessOpen(true)}
+            tabIndex={isOpen ? 0 : -1}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-teal-900 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
+          >
+            <span className="w-5 h-5 flex-shrink-0 text-ios-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+              </svg>
+            </span>
+            <span className="text-sm font-semibold flex-1 min-w-0">Access</span>
+            <span className="text-xs text-ios-gray-500 flex-shrink-0">{ACCESS_LABELS[level]}</span>
+          </button>
         </div>
       </div>
+      {accessOpen && <AccessSheet onClose={() => setAccessOpen(false)} />}
     </>
   );
 }

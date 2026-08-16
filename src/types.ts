@@ -113,6 +113,11 @@ export interface ManualShift {
   shift: 'AM' | 'PM' | 'Full Day';
   hours: number;
   roles: RoleType[];
+  /**
+   * Who works each role, parallel to `roles`. A null is an open slot, which is
+   * what every role used to be — the shift sheet can now crew itself.
+   */
+  assigned?: (string | null)[];
 }
 
 /**
@@ -525,4 +530,6 @@ export interface AppState {
    * progress, not a saved plan.
    */
   scheduleDraft: Project | null;
+  /** Which level this device is signed in at, and the passcode guarding it. */
+  access: { level: 'admin' | 'pm' | 'team'; passcode: string };
 }

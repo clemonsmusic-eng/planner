@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { canOpenTab } from '../lib/access';
 import { useApp } from '../store/AppContext';
 import { useMenu } from './MenuContext';
 import { useAddShift } from './AddShiftContext';
@@ -63,6 +64,7 @@ const VSEP = () => (
 
 export function Navigation() {
   const { state, dispatch } = useApp();
+  const level = state.access.level;
   const { isOpen: menuOpen, toggle: toggleMenu } = useMenu();
   const addShift = useAddShift();
   const docs = useProjectDocs();
@@ -221,7 +223,7 @@ export function Navigation() {
             }}
           >
             <VSEP />
-            {PROJECT_TABS.map(({ tab, label, icon }) => (
+            {PROJECT_TABS.filter((d) => canOpenTab(level, d.tab)).map(({ tab, label, icon }) => (
               <button
                 key={tab}
                 ref={tab === 'schedule' ? scheduleTabRef : undefined}
@@ -238,7 +240,7 @@ export function Navigation() {
                 </span>
               </button>
             ))}
-            <button
+            {DOC_DESTINATIONS.some((d) => canOpenTab(level, d.tab)) && <button
               onClick={() => { addShift.closeMenu(); docs.toggle(); }}
               aria-expanded={docs.isOpen}
               tabIndex={tabsOpen ? 0 : -1}
@@ -250,7 +252,7 @@ export function Navigation() {
               <span className="text-[9px] font-medium leading-none truncate w-full text-center px-0.5">
                 Files
               </span>
-            </button>
+            </button>}
           </div>
         </div>
 
@@ -320,7 +322,7 @@ export function Navigation() {
           </p>
         </div>
         <div className="p-2 pt-1 space-y-0.5">
-          {DOC_DESTINATIONS.map(({ tab, label, hint, icon }) => {
+          {DOC_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map(({ tab, label, hint, icon }) => {
             const isCurrent = t === tab;
             return (
               <button
