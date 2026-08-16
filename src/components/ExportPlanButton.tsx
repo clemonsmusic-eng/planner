@@ -60,7 +60,15 @@ export function ExportPlanButton({ project, schedule }: { project: Project; sche
       formats={documentFormats(
         PLAN_SECTIONS,
         (included) =>
-          buildPlanDocument(project, schedule, state.teamMembers, state.services, state.shiftTimes, included),
+          buildPlanDocument(
+            project,
+            schedule,
+            state.teamMembers,
+            state.services,
+            state.shiftTimes,
+            state.crmContacts,
+            included
+          ),
         () => buildClientDocument(project, schedule, state.shiftTimes),
         planFileStem(project)
       )}
