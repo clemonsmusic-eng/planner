@@ -62,7 +62,9 @@ export function ProjectListPage() {
 
   function handleSelectProject(project: Project) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id: project.id });
-    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
+    // Opening a project shows the plan, which is what it is for; the Input
+    // tab is where a project is set up, not where it is looked at.
+    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'plan' });
   }
 
   function handleDeleteProject(id: string, e: React.MouseEvent) {

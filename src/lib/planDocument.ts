@@ -271,3 +271,68 @@ export function planFileStem(project: Project): string {
   const base = (project.inputs.clientName || 'project').trim();
   return `${base.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'}-Plan`;
 }
+
+/**
+ * The client-facing document.
+ *
+ * Deliberately not a subset of the internal one. A client is told what is
+ * happening and when — the project, where it is, when the move is, and the
+ * dates and times a crew will be there. Everything else the internal document
+ * carries is the office's working detail: what it costs, how the hours are
+ * budgeted, who is on which shift, what was written on a job note.
+ */
+export function buildClientDocument(
+  project: Project,
+  schedule: ScheduleResult,
+  shiftTimes: ShiftTimeSettings
+): DocumentModel {
+  const { inputs } = project;
+  const client = inputs.clientName || 'Untitled project';
+  const moveDate = schedule.suggestedDates.moveDay || inputs.targetMoveDate;
+
+  // One row per shift, so a day running an AM and a PM crew states both.
+  const rows: string[][] = [];
+  for (const day of schedule.days) {
+    const seen = new Set<string>();
+    for (const entry of day.entries) {
+      if (seen.has(entry.phaseId)) continue;
+      seen.add(entry.phaseId);
+      rows.push([
+        formatDateLabel(day.date),
+        entry.phaseName,
+        entry.shift,
+        shiftTimeRange(entry.shift, entry.hours, shiftTimes).split('–')[0].trim(),
+      ]);
+    }
+  }
+
+  return {
+    title: client,
+    subtitle: [inputs.community, moveDate ? `Move ${formatDateLabel(moveDate)}` : null]
+      .filter(Boolean)
+      .join('  ·  '),
+    blocks: [
+      {
+        kind: 'fields',
+        rows: [
+          ['Project', client],
+          ['Community', dash(inputs.community)],
+          ['Move Date', moveDate ? formatDateLabel(moveDate) : '-'],
+        ],
+      },
+      { kind: 'heading', text: 'Schedule' },
+      rows.length === 0
+        ? { kind: 'paragraph', text: 'No dates scheduled yet.', muted: true }
+        : {
+            kind: 'table',
+            columns: [
+              { header: 'Date', weight: 34 },
+              { header: 'Shift', weight: 36 },
+              { header: 'Type', weight: 14, align: 'center' },
+              { header: 'Start', weight: 16, align: 'center' },
+            ],
+            rows,
+          },
+    ],
+  };
+}

@@ -50,7 +50,9 @@ export function Sidebar() {
 
   function openProject(id: string) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id });
-    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'inputs' });
+    // Opening a project shows the plan, which is what it is for; the Input
+    // tab is where a project is set up, not where it is looked at.
+    dispatch({ type: 'SET_ACTIVE_TAB', tab: 'plan' });
     setSwitcherOpen(false);
   }
 

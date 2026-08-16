@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import { canOpenTab, fallbackTab } from '../lib/access';
+import { DEFAULT_PASSCODES, canOpenTab, fallbackTab } from '../lib/access';
 import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
 import {
   loadProjects, saveProjects,
@@ -367,7 +367,7 @@ const initialState: AppState = {
   shiftTimes: DEFAULT_SHIFT_TIMES,
   services: [],
   scheduleDraft: null,
-  access: { level: 'admin', passcode: '' },
+  access: { level: 'team', passcodes: DEFAULT_PASSCODES },
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────

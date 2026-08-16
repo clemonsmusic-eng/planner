@@ -10,7 +10,7 @@
  * the merge that keeps a stored order valid when entries are added or removed.
  */
 
-export type SettingsGroupKey = 'employees' | 'project' | 'projectVariables' | 'shiftVariables';
+export type SettingsGroupKey = 'employees' | 'project' | 'projectVariables' | 'shiftVariables' | 'access';
 
 /** A `list:<id>` key renders that parameter list; anything else is a panel. */
 export type SettingsSubKey = string;
@@ -45,6 +45,12 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     subs: ['list:flexibility', 'list:priority'],
   },
   {
+    key: 'access',
+    label: 'Access',
+    subtitle: 'Who can reach what on a device',
+    subs: ['passcodes'],
+  },
+  {
     key: 'shiftVariables',
     label: 'Shift Variables',
     subtitle: 'How shifts are shaped and timed',
@@ -63,6 +69,7 @@ export const SUB_LABELS: Record<string, string> = {
   auctionDefaults: 'Auction Defaults',
   communities: 'Communities',
   services: 'Services Contracted',
+  passcodes: 'Passcodes',
   shiftTimes: 'Shift Times',
   templates: 'Task Template',
   'list:move-types': 'Project Types',
