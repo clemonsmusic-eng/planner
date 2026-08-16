@@ -42,7 +42,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     key: 'projectVariables',
     label: 'Project Variables',
     subtitle: 'Scheduling parameters',
-    subs: ['list:flexibility', 'list:priority'],
+    subs: ['list:flexibility', 'list:priority', 'list:crm-contact-type'],
   },
   {
     key: 'access',

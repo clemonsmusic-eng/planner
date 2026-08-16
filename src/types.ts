@@ -247,6 +247,8 @@ export interface ProjectInputs {
   removedShifts?: RemovedShift[];
   /** Per-shift notes, keyed by phase and date. */
   shiftNotes?: ShiftNote[];
+  /** People outside the team this job goes through. */
+  contacts?: ProjectContact[];
 }
 
 /**
@@ -314,6 +316,48 @@ export interface SuggestedDates {
   auctionStart: string | null;
   auctionPickupPrep: string | null;
   auctionPickup: string | null;
+}
+
+/**
+ * Someone outside the team a job goes through — a community's sales office, a
+ * disposal firm, a specialist mover. Kept in one book rather than retyped into
+ * each project, because the same handful of people recur across every job at a
+ * community.
+ */
+export interface CrmContact extends ContactDetails {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The fields that describe a contact, wherever it is kept. */
+export interface ContactDetails {
+  /** From the CRM Contact Type list in Settings, so it stays editable. */
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
+}
+
+/**
+ * A contact attached to one project.
+ *
+ * A link, not a copy: a row with a `crmId` reads through to the CRM entry, so
+ * correcting a phone number once fixes it on every job that firm is on. The
+ * price is that the CRM is the single record — deleting an entry that projects
+ * point at is warned about rather than done quietly.
+ *
+ * `details` is only filled in for a one-off, kept on this project because it
+ * was deliberately not filed in the book.
+ */
+export interface ProjectContact {
+  id: string;
+  crmId: string | null;
+  details?: ContactDetails;
 }
 
 // ─── Project ──────────────────────────────────────────────────────────────────
@@ -488,6 +532,48 @@ export interface SupplyItem {
   consumable: boolean;
 }
 
+/**
+ * Someone outside the team a job goes through — a community's sales office, a
+ * disposal firm, a specialist mover. Kept in one book rather than retyped into
+ * each project, because the same handful of people recur across every job at a
+ * community.
+ */
+export interface CrmContact extends ContactDetails {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The fields that describe a contact, wherever it is kept. */
+export interface ContactDetails {
+  /** From the CRM Contact Type list in Settings, so it stays editable. */
+  contactType: string;
+  company: string;
+  name: string;
+  workPhone: string;
+  cellPhone: string;
+  email: string;
+  serviceDescription: string;
+  notes: string;
+}
+
+/**
+ * A contact attached to one project.
+ *
+ * A link, not a copy: a row with a `crmId` reads through to the CRM entry, so
+ * correcting a phone number once fixes it on every job that firm is on. The
+ * price is that the CRM is the single record — deleting an entry that projects
+ * point at is warned about rather than done quietly.
+ *
+ * `details` is only filled in for a one-off, kept on this project because it
+ * was deliberately not filed in the book.
+ */
+export interface ProjectContact {
+  id: string;
+  crmId: string | null;
+  details?: ContactDetails;
+}
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 export interface Project {
   id: string;
@@ -502,7 +588,7 @@ export interface Project {
 // ─── App State ────────────────────────────────────────────────────────────────
 export type TabName =
   | 'home' | 'projects' | 'inputs' | 'plan' | 'schedule' | 'checklist'
-  | 'settings' | 'calendar'
+  | 'settings' | 'calendar' | 'crm'
   | 'furniture' | 'floorplans' | 'photos'
   | 'supplies' | 'project-supplies';
 
@@ -524,6 +610,8 @@ export interface AppState {
   shiftTimes: ShiftTimeSettings;
   /** The contractable services offered, grouped by category. */
   services: ServiceCategory[];
+  /** The contact book, shared across every project. */
+  crmContacts: CrmContact[];
   /**
    * Uncommitted Schedule tab edits. Held here rather than in the page so they
    * survive switching tabs, and deliberately not persisted — a draft is work in

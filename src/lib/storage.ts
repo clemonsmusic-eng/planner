@@ -1,5 +1,5 @@
 import { DEFAULT_PASSCODES, type AccessLevel, type Passcodes } from './access';
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings, ServiceCategory } from '../types';
+import type { CrmContact, Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings, ServiceCategory } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
@@ -11,6 +11,7 @@ import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
 import { DEFAULT_SUPPLIES, DEFAULT_SUPPLY_CATEGORIES, normalizeSupplies, normalizeCategories } from './supplies';
 import { normalizePhaseBudgets } from './budgets';
+import { normalizeProjectContacts } from './contacts';
 import type { SettingsOrder } from './settingsLayout';
 
 const STORAGE_KEY_PROJECTS         = 'st-planner-projects';
@@ -30,6 +31,7 @@ const STORAGE_KEY_SHIFT_TIMES      = 'st-planner-shift-times';
 const STORAGE_KEY_SETTINGS_ORDER   = 'st-planner-settings-order';
 const STORAGE_KEY_SERVICES         = 'st-planner-services';
 const STORAGE_KEY_ACCESS           = 'st-planner-access';
+const STORAGE_KEY_CRM              = 'st-planner-crm';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,8 @@ export function loadProjects(): Project[] {
         originAddress: p.inputs.originAddress ?? '',
         destinationAddress: p.inputs.destinationAddress ?? '',
         shiftNotes: p.inputs.shiftNotes ?? [],
+        // Contacts were copied onto the project before they were linked to it.
+        contacts: normalizeProjectContacts(p.inputs.contacts),
         // Projects budgeted before the split start empty rather than having
         // their old single figure divided up by guesswork.
         phaseBudgets: normalizePhaseBudgets(p.inputs.phaseBudgets),
@@ -478,5 +482,33 @@ export function saveAccess(access: AccessState): void {
     localStorage.setItem(STORAGE_KEY_ACCESS, JSON.stringify(access));
   } catch {
     /* storage full or blocked; the level simply won't persist */
+  }
+}
+
+
+// ─── CRM ──────────────────────────────────────────────────────────────────────
+
+/**
+ * The contact book. Shared across projects rather than owned by one, which is
+ * the whole point of it — the same community sales office turns up on every
+ * job at that community.
+ */
+export function loadCrmContacts(): CrmContact[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CRM);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((c): c is CrmContact => !!c && typeof c.id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export function saveCrmContacts(contacts: CrmContact[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_CRM, JSON.stringify(contacts));
+  } catch {
+    /* storage full or blocked */
   }
 }

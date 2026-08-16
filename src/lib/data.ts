@@ -315,6 +315,8 @@ export const DEFAULT_LISTS: ListCategory[] = [
   { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },
   { id: 'phase',               name: 'Phase',               items: ['First Visit: Planning', 'Second Visit: Initial Sort & Pack', 'Sort and Pack', 'AM Final Pack & Pre-Move', 'PM Final Pack & Pre-Move', 'AM Move Day', 'PM Move Day', 'Cleanout', 'Pickup Day'] },
   { id: 'priority',            name: 'Priority',            items: ['Urgent', 'High', 'Medium', 'Low'] },
+  // Who a CRM entry is. Drives the Contact Type dropdown on the CRM page.
+  { id: 'crm-contact-type',    name: 'CRM Contact Type',    items: ['Community Sales', 'Community Main', 'Community ED', 'Mover', 'Disposal/Removal', 'Specialized Services'] },
   { id: 'availability-block',  name: 'Availability Block',  items: ['Full Day', 'AM', 'PM', 'Unavailable'] },
   // Shift Type Hours: "ShiftName=hours" — used as sort-phase hour default per person
   { id: 'shift-type-hours',    name: 'Shift Type Hours',    items: ['AM=4', 'PM=4', 'Full Day=8'] },

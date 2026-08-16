@@ -72,24 +72,18 @@ export function Sidebar() {
         {/* Global destinations */}
         <nav className="px-2 space-y-0.5" aria-label="Main">
           {NAV_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
-            <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
+            <SidebarLink
+              key={d.tab}
+              dest={d}
+              current={state.activeTab === d.tab}
+              onClick={() => {
+                // The projects list keeps whatever filter it was left on
+                // otherwise, which makes the link land somewhere unexpected.
+                if (d.tab === 'projects') dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' });
+                go(d.tab);
+              }}
+            />
           ))}
-          {canOpenTab(level, 'projects') && <SidebarLink
-            dest={{
-              tab: 'projects',
-              label: 'Projects',
-              icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                  <path d="M3.75 3A1.75 1.75 0 002 4.75v10.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-8.5A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75z" />
-                </svg>
-              ),
-            }}
-            current={state.activeTab === 'projects'}
-            onClick={() => {
-              dispatch({ type: 'SET_PROJECT_LIST_FILTER', filter: 'all' });
-              go('projects');
-            }}
-          />}
         </nav>
 
         {/* Open project — its working tabs and its documents, all visible */}

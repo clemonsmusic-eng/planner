@@ -6,7 +6,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { DEFAULT_PASSCODES, canOpenTab, fallbackTab } from '../lib/access';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
+import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -20,6 +20,7 @@ import {
   loadShiftTimes, saveShiftTimes, DEFAULT_SHIFT_TIMES, saveSupplyCategories,
   loadServices, saveServices,
   loadAccess, saveAccess, type AccessState,
+  loadCrmContacts, saveCrmContacts,
 } from '../lib/storage';
 import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
@@ -64,6 +65,7 @@ type Action =
   /** Swap a project wholesale — what an import produces is a whole project. */
   | { type: 'REPLACE_PROJECT'; project: Project }
   | { type: 'SET_ACCESS'; access: AccessState }
+  | { type: 'UPDATE_CRM_CONTACTS'; contacts: CrmContact[] }
   | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
@@ -308,6 +310,11 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, scheduleDraft: action.project };
 
     /** Write the draft over its project — the only path from draft to stored. */
+    case 'UPDATE_CRM_CONTACTS': {
+      saveCrmContacts(action.contacts);
+      return { ...state, crmContacts: action.contacts };
+    }
+
     case 'SET_ACCESS': {
       saveAccess(action.access);
       // Dropping to a narrower level while standing on a tab it can't open
@@ -366,6 +373,7 @@ const initialState: AppState = {
   supplyCategories: [],
   shiftTimes: DEFAULT_SHIFT_TIMES,
   services: [],
+  crmContacts: [],
   scheduleDraft: null,
   access: { level: 'team', passcodes: DEFAULT_PASSCODES },
 };
@@ -409,6 +417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const shiftTimes = loadShiftTimes();
     const services = loadServices();
     const access = loadAccess();
+    const crmContacts = loadCrmContacts();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -423,6 +432,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supplyCategories,
         shiftTimes,
         services,
+        crmContacts,
         access,
         // Nothing is opened for you. Auto-selecting the first stored project
         // made whichever one happened to be first look like a default.
