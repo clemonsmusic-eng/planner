@@ -3,9 +3,8 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { formatDateLabel } from '../lib/dateUtils';
-import { SERVICE_CATALOG } from '../lib/data';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
-import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours } from '../types';
+import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -117,9 +116,14 @@ export function PlanPage() {
               <SuggestedDatesCard
                 schedule={schedule}
                 overrides={activeProject.inputs.dateOverrides}
+                shiftNotes={activeProject.inputs.shiftNotes ?? []}
               />
-              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} />
-              <MoveDaySnapshotCard schedule={schedule} teamMembers={state.teamMembers} moveDate={activeProject.inputs.targetMoveDate} />
+              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} catalog={state.services} />
+              <MoveDaySnapshotCard
+                schedule={schedule}
+                teamMembers={state.teamMembers}
+                moveDate={schedule.suggestedDates.moveDay || activeProject.inputs.targetMoveDate}
+              />
               {/* Budget sits with the hours it is measured against. */}
               <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
               <TeamHoursCard teamHours={schedule.teamHours} />
@@ -308,11 +312,29 @@ function JobSummaryCard({
 function SuggestedDatesCard({
   schedule,
   overrides,
+  shiftNotes,
 }: {
   schedule: ScheduleResult;
   overrides: DateOverride[];
+  shiftNotes: ShiftNote[];
 }) {
   const { suggestedDates } = schedule;
+
+  /**
+   * Notes written against the shifts on a date, joined for display.
+   *
+   * A date can carry more than one shift and each keeps its own note, so this
+   * gathers whatever was written for that day rather than picking one. Notes are
+   * keyed by phase and date, so it matches on the phases actually scheduled
+   * then — a note left on a shift that has since moved doesn't follow the date.
+   */
+  function notesFor(date: string): string[] {
+    const phaseIds = new Set((schedule.days.find((d) => d.date === date)?.entries ?? []).map((e) => e.phaseId));
+    return shiftNotes
+      .filter((n) => n.date === date && phaseIds.has(n.phaseId))
+      .map((n) => n.note.trim())
+      .filter(Boolean);
+  }
 
   /**
    * Shift worked on a date, read off the schedule so it tracks any hand edit or
@@ -384,6 +406,15 @@ function SuggestedDatesCard({
                     )}
                   </div>
                   <p className="text-xs text-ios-gray-500">{formatDateLabel(item.date)}</p>
+                  {notesFor(item.date).map((note, n) => (
+                    <p key={n} className="text-xs text-ios-gray-600 mt-1 flex items-start gap-1.5">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                        className="w-3 h-3 text-ios-gray-400 flex-shrink-0 mt-0.5" aria-hidden="true">
+                        <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                      </svg>
+                      <span className="min-w-0">{note}</span>
+                    </p>
+                  ))}
                 </div>
                 {override && (
                   <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700 flex-shrink-0">
@@ -402,9 +433,9 @@ function SuggestedDatesCard({
  * Read-only mirror of the Input tab's Services Contracted, grouped by the same
  * categories and listing only what was actually ticked.
  */
-function ServicesContractedCard({ services }: { services: string[] }) {
+function ServicesContractedCard({ services, catalog }: { services: string[]; catalog: ServiceCategory[] }) {
   const selected = new Set(services);
-  const groups = SERVICE_CATALOG
+  const groups = catalog
     .map(({ category, services: all }) => ({ category, chosen: all.filter((s) => selected.has(s)) }))
     .filter((g) => g.chosen.length > 0);
 
@@ -457,14 +488,24 @@ function MoveDaySnapshotCard({
   teamMembers: AppContextTeamMembers;
   moveDate: string;
 }) {
-  const pm = schedule.lockedPM
-    ? teamMembers.find((m) => m.id === schedule.lockedPM)?.name ?? 'TBD'
-    : 'TBD';
-  const assistPm = schedule.lockedAssistPM
-    ? teamMembers.find((m) => m.id === schedule.lockedAssistPM)?.name ?? 'TBD'
-    : 'TBD';
-
   const moveDayEntries = schedule.days.find((d) => d.date === moveDate)?.entries ?? [];
+
+  /*
+   * Read the crew off move day itself rather than from lockedPM/lockedAssistPM.
+   * Those are recorded when the plan is generated and never revisited, so
+   * reassigning a role on the Schedule tab left this card naming whoever the
+   * generator had picked — the same staleness that made the card empty when the
+   * move moved, since it was looking at the target date rather than the day the
+   * plan actually puts move day on.
+   */
+  const nameFor = (role: RoleType): string => {
+    const onDay = moveDayEntries.find((e) => e.role === role && e.assignedMemberName)?.assignedMemberName;
+    if (onDay) return onDay;
+    const locked = role === 'PM' ? schedule.lockedPM : role === 'Assist PM' ? schedule.lockedAssistPM : null;
+    return locked ? teamMembers.find((m) => m.id === locked)?.name ?? 'TBD' : 'TBD';
+  };
+  const pm = nameFor('PM');
+  const assistPm = nameFor('Assist PM');
   const specialists = moveDayEntries
     .filter((e) => e.role === 'Specialist' && e.assignedMemberName)
     .map((e) => e.assignedMemberName!)

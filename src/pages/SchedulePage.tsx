@@ -8,7 +8,9 @@ import { LockButton } from '../components/LockButton';
 import { formatDateLabel } from '../lib/dateUtils';
 import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
-import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
+import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
+import { totalBudgetedHours } from '../lib/budgets';
+import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType, ProjectInputs } from '../types';
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES  = new Set(['phase-6', 'phase-lot-prep', 'phase-pickup-prep', 'phase-7']);
@@ -68,7 +70,34 @@ const SHIFT_LABELS: Record<string, string> = {
 };
 
 export function SchedulePage() {
-  const { state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate, setShiftNote } = useApp();
+  const { state, dispatch, activeProject: storedProject, generateAndSaveSchedule, planFrom } = useApp();
+
+  /*
+   * The Schedule tab works on a draft and commits on Save.
+   *
+   * Everything here used to write straight through, so a mis-tap was already
+   * saved by the time it was noticed. The draft lives on app state rather than
+   * in this component so switching tabs mid-edit doesn't silently discard it,
+   * and it is deliberately not persisted — work in progress is not a plan.
+   */
+  const draft = state.scheduleDraft?.id === storedProject?.id ? state.scheduleDraft : null;
+  const activeProject = draft ?? storedProject;
+  const isDirty = !!draft;
+
+  /** Route an edit into the draft, starting one from the stored project. */
+  function edit(e: ScheduleEdit) {
+    if (!activeProject || scheduleLocked) return;
+    dispatch({ type: 'SET_SCHEDULE_DRAFT', project: applyScheduleEdit(activeProject, e, state.teamMembers) });
+  }
+
+  /** The two edits that re-run the generator rather than moving entries. */
+  function replan(inputs: ProjectInputs) {
+    if (!activeProject || scheduleLocked) return;
+    dispatch({
+      type: 'SET_SCHEDULE_DRAFT',
+      project: { ...activeProject, inputs, schedule: planFrom(activeProject.id, inputs) },
+    });
+  }
   const addShift = useAddShift();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
@@ -78,8 +107,6 @@ export function SchedulePage() {
   const [dateMovePicker, setDateMovePicker] = useState<{ phaseId: string; originalDate: string } | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
   const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
-
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
   if (!activeProject) {
@@ -106,6 +133,9 @@ export function SchedulePage() {
   }
 
   const schedule = activeProject.schedule;
+  const scheduleLocked = !!activeProject.inputs.scheduleLocked;
+  const budgetHours = totalBudgetedHours(activeProject.inputs.phaseBudgets);
+  const budgetPct = budgetHours > 0 ? Math.round(((schedule?.totalScheduledHours ?? 0) / budgetHours) * 100) : 0;
 
   function toggleDay(date: string) {
     setCollapsedDays((prev) => {
@@ -225,16 +255,46 @@ export function SchedulePage() {
               )}
             </div>
             <LockButton
-              isLocked={!!activeProject.inputs.isLocked}
-              onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
+              isLocked={scheduleLocked}
+              onToggle={() =>
+                dispatch({ type: 'SET_LOCK', projectId: activeProject.id, which: 'schedule', locked: !scheduleLocked })
+              }
             />
             <button
-              onClick={() => { generateAndSaveSchedule(activeProject.id); setIsDirty(false); }}
-              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80"
+              onClick={() => {
+                dispatch({ type: 'SET_SCHEDULE_DRAFT', project: null });
+                generateAndSaveSchedule(activeProject.id);
+              }}
+              disabled={scheduleLocked}
+              className="flex-shrink-0 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-xl text-sm font-semibold min-h-[36px] active:opacity-70 lg:hover:opacity-80 disabled:opacity-40"
             >
               Regenerate
             </button>
           </div>
+
+          {/*
+            How much of the budget the plan spends. It sits at the top because
+            it is the number every edit below moves — adding crew or hours here
+            is what pushes a job over what was sold.
+          */}
+          {schedule && budgetHours > 0 && (
+            <div className="mb-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs text-ios-gray-600">
+                  {formatHours(schedule.totalScheduledHours)} of {formatHours(budgetHours)} budgeted hours
+                </span>
+                <span className={`text-sm font-bold tabular-nums ${budgetPct > 100 ? 'text-red-600' : 'text-teal-700'}`}>
+                  {budgetPct}%
+                </span>
+              </div>
+              <div className="h-1.5 bg-ios-gray-100 rounded-full overflow-hidden mt-1">
+                <div
+                  className={`h-full rounded-full transition-all ${budgetPct > 100 ? 'bg-red-500' : 'bg-teal-500'}`}
+                  style={{ width: `${Math.min(budgetPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Add a shift the generator didn't place */}
           <button
@@ -280,12 +340,20 @@ export function SchedulePage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/*
+          A disabled fieldset turns off every control it contains, which is what
+          the schedule lock has to mean. It is the scroll container itself
+          because Chromium stops propagating disabled through display:contents.
+        */}
+        <fieldset disabled={scheduleLocked} className={`flex-1 overflow-y-auto min-w-0 ${scheduleLocked ? 'opacity-60' : ''}`}>
           {!schedule ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 px-6 text-center">
               <p className="text-ios-gray-600 text-sm">No schedule generated yet.</p>
               <button
-                onClick={() => generateAndSaveSchedule(activeProject.id)}
+                onClick={() => {
+                dispatch({ type: 'SET_SCHEDULE_DRAFT', project: null });
+                generateAndSaveSchedule(activeProject.id);
+              }}
                 className="bg-teal-600 text-white px-5 py-3 rounded-xl font-semibold min-h-[44px]"
               >
                 Generate Schedule
@@ -311,23 +379,23 @@ export function SchedulePage() {
                   onDateChange={() => setDateMovePicker({ phaseId: day.entries[0]?.phaseId ?? '', originalDate: day.date })}
                   memberMap={memberMap}
                   onPickMember={setMemberPickerEntry}
-                  onAddRole={(phaseId) => dispatch({ type: 'ADD_SCHEDULE_ROLE', projectId: activeProject.id, date: day.date, phaseId, role: 'Specialist' })}
-                  onRemoveRole={(entryId) => dispatch({ type: 'REMOVE_SCHEDULE_ROLE', projectId: activeProject.id, entryId })}
+                  onAddRole={(phaseId) => edit({ kind: 'addRole', date: day.date, phaseId, role: 'Specialist' })}
+                  onRemoveRole={(entryId) => edit({ kind: 'removeRole', entryId })}
                   onMoveShift={(phaseId) => setDateMovePicker({ phaseId, originalDate: day.date })}
                   onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
                   noteFor={(phaseId) =>
                     (activeProject.inputs.shiftNotes ?? []).find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? ''
                   }
-                  onSetNote={(phaseId, note) => setShiftNote(activeProject.id, phaseId, day.date, note)}
+                  onSetNote={(phaseId, note) => edit({ kind: 'setNote', phaseId, date: day.date, note })}
                   onSetHours={(phaseId, hours) =>
-                    dispatch({ type: 'SET_SHIFT_HOURS', projectId: activeProject.id, date: day.date, phaseId, hours })
+                    edit({ kind: 'setHours', date: day.date, phaseId, hours })
                   }
                 />
               ))}
               {isDirty && <FloatingSaveSpacer />}
             </div>
           )}
-        </div>
+        </fieldset>
       </div>
 
       {/* Filter Sheet */}
@@ -349,7 +417,15 @@ export function SchedulePage() {
         <ShiftOverrideSheet
           date={overrideDate}
           current={activeProject.inputs.dateOverrides.find((o) => o.date === overrideDate)?.shift ?? null}
-          onSelect={(shift) => setShiftOverride(activeProject.id, overrideDate, shift)}
+          onSelect={(shift) => {
+            const filtered = activeProject.inputs.dateOverrides.filter((o) => o.date !== overrideDate);
+            replan({
+              ...activeProject.inputs,
+              dateOverrides: shift
+                ? [...filtered, { id: crypto.randomUUID(), date: overrideDate, shift, reason: 'Manual override' }]
+                : filtered,
+            });
+          }}
           onClose={() => setOverrideDate(null)}
         />
       )}
@@ -358,9 +434,23 @@ export function SchedulePage() {
         <DateMoveSheet
           originalDate={dateMovePicker.originalDate}
           // Moves this phase only — a day may hold a second shift that stays put.
-          onMove={(newDate) =>
-            movePhaseDate(activeProject.id, dateMovePicker.phaseId, dateMovePicker.originalDate, newDate)
-          }
+          onMove={(newDate) => {
+            const existing = activeProject.inputs.phaseDateMoves ?? [];
+            replan({
+              ...activeProject.inputs,
+              phaseDateMoves: [
+                ...existing.filter(
+                  (m) => !(m.phaseId === dateMovePicker.phaseId && m.originalDate === dateMovePicker.originalDate)
+                ),
+                {
+                  id: crypto.randomUUID(),
+                  phaseId: dateMovePicker.phaseId,
+                  originalDate: dateMovePicker.originalDate,
+                  newDate,
+                },
+              ],
+            });
+          }}
           onClose={() => setDateMovePicker(null)}
         />
       )}
@@ -371,12 +461,7 @@ export function SchedulePage() {
           message={`Remove ${removeShift.phaseName} on ${formatDateLabel(removeShift.date)}? Any other shift that day stays.`}
           confirmLabel="Remove Shift"
           onConfirm={() => {
-            dispatch({
-              type: 'REMOVE_SHIFT',
-              projectId: activeProject.id,
-              date: removeShift.date,
-              phaseId: removeShift.phaseId,
-            });
+            edit({ kind: 'removeShift', date: removeShift.date, phaseId: removeShift.phaseId });
             setRemoveShift(null);
           }}
           onClose={() => setRemoveShift(null)}
@@ -388,14 +473,7 @@ export function SchedulePage() {
           entry={memberPickerEntry}
           teamMembers={state.teamMembers}
           onSelect={(memberId, memberName) => {
-            dispatch({
-              type: 'UPDATE_SCHEDULE_ENTRY',
-              projectId: activeProject.id,
-              entryId: memberPickerEntry.id,
-              memberId,
-              memberName,
-            });
-            setIsDirty(true);
+            edit({ kind: 'assignMember', entryId: memberPickerEntry.id, memberId, memberName });
             setMemberPickerEntry(null);
           }}
           onClose={() => setMemberPickerEntry(null)}
@@ -406,12 +484,12 @@ export function SchedulePage() {
         <AddShiftSheet
           phaseTemplates={state.phaseTemplates}
           defaultDate={schedule?.days[0]?.date ?? activeProject.inputs.targetMoveDate}
-          onAdd={(shift) => dispatch({ type: 'ADD_SHIFT', projectId: activeProject.id, shift })}
+          onAdd={(shift) => edit({ kind: 'addShift', shift })}
           onClose={addShift.closeSheet}
         />
       )}
 
-      {isDirty && <FloatingSaveButton onSave={() => setIsDirty(false)} />}
+      {isDirty && <FloatingSaveButton onSave={() => dispatch({ type: 'COMMIT_SCHEDULE_DRAFT' })} />}
     </>
   );
 }

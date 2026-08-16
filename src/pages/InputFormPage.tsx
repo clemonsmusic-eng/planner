@@ -8,7 +8,6 @@ import { lotPrepAllowance } from '../lib/scheduling';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { LockButton } from '../components/LockButton';
 import type { ProjectInputs, DateOverride, FlexibilityLevel, TimePreference, MoveType } from '../types';
-import { SERVICE_CATALOG } from '../lib/data';
 
 const CLEANOUT_TYPES = ['Basic', 'Full - Storage', 'Full - Donation/Dispersal', 'Full - Auction'] as const;
 
@@ -346,7 +345,9 @@ export function InputFormPage() {
           {/* Lock button */}
           <LockButton
             isLocked={!!activeProject.inputs.isLocked}
-            onToggle={() => dispatch({ type: 'TOGGLE_LOCK', id: activeProject.id })}
+            onToggle={() =>
+              dispatch({ type: 'SET_LOCK', projectId: activeProject.id, which: 'inputs', locked: !isLocked })
+            }
           />
           {/* Save button */}
           <button
@@ -588,7 +589,7 @@ export function InputFormPage() {
               {contractedServices.length} service{contractedServices.length === 1 ? '' : 's'} contracted
             </p>
           )}
-          {SERVICE_CATALOG.map(({ category, services }) => (
+          {state.services.map(({ category, services }) => (
             <ServiceCategoryGroup
               key={category}
               category={category}

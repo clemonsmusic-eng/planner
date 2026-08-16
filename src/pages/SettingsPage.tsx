@@ -5,6 +5,7 @@ import {
   type SettingsGroup as SettingsGroupDef, type SettingsGroupKey, type SettingsOrder,
 } from '../lib/settingsLayout';
 import { loadSettingsOrder, saveSettingsOrder } from '../lib/storage';
+import type { ServiceCategory } from '../types';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
 import { formatDateLabel } from '../lib/dateUtils';
@@ -1202,6 +1203,10 @@ export function SettingsPage() {
   const [checklistTemplate, setChecklistTemplate] = useState<ChecklistTemplateSection[]>(
     state.checklistTemplate.map((sec) => ({ ...sec, items: sec.items.map((i) => ({ ...i })) }))
   );
+  const [services, setServices] = useState<ServiceCategory[]>(
+    state.services.map((c) => ({ ...c, services: [...c.services] }))
+  );
+  const [newServiceCategory, setNewServiceCategory] = useState('');
   const [newCommunity, setNewCommunity] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
@@ -1323,6 +1328,14 @@ export function SettingsPage() {
     setIsDirty(true);
   }
 
+  function addServiceCategory() {
+    const trimmed = newServiceCategory.trim();
+    if (!trimmed) return;
+    setServices((prev) => [...prev, { category: trimmed, services: [] }]);
+    setNewServiceCategory('');
+    setIsDirty(true);
+  }
+
   function addCommunity() {
     const trimmed = newCommunity.trim();
     if (!trimmed) return;
@@ -1381,6 +1394,7 @@ export function SettingsPage() {
     dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
     dispatch({ type: 'UPDATE_AUCTION_SETTINGS', settings: auctionSettings });
     dispatch({ type: 'UPDATE_CHECKLIST_TEMPLATE', checklistTemplate });
+    dispatch({ type: 'UPDATE_SERVICES', services });
     setIsDirty(false);
   }
 
@@ -1726,6 +1740,65 @@ export function SettingsPage() {
         </>
       ),
     },
+  };
+
+  /*
+   * The service catalogue, edited as one list per category. Each category
+   * reuses the parameter-list editor rather than growing a second one — the
+   * shape is the same, a name and the entries under it.
+   */
+  SUBS.services = {
+    title: 'Services Contracted',
+    subtitle: `${services.reduce((n, c) => n + c.services.length, 0)} services in ${services.length} categories`,
+    body: (
+      <div className="px-4 py-3 space-y-2">
+        <p className="text-xs text-ios-gray-500">
+          What a client can contract. These populate the Services Contracted picker on a project's Input tab.
+        </p>
+        {services.map((cat, catIdx) => (
+          <div key={`${cat.category}-${catIdx}`} className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <ListCategoryCard
+                list={{ id: cat.category, name: cat.category, items: cat.services }}
+                onChange={(updated) => {
+                  setServices((prev) =>
+                    prev.map((c, i) => (i === catIdx ? { category: updated.name, services: updated.items } : c))
+                  );
+                  setIsDirty(true);
+                }}
+              />
+            </div>
+            <button
+              onClick={() => {
+                setServices((prev) => prev.filter((_, i) => i !== catIdx));
+                setIsDirty(true);
+              }}
+              className="w-9 h-9 mt-1 flex items-center justify-center rounded-lg text-ios-gray-400 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
+              aria-label={`Remove the ${cat.category} category`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          </div>
+        ))}
+        <div className="flex gap-2 pt-1">
+          <input
+            value={newServiceCategory}
+            onChange={(e) => setNewServiceCategory(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addServiceCategory()}
+            placeholder="Add a category…"
+            className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
+          />
+          <button
+            onClick={addServiceCategory}
+            className="bg-teal-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    ),
   };
 
   lists.forEach((list, listIdx) => {

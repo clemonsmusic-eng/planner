@@ -69,6 +69,16 @@ export interface PhaseTemplate {
   isPM?: boolean; // true = PM block
 }
 
+/**
+ * The services a client can contract, grouped the way the quote groups them.
+ * Editable in Settings, so it lives on app state rather than staying a
+ * hard-coded catalogue.
+ */
+export interface ServiceCategory {
+  category: string;
+  services: string[];
+}
+
 // ─── List Category ────────────────────────────────────────────────────────────
 export interface ListCategory {
   id: string;
@@ -217,7 +227,15 @@ export interface ProjectInputs {
   auction: AuctionOptions;
   // Schedule Overrides
   dateOverrides: DateOverride[];
+  /**
+   * Two tiers. The inputs lock stops the numbers a plan was generated from
+   * being changed; the schedule lock stops the plan itself being touched.
+   * Locking the schedule implies the inputs are locked too — a settled plan
+   * can't sit on inputs someone is still editing — so unlocking the inputs
+   * necessarily releases the schedule with them.
+   */
   isLocked?: boolean;
+  scheduleLocked?: boolean;
   phaseDateMoves?: PhaseDateMove[];
   /** Hand edits to the shift list, replayed whenever the plan regenerates. */
   addedShifts?: ManualShift[];
@@ -499,4 +517,12 @@ export interface AppState {
   supplyCategories: string[];
   /** When AM and PM shifts start. */
   shiftTimes: ShiftTimeSettings;
+  /** The contractable services offered, grouped by category. */
+  services: ServiceCategory[];
+  /**
+   * Uncommitted Schedule tab edits. Held here rather than in the page so they
+   * survive switching tabs, and deliberately not persisted — a draft is work in
+   * progress, not a saved plan.
+   */
+  scheduleDraft: Project | null;
 }

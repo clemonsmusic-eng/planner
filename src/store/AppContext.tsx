@@ -5,7 +5,7 @@ import React, {
   useEffect,
   type ReactNode,
 } from 'react';
-import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, AssignmentStatus, ProjectStatus, RoleType, ScheduleDay, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote } from '../types';
+import type { AppState, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -17,13 +17,13 @@ import {
   loadSupplies, saveSupplies,
   loadSupplyCategories,
   loadShiftTimes, saveShiftTimes, DEFAULT_SHIFT_TIMES, saveSupplyCategories,
+  loadServices, saveServices,
 } from '../lib/storage';
-import { generateSchedule, deriveSuggestedDates, type ExternalBookings } from '../lib/scheduling';
-import { formatDateLabel } from '../lib/dateUtils';
+import { generateSchedule, type ExternalBookings } from '../lib/scheduling';
 import { normalizeChecklist, EMPTY_ITEM_STATE } from '../lib/checklist';
 import { normalizeDocuments, allFileIds } from '../lib/documents';
-import { budgetOf } from '../lib/budgets';
 import { deleteFile } from '../lib/fileStore';
+import { applyScheduleEdit } from '../lib/scheduleEdits';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ type Action =
   | { type: 'UPDATE_CHECKLIST_TEMPLATE'; checklistTemplate: ChecklistTemplateSection[] }
   | { type: 'UPDATE_CHECKLIST'; id: string; checklist: ProjectChecklist }
   | { type: 'LOAD_STATE'; state: Partial<AppState> }
-  | { type: 'TOGGLE_LOCK'; id: string }
+  | { type: 'SET_LOCK'; projectId: string; which: 'inputs' | 'schedule'; locked: boolean }
   | { type: 'MOVE_PHASE_DATE'; id: string; phaseId: string; originalDate: string; newDate: string }
   | { type: 'UPDATE_SCHEDULE_ENTRY'; projectId: string; entryId: string; memberId: string | null; memberName: string | null }
   | { type: 'ADD_SCHEDULE_ROLE'; projectId: string; date: string; phaseId: string; role: RoleType }
@@ -56,53 +56,14 @@ type Action =
   | { type: 'UPDATE_SUPPLIES'; supplies: SupplyItem[] }
   | { type: 'UPDATE_SUPPLY_CATEGORIES'; categories: string[]; supplies?: SupplyItem[] }
   | { type: 'UPDATE_SHIFT_TIMES'; times: ShiftTimeSettings }
+  | { type: 'UPDATE_SERVICES'; services: ServiceCategory[] }
+  | { type: 'SET_SCHEDULE_DRAFT'; project: Project | null }
+  | { type: 'COMMIT_SCHEDULE_DRAFT' }
   | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
 
-
-/**
- * Totals, per-member hours and the plan's milestone dates are produced by
- * generateSchedule, so any hand edit on the Schedule tab leaves them stale — and
- * the Plan tab reads the totals while the Checklist dates itself from the
- * milestones. Recompute all three from the entries so every tab agrees with the
- * schedule as it now stands.
- */
-function withRecomputedTotals(
-  schedule: ScheduleResult,
-  days: ScheduleDay[],
-  teamMembers: TeamMember[],
-  budgetedManHours: number
-): ScheduleResult {
-  const entries = days.flatMap((d) => d.entries);
-  const totalScheduledHours = entries.reduce((sum, e) => sum + e.hours, 0);
-  const percentScheduled = budgetedManHours > 0 ? (totalScheduledHours / budgetedManHours) * 100 : 0;
-
-  const hoursByMember: Record<string, number> = {};
-  for (const e of entries) {
-    if (e.assignedMember) hoursByMember[e.assignedMember] = (hoursByMember[e.assignedMember] ?? 0) + e.hours;
-  }
-
-  return {
-    ...schedule,
-    days,
-    suggestedDates: deriveSuggestedDates(days, schedule.suggestedDates),
-    totalScheduledHours,
-    remainingHours: budgetedManHours - totalScheduledHours,
-    percentScheduled,
-    status: percentScheduled > 120 ? 'OVER BUDGET' : percentScheduled < 85 ? 'UNDER SCHEDULED' : 'ON TRACK',
-    teamHours: teamMembers
-      .filter((m) => hoursByMember[m.id] !== undefined)
-      .map((m) => ({
-        memberId: m.id,
-        memberName: m.name,
-        scheduledHours: hoursByMember[m.id],
-        maxHours: m.maxHoursPerWeek,
-        isOverMax: m.maxHoursPerWeek > 0 && hoursByMember[m.id] > m.maxHoursPerWeek,
-      })),
-  };
-}
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -208,12 +169,23 @@ function reducer(state: AppState, action: Action): AppState {
     case 'LOAD_STATE':
       return { ...state, ...action.state };
 
-    case 'TOGGLE_LOCK': {
-      const projects = state.projects.map((p) =>
-        p.id === action.id
-          ? { ...p, inputs: { ...p.inputs, isLocked: !p.inputs.isLocked }, updatedAt: new Date().toISOString() }
-          : p
-      );
+    /**
+     * Two tiers, kept consistent here rather than at the call sites.
+     *
+     * A locked schedule implies locked inputs: the plan hangs off them, so it
+     * cannot be settled while they are still open. Everything else follows from
+     * that one invariant — locking the schedule pulls the inputs shut with it,
+     * and unlocking the inputs releases the schedule, because leaving it locked
+     * would leave a plan frozen against numbers that can now move.
+     */
+    case 'SET_LOCK': {
+      const projects = state.projects.map((p) => {
+        if (p.id !== action.projectId) return p;
+        const isLocked = action.which === 'inputs' ? action.locked : action.locked || !!p.inputs.isLocked;
+        const scheduleLocked =
+          action.which === 'schedule' ? action.locked : action.locked ? !!p.inputs.scheduleLocked : false;
+        return { ...p, inputs: { ...p.inputs, isLocked, scheduleLocked }, updatedAt: new Date().toISOString() };
+      });
       saveProjects(projects);
       return { ...state, projects };
     }
@@ -237,154 +209,42 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'UPDATE_SCHEDULE_ENTRY': {
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-        const days = p.schedule.days.map((day) => ({
-          ...day,
-          entries: day.entries.map((entry) =>
-            entry.id === action.entryId
-              ? {
-                  ...entry,
-                  assignedMember: action.memberId,
-                  assignedMemberName: action.memberName,
-                  status: (action.memberId ? 'assigned' : 'needs-assignment') as AssignmentStatus,
-                  warnings: [],
-                }
-              : entry
-          ),
-        }));
-        return {
-          ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'assignMember', entryId: action.entryId, memberId: action.memberId, memberName: action.memberName }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
 
     case 'ADD_SCHEDULE_ROLE': {
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-        const days = p.schedule.days.map((day) => {
-          if (day.date !== action.date) return day;
-          const sibling = day.entries.find((e) => e.phaseId === action.phaseId);
-          if (!sibling) return day;
-          // New slot inherits the phase's shift and hours; it starts unassigned.
-          const entry = {
-            ...sibling,
-            id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            role: action.role,
-            assignedMember: null,
-            assignedMemberName: null,
-            status: 'needs-assignment' as AssignmentStatus,
-            warnings: [],
-          };
-          const lastIdx = day.entries.map((e) => e.phaseId).lastIndexOf(action.phaseId);
-          const entries = [...day.entries];
-          entries.splice(lastIdx + 1, 0, entry);
-          return { ...day, entries };
-        });
-        return {
-          ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'addRole', date: action.date, phaseId: action.phaseId, role: action.role }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
 
     case 'ADD_SHIFT': {
-      const { date, phaseId, phaseName, shift, hours, roles } = action.shift;
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-
-        const stamp = Date.now();
-        const entries = roles.map((role, i) => ({
-          id: `entry-${stamp}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-          date,
-          phaseName,
-          phaseId,
-          role,
-          assignedMember: null,
-          assignedMemberName: null,
-          shift,
-          hours,
-          status: 'needs-assignment' as AssignmentStatus,
-          warnings: [],
-        }));
-
-        const existing = p.schedule.days.find((d) => d.date === date);
-        const days = existing
-          ? p.schedule.days.map((d) => (d.date === date ? { ...d, entries: [...d.entries, ...entries] } : d))
-          // A shift on a day the plan didn't cover adds that day, in date order.
-          : [...p.schedule.days, { date, label: formatDateLabel(date), entries }].sort((a, b) =>
-              a.date.localeCompare(b.date)
-            );
-
-        return {
-          ...p,
-          // Recorded on the inputs too, so a later regenerate replays it.
-          inputs: {
-            ...p.inputs,
-            addedShifts: [...(p.inputs.addedShifts ?? []), action.shift],
-            removedShifts: (p.inputs.removedShifts ?? []).filter(
-              (r) => !(r.phaseId === phaseId && r.date === date)
-            ),
-          },
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-          updatedAt: new Date().toISOString(),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'addShift', shift: action.shift }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
 
     /** Drops one phase's whole crew from one day, leaving other shifts alone. */
     case 'REMOVE_SHIFT': {
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-        const days = p.schedule.days
-          .map((day) =>
-            day.date === action.date
-              ? { ...day, entries: day.entries.filter((e) => e.phaseId !== action.phaseId) }
-              : day
-          )
-          .filter((day) => day.entries.length > 0);
-        return {
-          ...p,
-          // Remembered on the inputs so a regenerate doesn't bring the shift back.
-          // A hand-added shift is dropped outright rather than tombstoned.
-          inputs: {
-            ...p.inputs,
-            addedShifts: (p.inputs.addedShifts ?? []).filter(
-              (a) => !(a.phaseId === action.phaseId && a.date === action.date)
-            ),
-            removedShifts: [
-              ...(p.inputs.removedShifts ?? []).filter(
-                (r) => !(r.phaseId === action.phaseId && r.date === action.date)
-              ),
-              { phaseId: action.phaseId, date: action.date },
-            ],
-          },
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-          updatedAt: new Date().toISOString(),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'removeShift', date: action.date, phaseId: action.phaseId }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
 
     case 'REMOVE_SCHEDULE_ROLE': {
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-        const days = p.schedule.days
-          .map((day) => ({ ...day, entries: day.entries.filter((e) => e.id !== action.entryId) }))
-          .filter((day) => day.entries.length > 0);
-        return {
-          ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'removeRole', entryId: action.entryId }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
@@ -395,24 +255,9 @@ function reducer(state: AppState, action: Action): AppState {
      * totals are built from.
      */
     case 'SET_SHIFT_HOURS': {
-      const hours = Math.max(0.5, action.hours);
-      const projects = state.projects.map((p) => {
-        if (p.id !== action.projectId || !p.schedule) return p;
-        const days = p.schedule.days.map((d) =>
-          d.date === action.date
-            ? {
-                ...d,
-                entries: d.entries.map((e) =>
-                  e.phaseId === action.phaseId ? { ...e, hours } : e
-                ),
-              }
-            : d
-        );
-        return {
-          ...p,
-          schedule: withRecomputedTotals(p.schedule, days, state.teamMembers, budgetOf(p.inputs)),
-        };
-      });
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId ? applyScheduleEdit(p, { kind: 'setHours', date: action.date, phaseId: action.phaseId, hours: action.hours }, state.teamMembers) : p
+      );
       saveProjects(projects);
       return { ...state, projects };
     }
@@ -454,6 +299,25 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, projects };
     }
 
+    case 'SET_SCHEDULE_DRAFT':
+      return { ...state, scheduleDraft: action.project };
+
+    /** Write the draft over its project — the only path from draft to stored. */
+    case 'COMMIT_SCHEDULE_DRAFT': {
+      const draft = state.scheduleDraft;
+      if (!draft) return state;
+      const projects = state.projects.map((p) =>
+        p.id === draft.id ? { ...draft, updatedAt: new Date().toISOString() } : p
+      );
+      saveProjects(projects);
+      return { ...state, projects, scheduleDraft: null };
+    }
+
+    case 'UPDATE_SERVICES': {
+      saveServices(action.services);
+      return { ...state, services: action.services };
+    }
+
     case 'UPDATE_SHIFT_TIMES': {
       saveShiftTimes(action.times);
       return { ...state, shiftTimes: action.times };
@@ -480,6 +344,8 @@ const initialState: AppState = {
   supplies: [],
   supplyCategories: [],
   shiftTimes: DEFAULT_SHIFT_TIMES,
+  services: [],
+  scheduleDraft: null,
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -500,6 +366,7 @@ interface AppContextValue {
   resetChecklistProgress: (projectId: string) => void;
   updateDocuments: (projectId: string, fn: (docs: ProjectDocuments) => ProjectDocuments) => void;
   setShiftNote: (projectId: string, phaseId: string, date: string, note: string) => void;
+  planFrom: (projectId: string, inputs: ProjectInputs) => ScheduleResult;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -518,6 +385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const supplies = loadSupplies();
     const supplyCategories = loadSupplyCategories();
     const shiftTimes = loadShiftTimes();
+    const services = loadServices();
     dispatch({
       type: 'LOAD_STATE',
       state: {
@@ -531,6 +399,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supplies,
         supplyCategories,
         shiftTimes,
+        services,
         // Nothing is opened for you. Auto-selecting the first stored project
         // made whichever one happened to be first look like a default.
         activeProjectId: null,
@@ -586,6 +455,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const extBookings = buildExternalBookings(projectId);
     const schedule = generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
     dispatch({ type: 'SET_SCHEDULE', id: projectId, schedule });
+  }
+
+  /**
+   * Generate a plan from inputs without storing it. The Schedule tab's draft
+   * needs this for the two edits that re-run the generator — moving a shift's
+   * date and overriding a day's shift — since neither can go through the store
+   * until Save.
+   */
+  function planFrom(projectId: string, inputs: ProjectInputs): ScheduleResult {
+    const extBookings = buildExternalBookings(projectId);
+    return generateSchedule(inputs, state.teamMembers, state.phaseTemplates, state.lists, extBookings, state.auctionSettings);
   }
 
   function setShiftOverride(projectId: string, date: string, shift: AvailabilitySlot | null) {
@@ -711,7 +591,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
         toggleChecklistItem, setChecklistDueDate, setChecklistNote,
         addChecklistItem, removeChecklistItem, restoreChecklistItems, resetChecklistProgress,
-        updateDocuments, setShiftNote,
+        updateDocuments, setShiftNote, planFrom,
       }}
     >
       {children}
