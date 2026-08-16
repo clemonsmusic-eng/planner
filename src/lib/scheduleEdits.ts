@@ -7,6 +7,7 @@ import type {
   Project,
   RoleType,
   ScheduleDay,
+  ScheduleEntry,
   ScheduleResult,
   TeamMember,
 } from '../types';
@@ -28,7 +29,11 @@ export type ScheduleEdit =
   | { kind: 'addShift'; shift: ManualShift }
   | { kind: 'removeShift'; date: string; phaseId: string }
   | { kind: 'setHours'; date: string; phaseId: string; hours: number }
-  | { kind: 'setNote'; date: string; phaseId: string; note: string };
+  | { kind: 'setNote'; date: string; phaseId: string; note: string }
+  /** Re-date a shift, or the whole day when phaseId is omitted. Nothing else changes. */
+  | { kind: 'moveShift'; fromDate: string; toDate: string; phaseId?: string }
+  /** Copy a shift, or the whole day when phaseId is omitted, onto another date. */
+  | { kind: 'duplicateShift'; fromDate: string; toDate: string; phaseId?: string };
 
 /**
  * Totals, per-member hours and the plan's milestone dates are produced by
@@ -73,6 +78,24 @@ export function withRecomputedTotals(
 
 const newEntryId = (suffix: string | number = '') =>
   `entry-${Date.now()}-${suffix}-${Math.random().toString(36).slice(2, 7)}`;
+
+/**
+ * Drop a set of entries onto a date, adding the day if the plan didn't cover
+ * it, and clearing out any day the move emptied. Days stay in date order.
+ */
+function placeEntries(days: ScheduleDay[], date: string, entries: ScheduleEntry[]): ScheduleDay[] {
+  const landed = days.some((d) => d.date === date)
+    ? days.map((d) => (d.date === date ? { ...d, entries: [...d.entries, ...entries] } : d))
+    : [...days, { date, label: formatDateLabel(date), entries }];
+  return landed.filter((d) => d.entries.length > 0).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** The phases a move or copy acts on: one shift, or every shift that day. */
+function phasesOn(day: ScheduleDay | undefined, phaseId: string | undefined): string[] {
+  if (!day) return [];
+  const ids = [...new Set(day.entries.map((e) => e.phaseId))];
+  return phaseId === undefined ? ids : ids.filter((id) => id === phaseId);
+}
 
 /** Apply one edit. A project with no schedule is returned untouched. */
 export function applyScheduleEdit(
@@ -218,6 +241,111 @@ export function applyScheduleEdit(
         shiftNotes: trimmed ? [...rest, { phaseId: edit.phaseId, date: edit.date, note: trimmed }] : rest,
       };
       return { ...project, inputs, updatedAt: new Date().toISOString() };
+    }
+
+    /*
+     * Re-dating a shift is deliberately not a regenerate. Dragging a card onto
+     * another day carries the entries across exactly as they stand — crew,
+     * hours, roles and note all survive — because the point of moving a shift
+     * by hand is that everything about it is already right except the date.
+     */
+    case 'moveShift': {
+      const source = schedule.days.find((d) => d.date === edit.fromDate);
+      const target = schedule.days.find((d) => d.date === edit.toDate);
+      // A day can't hold the same phase twice: everything else keys shifts by
+      // (date, phaseId), so a collision would make two shifts indistinguishable.
+      const taken = new Set(target?.entries.map((e) => e.phaseId) ?? []);
+      const moving = phasesOn(source, edit.phaseId).filter((id) => !taken.has(id));
+      if (edit.fromDate === edit.toDate || moving.length === 0) return project;
+
+      const set = new Set(moving);
+      const carried = source!.entries
+        .filter((e) => set.has(e.phaseId))
+        .map((e) => ({ ...e, date: edit.toDate }));
+      const emptied = schedule.days.map((d) =>
+        d.date === edit.fromDate ? { ...d, entries: d.entries.filter((e) => !set.has(e.phaseId)) } : d
+      );
+      const days = placeEntries(emptied, edit.toDate, carried);
+
+      // Recorded on the inputs so a later regenerate replays the move. A shift
+      // that was added by hand is re-dated in place instead, and a shift moved
+      // twice extends its existing record rather than growing a chain of them.
+      let addedShifts = project.inputs.addedShifts ?? [];
+      let phaseDateMoves = project.inputs.phaseDateMoves ?? [];
+      for (const phaseId of moving) {
+        if (addedShifts.some((a) => a.phaseId === phaseId && a.date === edit.fromDate)) {
+          addedShifts = addedShifts.map((a) =>
+            a.phaseId === phaseId && a.date === edit.fromDate ? { ...a, date: edit.toDate } : a
+          );
+          continue;
+        }
+        const chained = phaseDateMoves.find((m) => m.phaseId === phaseId && m.newDate === edit.fromDate);
+        phaseDateMoves = chained
+          ? phaseDateMoves.map((m) => (m === chained ? { ...m, newDate: edit.toDate } : m))
+          : [
+              ...phaseDateMoves.filter((m) => !(m.phaseId === phaseId && m.originalDate === edit.fromDate)),
+              { id: newEntryId('move'), phaseId, originalDate: edit.fromDate, newDate: edit.toDate },
+            ];
+      }
+
+      const inputs = {
+        ...project.inputs,
+        addedShifts,
+        phaseDateMoves,
+        // The note belongs to the shift, so it travels with it.
+        shiftNotes: (project.inputs.shiftNotes ?? []).map((n) =>
+          set.has(n.phaseId) && n.date === edit.fromDate ? { ...n, date: edit.toDate } : n
+        ),
+        removedShifts: (project.inputs.removedShifts ?? []).filter(
+          (r) => !(set.has(r.phaseId) && r.date === edit.toDate)
+        ),
+      };
+      return rebuild(days, inputs, true);
+    }
+
+    /*
+     * A copy is a second shift with the same shape — same roles, hours, shift
+     * slot, crew and note — on another date. Phases already scheduled on the
+     * target day are skipped rather than doubled, for the same keying reason.
+     */
+    case 'duplicateShift': {
+      const source = schedule.days.find((d) => d.date === edit.fromDate);
+      const target = schedule.days.find((d) => d.date === edit.toDate);
+      const taken = new Set(target?.entries.map((e) => e.phaseId) ?? []);
+      const copying = phasesOn(source, edit.phaseId).filter((id) => !taken.has(id));
+      if (copying.length === 0) return project;
+
+      const set = new Set(copying);
+      const clones = source!.entries
+        .filter((e) => set.has(e.phaseId))
+        .map((e, i) => ({ ...e, id: newEntryId(i), date: edit.toDate, warnings: [] }));
+      const days = placeEntries(schedule.days, edit.toDate, clones);
+
+      const added: ManualShift[] = copying.map((phaseId) => {
+        const forPhase = clones.filter((e) => e.phaseId === phaseId);
+        return {
+          date: edit.toDate,
+          phaseId,
+          phaseName: forPhase[0].phaseName,
+          shift: forPhase[0].shift,
+          hours: forPhase[0].hours,
+          roles: forPhase.map((e) => e.role),
+        };
+      });
+      const notes = project.inputs.shiftNotes ?? [];
+      const copiedNotes = notes
+        .filter((n) => set.has(n.phaseId) && n.date === edit.fromDate)
+        .map((n) => ({ ...n, date: edit.toDate }));
+
+      const inputs = {
+        ...project.inputs,
+        addedShifts: [...(project.inputs.addedShifts ?? []), ...added],
+        shiftNotes: [...notes.filter((n) => !(set.has(n.phaseId) && n.date === edit.toDate)), ...copiedNotes],
+        removedShifts: (project.inputs.removedShifts ?? []).filter(
+          (r) => !(set.has(r.phaseId) && r.date === edit.toDate)
+        ),
+      };
+      return rebuild(days, inputs, true);
     }
   }
 
