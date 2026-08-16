@@ -3,9 +3,8 @@ import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { formatDateLabel } from '../lib/dateUtils';
-import { SERVICE_CATALOG } from '../lib/data';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
-import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote } from '../types';
+import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -119,8 +118,12 @@ export function PlanPage() {
                 overrides={activeProject.inputs.dateOverrides}
                 shiftNotes={activeProject.inputs.shiftNotes ?? []}
               />
-              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} />
-              <MoveDaySnapshotCard schedule={schedule} teamMembers={state.teamMembers} moveDate={activeProject.inputs.targetMoveDate} />
+              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} catalog={state.services} />
+              <MoveDaySnapshotCard
+                schedule={schedule}
+                teamMembers={state.teamMembers}
+                moveDate={schedule.suggestedDates.moveDay || activeProject.inputs.targetMoveDate}
+              />
               {/* Budget sits with the hours it is measured against. */}
               <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
               <TeamHoursCard teamHours={schedule.teamHours} />
@@ -430,9 +433,9 @@ function SuggestedDatesCard({
  * Read-only mirror of the Input tab's Services Contracted, grouped by the same
  * categories and listing only what was actually ticked.
  */
-function ServicesContractedCard({ services }: { services: string[] }) {
+function ServicesContractedCard({ services, catalog }: { services: string[]; catalog: ServiceCategory[] }) {
   const selected = new Set(services);
-  const groups = SERVICE_CATALOG
+  const groups = catalog
     .map(({ category, services: all }) => ({ category, chosen: all.filter((s) => selected.has(s)) }))
     .filter((g) => g.chosen.length > 0);
 
@@ -485,14 +488,24 @@ function MoveDaySnapshotCard({
   teamMembers: AppContextTeamMembers;
   moveDate: string;
 }) {
-  const pm = schedule.lockedPM
-    ? teamMembers.find((m) => m.id === schedule.lockedPM)?.name ?? 'TBD'
-    : 'TBD';
-  const assistPm = schedule.lockedAssistPM
-    ? teamMembers.find((m) => m.id === schedule.lockedAssistPM)?.name ?? 'TBD'
-    : 'TBD';
-
   const moveDayEntries = schedule.days.find((d) => d.date === moveDate)?.entries ?? [];
+
+  /*
+   * Read the crew off move day itself rather than from lockedPM/lockedAssistPM.
+   * Those are recorded when the plan is generated and never revisited, so
+   * reassigning a role on the Schedule tab left this card naming whoever the
+   * generator had picked — the same staleness that made the card empty when the
+   * move moved, since it was looking at the target date rather than the day the
+   * plan actually puts move day on.
+   */
+  const nameFor = (role: RoleType): string => {
+    const onDay = moveDayEntries.find((e) => e.role === role && e.assignedMemberName)?.assignedMemberName;
+    if (onDay) return onDay;
+    const locked = role === 'PM' ? schedule.lockedPM : role === 'Assist PM' ? schedule.lockedAssistPM : null;
+    return locked ? teamMembers.find((m) => m.id === locked)?.name ?? 'TBD' : 'TBD';
+  };
+  const pm = nameFor('PM');
+  const assistPm = nameFor('Assist PM');
   const specialists = moveDayEntries
     .filter((e) => e.role === 'Specialist' && e.assignedMemberName)
     .map((e) => e.assignedMemberName!)

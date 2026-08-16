@@ -1,9 +1,10 @@
-import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings } from '../types';
+import type { Project, TeamMember, PhaseTemplate, ListCategory, RoleType, MemberPhaseRole, AuctionAppSettings, ChecklistTemplateSection, SupplyItem, ShiftTimeSettings, ServiceCategory } from '../types';
 import {
   DEFAULT_TEAM_MEMBERS,
   COMMUNITIES as DEFAULT_COMMUNITIES,
   PHASE_TEMPLATES as DEFAULT_PHASE_TEMPLATES,
   DEFAULT_LISTS,
+  SERVICE_CATALOG,
 } from './data';
 import { DEFAULT_CHECKLIST_TEMPLATE } from './checklistData';
 import { normalizeChecklist } from './checklist';
@@ -26,6 +27,7 @@ const STORAGE_KEY_SUPPLIES         = 'st-planner-supplies';
 const STORAGE_KEY_SUPPLY_CATS      = 'st-planner-supply-categories';
 const STORAGE_KEY_SHIFT_TIMES      = 'st-planner-shift-times';
 const STORAGE_KEY_SETTINGS_ORDER   = 'st-planner-settings-order';
+const STORAGE_KEY_SERVICES         = 'st-planner-services';
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,7 @@ export function loadProjects(): Project[] {
         ...p.inputs,
         status: p.inputs.status ?? 'active',
         isLocked: p.inputs.isLocked ?? false,
+        scheduleLocked: p.inputs.scheduleLocked ?? false,
         phaseDateMoves: p.inputs.phaseDateMoves ?? [],
         auction: { ...p.inputs.auction, lotCount: p.inputs.auction?.lotCount ?? 0 },
         contractedServices: p.inputs.contractedServices ?? [],
@@ -389,5 +392,32 @@ export function saveSettingsOrder(order: SettingsOrder): void {
     localStorage.setItem(STORAGE_KEY_SETTINGS_ORDER, JSON.stringify(order));
   } catch (e) {
     console.error('Failed to save settings order', e);
+  }
+}
+
+
+// ─── Services Contracted ──────────────────────────────────────────────────────
+
+export function loadServices(): ServiceCategory[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SERVICES);
+    if (!raw) return SERVICE_CATALOG.map((c) => ({ ...c, services: [...c.services] }));
+    const parsed = JSON.parse(raw) as ServiceCategory[];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return SERVICE_CATALOG.map((c) => ({ ...c, services: [...c.services] }));
+    }
+    return parsed
+      .filter((c) => c && typeof c.category === 'string')
+      .map((c) => ({ category: c.category, services: Array.isArray(c.services) ? c.services.filter(Boolean) : [] }));
+  } catch {
+    return SERVICE_CATALOG.map((c) => ({ ...c, services: [...c.services] }));
+  }
+}
+
+export function saveServices(services: ServiceCategory[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(services));
+  } catch (e) {
+    console.error('Failed to save services', e);
   }
 }

@@ -36,7 +36,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     // Locations feeds the furniture inventory's from/to menus. It has no group
     // of its own in the layout brief, and it is a per-project list, so it sits
     // here rather than being dropped and losing its only editor.
-    subs: ['list:move-types', 'checklist', 'auctionDefaults', 'communities', 'list:locations'],
+    subs: ['list:move-types', 'services', 'checklist', 'auctionDefaults', 'communities', 'list:locations'],
   },
   {
     key: 'projectVariables',
@@ -62,6 +62,7 @@ export const SUB_LABELS: Record<string, string> = {
   checklist: 'Checklist Template',
   auctionDefaults: 'Auction Defaults',
   communities: 'Communities',
+  services: 'Services Contracted',
   shiftTimes: 'Shift Times',
   templates: 'Task Template',
   'list:move-types': 'Project Types',
