@@ -1,7 +1,9 @@
 import { formatDateLabel, shiftTimeRange } from './dateUtils';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from './budgets';
+import { resolveContact } from './contacts';
 import type { DocBlock, DocumentModel } from './docModel';
 import type {
+  CrmContact,
   Project,
   ProjectInputs,
   RoleType,
@@ -113,6 +115,7 @@ export const PLAN_SECTIONS: { key: string; label: string; hint: string }[] = [
   { key: 'project', label: 'Project details', hint: 'Client, community, PM, addresses' },
   { key: 'dates', label: 'Dates', hint: 'Every milestone, its shift and its notes' },
   { key: 'services', label: 'Services contracted', hint: 'What the client is paying for' },
+  { key: 'contacts', label: 'Project contacts', hint: 'Communities, movers and disposal firms' },
   { key: 'moveDay', label: 'Move day snapshot', hint: 'Who is on move day' },
   { key: 'budget', label: 'Project hourly budget', hint: 'Scheduled against each allowance' },
   { key: 'teamHours', label: 'Team hours', hint: 'Hours per person on this project' },
@@ -126,6 +129,7 @@ export function buildPlanDocument(
   teamMembers: TeamMember[],
   serviceCatalog: ServiceCategory[],
   shiftTimes: ShiftTimeSettings,
+  crmContacts: CrmContact[],
   sections: Set<string> = ALL_PLAN_SECTIONS
 ): DocumentModel {
   const { inputs } = project;
@@ -139,6 +143,19 @@ export function buildPlanDocument(
   const crew = moveDayCrew(schedule, teamMembers, moveDate);
   const budgeted = totalBudgetedHours(inputs.phaseBudgets);
   const selected = new Set(inputs.contractedServices ?? []);
+  // Contacts link to the CRM, so what a row says has to be looked up. A link
+  // whose entry has gone is left out rather than printed as an empty line.
+  const contactRows = (inputs.contacts ?? [])
+    .map((row) => resolveContact(row, crmContacts))
+    .filter((r) => !r.missing)
+    .map(({ details }) => [
+      dash(details.contactType),
+      dash(details.company),
+      dash(details.name),
+      [details.workPhone, details.cellPhone].filter(Boolean).join(' / ') || '-',
+      dash(details.email),
+    ]);
+
   const serviceGroups = serviceCatalog
     .map(({ category, services }) => ({ label: category, items: services.filter((s) => selected.has(s)) }))
     .filter((g) => g.items.length > 0);
@@ -188,6 +205,23 @@ export function buildPlanDocument(
       serviceGroups.length === 0
         ? { kind: 'paragraph', text: 'No services selected.', muted: true }
         : { kind: 'bullets', groups: serviceGroups },
+    ],
+
+    contacts: [
+      { kind: 'heading', text: 'Project Contacts' },
+      contactRows.length === 0
+        ? { kind: 'paragraph', text: 'No contacts on this project.', muted: true }
+        : {
+            kind: 'table',
+            columns: [
+              { header: 'Type', weight: 18 },
+              { header: 'Company', weight: 22 },
+              { header: 'Contact', weight: 18 },
+              { header: 'Phone', weight: 21 },
+              { header: 'E-mail', weight: 21 },
+            ],
+            rows: contactRows,
+          },
     ],
 
     moveDay: [

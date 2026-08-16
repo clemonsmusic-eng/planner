@@ -6,7 +6,8 @@ import { can } from '../lib/access';
 import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge';
 import { formatDateLabel } from '../lib/dateUtils';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
-import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory } from '../types';
+import { contactSummary, resolveContact } from '../lib/contacts';
+import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory, CrmContact, ProjectContact } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -124,6 +125,8 @@ export function PlanPage() {
                 shiftNotes={activeProject.inputs.shiftNotes ?? []}
               />
               <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} catalog={state.services} />
+              {/* Who to ring on the day, above the crew who will be ringing. */}
+              <ProjectContactsCard contacts={activeProject.inputs.contacts ?? []} crm={state.crmContacts} />
               <MoveDaySnapshotCard
                 schedule={schedule}
                 teamMembers={state.teamMembers}
@@ -484,6 +487,79 @@ function ServicesContractedCard({ services, catalog }: { services: string[]; cat
                   </li>
                 ))}
               </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+/**
+ * The people outside the team this job goes through, read off the CRM the
+ * project links to. Read-only like the rest of the Plan tab: contacts are
+ * added on the Input tab, and the book itself is edited in the CRM.
+ */
+function ProjectContactsCard({ contacts, crm }: { contacts: ProjectContact[]; crm: CrmContact[] }) {
+  const rows = contacts.map((row) => ({ row, ...resolveContact(row, crm) }));
+
+  return (
+    <CollapsibleCard
+      title="Project Contacts"
+      trailing={
+        contacts.length > 0 ? (
+          <span className="text-xs text-ios-gray-500 flex-shrink-0">
+            {contacts.length} contact{contacts.length === 1 ? '' : 's'}
+          </span>
+        ) : undefined
+      }
+    >
+      {rows.length === 0 ? (
+        <p className="text-sm text-ios-gray-500">
+          Nobody added yet — add them on the Input tab.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {rows.map(({ row, details, missing }) => (
+            <div key={row.id} className="pb-3 border-b border-ios-gray-100 last:border-0 last:pb-0">
+              {missing ? (
+                <p className="text-sm text-ios-gray-500">Contact removed from the CRM</p>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <p className="text-sm font-semibold text-teal-900 truncate">{contactSummary(details)}</p>
+                    {details.contactType && (
+                      <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700">
+                        {details.contactType}
+                      </span>
+                    )}
+                  </div>
+                  {details.serviceDescription && (
+                    <p className="text-xs text-ios-gray-600 mt-0.5">{details.serviceDescription}</p>
+                  )}
+                  {/* Tappable, because this card is read on a phone at a job. */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                    {details.workPhone && (
+                      <a href={`tel:${details.workPhone}`} className="text-xs text-teal-700">
+                        Work {details.workPhone}
+                      </a>
+                    )}
+                    {details.cellPhone && (
+                      <a href={`tel:${details.cellPhone}`} className="text-xs text-teal-700">
+                        Cell {details.cellPhone}
+                      </a>
+                    )}
+                    {details.email && (
+                      <a href={`mailto:${details.email}`} className="text-xs text-teal-700 truncate">
+                        {details.email}
+                      </a>
+                    )}
+                  </div>
+                  {details.notes && (
+                    <p className="text-xs text-ios-gray-600 mt-1 whitespace-pre-line">{details.notes}</p>
+                  )}
+                </>
+              )}
             </div>
           ))}
         </div>
