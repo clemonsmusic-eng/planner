@@ -121,6 +121,21 @@ export interface ManualShift {
 }
 
 /**
+ * A start time set on one shift, overriding the AM/PM default from Settings.
+ *
+ * Kept on the inputs rather than on the generated schedule, for the same
+ * reason as notes and hand-added shifts: the schedule is rebuilt from scratch
+ * on every regenerate, and a time someone set deliberately is not something to
+ * throw away with it.
+ */
+export interface ShiftStartTime {
+  phaseId: string;
+  date: string;
+  /** HH:mm, 24-hour. */
+  time: string;
+}
+
+/**
  * A free-text note against one shift. Kept on inputs rather than on the
  * generated schedule for the same reason as added and removed shifts: the
  * schedule is thrown away and rebuilt on every regenerate, and a note someone
@@ -247,6 +262,8 @@ export interface ProjectInputs {
   removedShifts?: RemovedShift[];
   /** Per-shift notes, keyed by phase and date. */
   shiftNotes?: ShiftNote[];
+  /** Per-shift start times, where one was set rather than left to Settings. */
+  shiftStartTimes?: ShiftStartTime[];
   /** People outside the team this job goes through. */
   contacts?: ProjectContact[];
 }

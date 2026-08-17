@@ -127,10 +127,12 @@ export function getWeekKey(iso: string): string {
 export function shiftTimeRange(
   shift: 'AM' | 'PM' | 'Full Day',
   hours: number,
-  times: { am: string; pm: string }
+  times: { am: string; pm: string },
+  /** A start set on this shift, which beats the default for its slot. */
+  startOverride?: string
 ): string {
   // A Full Day runs from the morning start, however long it turns out to be.
-  const start = shift === 'PM' ? times.pm : times.am;
+  const start = startOverride || (shift === 'PM' ? times.pm : times.am);
   const [h, m] = start.split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return '';
   const startMins = h * 60 + m;

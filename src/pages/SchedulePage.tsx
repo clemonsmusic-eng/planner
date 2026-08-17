@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
-import { ShiftOverrideSheet } from '../components/ShiftOverrideSheet';
+import { ShiftEditSheet, type ShiftEditValues } from '../components/ShiftEditSheet';
 import { AddShiftSheet } from '../components/AddShiftSheet';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { LockButton } from '../components/LockButton';
-import { formatDateLabel } from '../lib/dateUtils';
+import { formatDateLabel, shiftTimeRange } from '../lib/dateUtils';
+import { startTimeLookup } from '../lib/shiftStartTimes';
 import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
@@ -14,7 +15,11 @@ import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../
 import { useIsWideLayout } from '../lib/useMediaQuery';
 import { can } from '../lib/access';
 import { ExportScheduleButton } from '../components/ExportPlanButton';
-import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType, ProjectInputs } from '../types';
+import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
+
+const RAIL_WIDTH_KEY = 'st-planner-schedule-rail-width';
+const RAIL_MIN = 260;
+const RAIL_MAX = 620;
 
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES  = new Set(['phase-6', 'phase-lot-prep', 'phase-pickup-prep', 'phase-7']);
@@ -57,6 +62,14 @@ function ChevronDownIcon() {
 }
 
 
+function PencilIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+    </svg>
+  );
+}
+
 type FilterMode = 'all' | 'conflicts' | string; // string = memberId
 
 const ROLE_COLORS: Record<string, string> = {
@@ -73,8 +86,18 @@ const SHIFT_LABELS: Record<string, string> = {
   'Full Day': 'Full Day',
 };
 
+/** What the edit window was opened on: one shift, or every shift on a day. */
+interface ShiftEditorTarget {
+  date: string;
+  /** Absent for a whole day, in which case every shift on it is edited. */
+  phaseId?: string;
+  title: string;
+  subtitle: string;
+  initial: ShiftEditValues;
+}
+
 export function SchedulePage() {
-  const { state, dispatch, activeProject: storedProject, generateAndSaveSchedule, planFrom } = useApp();
+  const { state, dispatch, activeProject: storedProject, generateAndSaveSchedule } = useApp();
 
   /*
    * The Schedule tab works on a draft and commits on Save.
@@ -101,22 +124,76 @@ export function SchedulePage() {
     dispatch({ type: 'SET_SCHEDULE_DRAFT', project: applyScheduleEdit(activeProject, e, state.teamMembers) });
   }
 
-  /** The two edits that re-run the generator rather than moving entries. */
-  function replan(inputs: ProjectInputs) {
-    if (!activeProject || scheduleLocked) return;
-    dispatch({
-      type: 'SET_SCHEDULE_DRAFT',
-      project: { ...activeProject, inputs, schedule: planFrom(activeProject.id, inputs) },
+  /** A shift's start, where one was set on it rather than left to Settings. */
+  const startTimeOf = startTimeLookup(activeProject?.inputs);
+
+  /**
+   * Open the edit window on a day, or on one shift within it.
+   *
+   * A day carrying two shifts has to answer with one of them, so the first is
+   * what the window opens on — the same shift the day header already reports.
+   */
+  function openEditor(day: ScheduleDay, phaseId?: string) {
+    const entries = phaseId ? day.entries.filter((e) => e.phaseId === phaseId) : day.entries;
+    const first = entries[0];
+    if (!first) return;
+    setShiftEditor({
+      date: day.date,
+      phaseId,
+      title: phaseId ? `Edit ${first.phaseName}` : 'Edit Shift',
+      subtitle: phaseId ? day.label : `${day.label} · ${new Set(day.entries.map((e) => e.phaseId)).size} shift(s)`,
+      initial: {
+        shift: first.shift,
+        date: day.date,
+        startTime: startTimeOf(first.phaseId, day.date) ?? null,
+      },
     });
   }
+
+  /**
+   * Apply the window's three answers as one change.
+   *
+   * The date goes first so the rest lands where the shift ended up: a move onto
+   * a day already running the same phase is refused, and a shift type written
+   * against the date that was asked for rather than the one it is on would
+   * override a day nothing moved to.
+   */
+  function applyShiftEdit(target: ShiftEditorTarget, values: ShiftEditValues) {
+    if (!activeProject || scheduleLocked) return;
+    let next = activeProject;
+    const apply = (e: ScheduleEdit) => { next = applyScheduleEdit(next, e, state.teamMembers); };
+
+    const phases = target.phaseId
+      ? [target.phaseId]
+      : [...new Set(activeProject.schedule?.days.find((d) => d.date === target.date)?.entries.map((e) => e.phaseId) ?? [])];
+
+    if (values.date && values.date !== target.date) {
+      apply({ kind: 'moveShift', fromDate: target.date, toDate: values.date, phaseId: target.phaseId });
+    }
+
+    for (const phaseId of phases) {
+      const on = (date: string) =>
+        next.schedule?.days.find((d) => d.date === date)?.entries.find((e) => e.phaseId === phaseId);
+      const date = on(values.date) ? values.date : target.date;
+      const current = on(date);
+      if (!current) continue;
+      if (current.shift !== values.shift) apply({ kind: 'setShiftType', date, phaseId, shift: values.shift });
+      if ((startTimeOf(phaseId, target.date) ?? null) !== values.startTime) {
+        apply({ kind: 'setStartTime', date, phaseId, time: values.startTime });
+      }
+    }
+
+    if (next !== activeProject) dispatch({ type: 'SET_SCHEDULE_DRAFT', project: next });
+  }
+
   const addShift = useAddShift();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [overrideDate, setOverrideDate] = useState<string | null>(null);
-  // No phaseId means the whole day moves; the header button acts on the date.
-  const [dateMovePicker, setDateMovePicker] = useState<{ phaseId?: string; originalDate: string } | null>(null);
+  // No phaseId means the whole day is being edited; the header button acts on
+  // every shift that day, the one on a shift card acts on that shift alone.
+  const [shiftEditor, setShiftEditor] = useState<ShiftEditorTarget | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
   const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
   const [copyPicker, setCopyPicker] = useState<{ phaseId?: string; fromDate: string; label: string } | null>(null);
@@ -132,6 +209,42 @@ export function SchedulePage() {
     edit({ kind: 'moveShift', fromDate: payload.date, toDate, phaseId: payload.phaseId })
   );
   const [focusDate, setFocusDate] = useState<string | null>(null);
+
+  /*
+   * How wide the calendar rail is, kept on the device so it survives a reload.
+   * Clamped so neither side can be dragged away to nothing.
+   */
+  const [railWidth, setRailWidth] = useState(() => {
+    const stored = Number(localStorage.getItem(RAIL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored >= RAIL_MIN && stored <= RAIL_MAX ? stored : 360;
+  });
+
+  function startRailDrag(e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = railWidth;
+    // Window listeners, not pointer capture: the divider re-renders on every
+    // move, which would take a capture on it with each new node.
+    const move = (ev: PointerEvent) => {
+      const next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, startWidth + ev.clientX - startX));
+      setRailWidth(next);
+    };
+    const up = (ev: PointerEvent) => {
+      move(ev);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      try {
+        localStorage.setItem(RAIL_WIDTH_KEY, String(Math.min(RAIL_MAX, Math.max(RAIL_MIN, startWidth + ev.clientX - startX))));
+      } catch {
+        /* storage blocked; the width simply won't persist */
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
 
   /** Clicking a day in the calendar opens it in the list and scrolls it in. */
   function revealDay(date: string) {
@@ -396,7 +509,10 @@ export function SchedulePage() {
         >
           {/* Calendar rail — wide layout only; the phone keeps the plain list. */}
           {schedule && (
-            <div className="hidden lg:block lg:w-[360px] xl:w-[400px] flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50">
+            <div
+              className="hidden lg:block flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50"
+              style={{ width: railWidth }}
+            >
               <ScheduleCalendar
                 days={schedule.days}
                 activeDate={focusDate}
@@ -405,6 +521,24 @@ export function SchedulePage() {
                 dragging={!!drag}
                 disabled={scheduleLocked}
               />
+            </div>
+          )}
+
+          {/*
+            The split between the calendar and the list. Dragged rather than
+            fixed because which side matters changes with the job — a long plan
+            wants a wide calendar, a heavily crewed one wants the list.
+          */}
+          {schedule && (
+            <div
+              onPointerDown={startRailDrag}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize the calendar"
+              className="hidden lg:flex w-1.5 flex-shrink-0 cursor-col-resize items-center justify-center bg-ios-gray-100 hover:bg-teal-200 active:bg-teal-300 transition-colors"
+              style={{ touchAction: 'none' }}
+            >
+              <span className="w-0.5 h-8 rounded-full bg-ios-gray-400" />
             </div>
           )}
 
@@ -438,8 +572,8 @@ export function SchedulePage() {
                   collapsed={collapsedDays.has(day.date)}
                   onToggle={() => toggleDay(day.date)}
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
-                  onOverride={() => setOverrideDate(day.date)}
-                  onDateChange={() => setDateMovePicker({ originalDate: day.date })}
+                  onEditDay={() => openEditor(day)}
+                  onEditShift={(phaseId) => openEditor(day, phaseId)}
                   onCopyDay={() => setCopyPicker({ fromDate: day.date, label: day.label })}
                   onCopyShift={(phaseId, phaseName) =>
                     setCopyPicker({ phaseId, fromDate: day.date, label: `${phaseName} · ${day.label}` })
@@ -449,7 +583,10 @@ export function SchedulePage() {
                   onPickMember={setMemberPickerEntry}
                   onAddRole={(phaseId) => edit({ kind: 'addRole', date: day.date, phaseId, role: 'Specialist' })}
                   onRemoveRole={(entryId) => edit({ kind: 'removeRole', entryId })}
-                  onMoveShift={(phaseId) => setDateMovePicker({ phaseId, originalDate: day.date })}
+                  timeFor={(phaseId, shift, hrs) =>
+                    shiftTimeRange(shift, hrs, state.shiftTimes, startTimeOf(phaseId, day.date))
+                  }
+                  hasSetTime={(phaseId) => startTimeOf(phaseId, day.date) !== undefined}
                   highlighted={focusDate === day.date}
                   onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
                   noteFor={(phaseId) =>
@@ -484,40 +621,19 @@ export function SchedulePage() {
         />
       )}
 
-      {/* Shift Override Sheet */}
-      {overrideDate && (
-        <ShiftOverrideSheet
-          date={overrideDate}
-          current={activeProject.inputs.dateOverrides.find((o) => o.date === overrideDate)?.shift ?? null}
-          onSelect={(shift) => {
-            const filtered = activeProject.inputs.dateOverrides.filter((o) => o.date !== overrideDate);
-            replan({
-              ...activeProject.inputs,
-              dateOverrides: shift
-                ? [...filtered, { id: crypto.randomUUID(), date: overrideDate, shift, reason: 'Manual override' }]
-                : filtered,
-            });
-          }}
-          onClose={() => setOverrideDate(null)}
-        />
-      )}
-
-      {dateMovePicker && (
-        <DateMoveSheet
-          title="Move to Different Date"
-          confirmLabel="Move"
-          originalDate={dateMovePicker.originalDate}
-          // Re-dates the entries as they stand rather than regenerating, so a
-          // move keeps the crew and hours already set on the shift.
-          onMove={(newDate) =>
-            edit({
-              kind: 'moveShift',
-              fromDate: dateMovePicker.originalDate,
-              toDate: newDate,
-              phaseId: dateMovePicker.phaseId,
-            })
-          }
-          onClose={() => setDateMovePicker(null)}
+      {/*
+        Shift type, date and start time in one window. The date change re-dates
+        the entries as they stand rather than regenerating, so a move keeps the
+        crew and hours already set on the shift.
+      */}
+      {shiftEditor && (
+        <ShiftEditSheet
+          title={shiftEditor.title}
+          subtitle={shiftEditor.subtitle}
+          initial={shiftEditor.initial}
+          shiftTimes={state.shiftTimes}
+          onApply={(values) => applyShiftEdit(shiftEditor, values)}
+          onClose={() => setShiftEditor(null)}
         />
       )}
 
@@ -584,19 +700,20 @@ function DaySection({
   collapsed,
   onToggle,
   hasOverride,
-  onOverride,
-  onDateChange,
+  onEditDay,
+  onEditShift,
   memberMap,
   onPickMember,
   onAddRole,
   onRemoveRole,
-  onMoveShift,
   onRemoveShift,
   onCopyDay,
   onCopyShift,
   dragHandle,
   highlighted,
   noteFor,
+  timeFor,
+  hasSetTime,
   onSetNote,
   onSetHours,
 }: {
@@ -604,19 +721,20 @@ function DaySection({
   collapsed: boolean;
   onToggle: () => void;
   hasOverride: boolean;
-  onOverride: () => void;
-  onDateChange: () => void;
+  onEditDay: () => void;
+  onEditShift: (phaseId: string) => void;
   memberMap: Map<string, TeamMember>;
   onPickMember: (entry: ScheduleEntry) => void;
   onAddRole: (phaseId: string) => void;
   onRemoveRole: (entryId: string) => void;
-  onMoveShift: (phaseId: string) => void;
   onRemoveShift: (phaseId: string, phaseName: string) => void;
   onCopyDay: () => void;
   onCopyShift: (phaseId: string, phaseName: string) => void;
   dragHandle: (payload: DragPayload) => Record<string, unknown>;
   highlighted: boolean;
   noteFor: (phaseId: string) => string;
+  timeFor: (phaseId: string, shift: 'AM' | 'PM' | 'Full Day', hours: number) => string;
+  hasSetTime: (phaseId: string) => boolean;
   onSetNote: (phaseId: string, note: string) => void;
   onSetHours: (phaseId: string, hours: number) => void;
 }) {
@@ -660,14 +778,17 @@ function DaySection({
             </svg>
           </div>
         </button>
+        {/*
+          One button for when the shift happens — its slot, its date and its
+          start time — rather than a clock for the first and a calendar for the
+          second, which asked people to know which icon held which answer.
+        */}
         <button
-          onClick={onOverride}
+          onClick={onEditDay}
           className="ml-2 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
-          aria-label="Override shift"
+          aria-label={`Edit ${day.label}`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
-          </svg>
+          <PencilIcon />
         </button>
         {/*
           Copy sits on the date line because that is what a copy changes: the
@@ -683,15 +804,6 @@ function DaySection({
             <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
           </svg>
         </button>
-        <button
-          onClick={onDateChange}
-          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
-          aria-label="Move to different date"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
-          </svg>
-        </button>
       </div>
 
       {!collapsed && (
@@ -700,10 +812,22 @@ function DaySection({
             <Card key={phaseName} className="overflow-hidden">
               {/* The phase bar doubles as the grab handle for this one shift. */}
               <div
-                className="px-3 py-2 bg-ios-gray-100 border-b border-ios-gray-200"
+                className="px-3 py-2 bg-ios-gray-100 border-b border-ios-gray-200 flex items-center justify-between gap-2"
                 {...dragHandle({ date: day.date, phaseId: phaseEntries[0].phaseId, label: `${phaseName} · ${day.label}` })}
               >
-                <p className="text-xs font-bold text-teal-700 uppercase tracking-wide">{phaseName}</p>
+                <p className="text-xs font-bold text-teal-700 uppercase tracking-wide min-w-0 truncate">{phaseName}</p>
+                {/*
+                  The clock window, so a start time set on this shift is visible
+                  where it was set rather than only in the plan and the exports.
+                */}
+                <span
+                  className={`text-[11px] whitespace-nowrap flex-shrink-0 ${
+                    hasSetTime(phaseEntries[0].phaseId) ? 'font-semibold text-teal-700' : 'text-ios-gray-500'
+                  }`}
+                >
+                  {phaseEntries[0].shift} ·{' '}
+                  {timeFor(phaseEntries[0].phaseId, phaseEntries[0].shift, phaseEntries[0].hours)}
+                </span>
               </div>
               <div className="divide-y divide-ios-gray-100">
                 {phaseEntries.map((entry) => (
@@ -717,13 +841,11 @@ function DaySection({
               */}
               <div className="flex items-center gap-1 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
                 <button
-                  onClick={() => onMoveShift(phaseEntries[0].phaseId)}
+                  onClick={() => onEditShift(phaseEntries[0].phaseId)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
-                  aria-label={`Move ${phaseName} to a different date`}
+                  aria-label={`Edit the ${phaseName} shift`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
-                  </svg>
+                  <PencilIcon />
                 </button>
                 <button
                   onClick={() => onCopyShift(phaseEntries[0].phaseId, phaseName)}
@@ -745,9 +867,12 @@ function DaySection({
                   </svg>
                 </button>
                 <div className="flex-1 flex items-center justify-end gap-1.5 pr-1 min-w-0">
-                  {/* Hidden in the narrow band of the split layout, where the
-                      calendar rail leaves this row no room for it. */}
-                  <span className="text-xs text-ios-gray-500 whitespace-nowrap lg:hidden xl:inline">
+                  {/* Dropped wherever this row is short of width — on a phone,
+                      and again in the narrow band of the split layout where the
+                      calendar rail takes it. Without that the row overflows and
+                      the count is drawn back over the buttons. The day header
+                      states the same figure either way. */}
+                  <span className="text-xs text-ios-gray-500 whitespace-nowrap hidden sm:inline lg:hidden xl:inline">
                     {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
                   </span>
                   {/*

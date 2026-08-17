@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { useApp } from '../store/AppContext';
 import { shiftTimeRange } from '../lib/dateUtils';
+import { startTimeLookup } from '../lib/shiftStartTimes';
 import type { Project, TeamMember, ExperienceLevel, ShiftTimeSettings } from '../types';
 
 const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -44,6 +45,8 @@ interface CalendarJob {
   /** Whether this shift ends at the destination rather than the origin. */
   isMoveDay: boolean;
   note: string;
+  /** A start set on this shift, which beats the Settings time for its slot. */
+  startTime?: string;
 }
 
 /**
@@ -88,6 +91,8 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
       ? teamMemberMap.get(project.inputs.projectManagerId)?.name ?? null
       : null;
 
+    const startOf = startTimeLookup(project.inputs);
+
     for (const day of project.schedule.days) {
       const groups = new Map<string, CalendarJob>();
 
@@ -120,6 +125,7 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
               (project.inputs.shiftNotes ?? []).find(
                 (n) => n.phaseId === entry.phaseId && n.date === day.date
               )?.note ?? '',
+            startTime: startOf(entry.phaseId, day.date),
           });
         }
         const job = groups.get(key)!;
@@ -352,6 +358,145 @@ function DayView({
 
 // ─── Week View ────────────────────────────────────────────────────────────────
 
+/** Saturday and Sunday, which the business doesn't normally work. */
+const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+
+/** The hours an hourly week grid draws, and how tall each one is. */
+const HOUR_START = 6;
+const HOUR_END = 20;
+const HOUR_PX = 56;
+
+/** "4 AM" / "12 PM", the way a wall clock reads. */
+const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`;
+
+/**
+ * The week as an hourly grid.
+ *
+ * The block view answers "what is on this week"; this one answers "when does
+ * it actually start and how long does it run", which is the question you have
+ * when two shifts are on the same day. Shifts are positioned and sized from
+ * their real start time and hours, so an AM and a PM job on one day sit apart
+ * on the column the way they sit apart in the day.
+ */
+function WeekHourView({
+  date,
+  jobs,
+  colorMap,
+  shiftTimes,
+  onSelectDay,
+  onJobDoubleClick,
+}: {
+  date: Date;
+  jobs: CalendarJob[];
+  colorMap: Map<string, number>;
+  shiftTimes: ShiftTimeSettings;
+  onSelectDay: (d: Date) => void;
+  onJobDoubleClick: (job: CalendarJob) => void;
+}) {
+  const weekStart = startOfWeek(date, { weekStartsOn: 0 });
+  const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+  const today = new Date();
+  const hours = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
+
+  /** Where a shift starts, in minutes past midnight. */
+  const startMinutes = (shift: string, override?: string) => {
+    const [h, m] = (override || (shift === 'PM' ? shiftTimes.pm : shiftTimes.am)).split(':').map(Number);
+    return (Number.isFinite(h) ? h : 9) * 60 + (Number.isFinite(m) ? m : 0);
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[46rem]">
+        {/* Day headings, held above the grid so they stay while it scrolls. */}
+        <div className="grid sticky top-0 z-10 bg-white border-b border-ios-gray-200" style={{ gridTemplateColumns: '3.5rem repeat(7, 1fr)' }}>
+          <div />
+          {days.map((day) => (
+            <button
+              key={day.toISOString()}
+              onClick={() => onSelectDay(day)}
+              className={`flex flex-col items-center py-2 gap-0.5 active:bg-ios-gray-50 ${
+                isWeekend(day) ? 'bg-ios-gray-50' : ''
+              }`}
+            >
+              <span className={`text-[10px] font-semibold uppercase ${isWeekend(day) ? 'text-ios-gray-400' : 'text-ios-gray-500'}`}>
+                {format(day, 'EEE')}
+              </span>
+              <span
+                className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${
+                  isSameDay(day, today) ? 'bg-teal-600 text-white' : 'text-teal-900'
+                }`}
+              >
+                {format(day, 'd')}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* The half-line of padding keeps the first hour label off the top edge. */}
+        <div className="grid relative pt-2" style={{ gridTemplateColumns: '3.5rem repeat(7, 1fr)' }}>
+          {/* Hour rail */}
+          <div className="border-r border-ios-gray-200">
+            {hours.map((h) => (
+              <div key={h} className="relative" style={{ height: HOUR_PX }}>
+                <span className="absolute top-0 -translate-y-1/2 right-1.5 text-[10px] font-medium text-ios-gray-500 tabular-nums">
+                  {hourLabel(h)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {days.map((day) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayJobs = jobsForDate(jobs, day);
+            return (
+              <div
+                key={day.toISOString()}
+                className={`relative border-r border-ios-gray-100 ${isWeekend(day) ? 'bg-ios-gray-50' : 'bg-white'}`}
+                style={{ height: hours.length * HOUR_PX }}
+              >
+                {hours.map((h) => (
+                  <div key={h} className="border-b border-ios-gray-100" style={{ height: HOUR_PX }} />
+                ))}
+
+                {dayJobs.map((j, i) => {
+                  const start = startMinutes(j.shift, j.startTime);
+                  const top = ((start - HOUR_START * 60) / 60) * HOUR_PX;
+                  const height = Math.max((j.hours || 1) * HOUR_PX, 28);
+                  const c = j.isArchived
+                    ? { bg: 'bg-ios-gray-100', border: 'border-gray-200', text: 'text-ios-gray-400' }
+                    : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
+                  return (
+                    <div
+                      key={`${dateStr}-${i}`}
+                      onDoubleClick={() => onJobDoubleClick(j)}
+                      title={`${j.projectName} — ${j.phaseName}`}
+                      className={`absolute left-0.5 right-0.5 rounded border overflow-hidden px-1 py-0.5 ${c.bg} ${c.border}`}
+                      style={{ top: Math.max(top, 0), height }}
+                    >
+                      <p className={`text-[10px] font-bold leading-tight truncate ${c.text}`}>{j.projectName}</p>
+                      <p className={`text-[9px] font-semibold leading-tight truncate ${c.text}`}>
+                        {j.phaseName.split(':').pop()!.trim()}
+                      </p>
+                      <p className="text-[9px] text-ios-gray-600 leading-tight truncate">
+                        {shiftTimeRange(j.shift, j.hours, shiftTimes, j.startTime)}
+                      </p>
+                      {j.memberNames.length > 0 && height > 70 && (
+                        <p className="text-[9px] text-ios-gray-600 leading-tight truncate">
+                          {j.memberNames.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WeekView({
   date,
   jobs,
@@ -377,7 +522,7 @@ function WeekView({
   onDayDragOver: (dateStr: string) => void;
   onDayDrop: (dateStr: string) => void;
 }) {
-  const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(date, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
   const today = new Date();
 
@@ -393,9 +538,15 @@ function WeekView({
             <button
               key={day.toISOString()}
               onClick={() => onSelectDay(day)}
-              className="flex flex-col items-center py-2 gap-0.5 active:bg-ios-gray-50"
+              className={`flex flex-col items-center py-2 gap-0.5 active:bg-ios-gray-50 ${
+                isWeekend(day) ? 'bg-ios-gray-50' : ''
+              }`}
             >
-              <span className="text-[10px] font-semibold text-ios-gray-500 uppercase">
+              <span
+                className={`text-[10px] font-semibold uppercase ${
+                  isWeekend(day) ? 'text-ios-gray-400' : 'text-ios-gray-500'
+                }`}
+              >
                 {format(day, 'EEE')}
               </span>
               <span
@@ -427,7 +578,9 @@ function WeekView({
           return (
             <div
               key={day.toISOString()}
-              className={`min-h-[120px] lg:min-h-[420px] p-1 space-y-1 transition-colors ${isDropTarget ? 'bg-teal-50' : ''}`}
+              className={`min-h-[120px] lg:min-h-[420px] p-1 space-y-1 transition-colors ${
+                isDropTarget ? 'bg-teal-50' : isWeekend(day) ? 'bg-ios-gray-50' : ''
+              }`}
               onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
               onDrop={() => onDayDrop(dateStr)}
               onDragLeave={() => onDayDragOver('')}
@@ -458,7 +611,7 @@ function WeekView({
                       {j.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
                     </p>
                     <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
-                      {j.shift} · {shiftTimeRange(j.shift, j.hours, shiftTimes)}
+                      {j.shift} · {shiftTimeRange(j.shift, j.hours, shiftTimes, j.startTime)}
                     </p>
                     <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
                       PM: {j.projectManagerName ?? 'Unassigned'}
@@ -516,8 +669,8 @@ function MonthView({
 }) {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
   const calDays = eachDayOfInterval({ start: calStart, end: calEnd });
   const today = new Date();
 
@@ -538,7 +691,7 @@ function MonthView({
     return () => window.removeEventListener('keydown', onKey);
   }, [pinned]);
 
-  const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   const jobKey = (j: CalendarJob) => `${j.projectId}:${j.date}:${j.phaseId}:${j.shift}`;
   const openJob = openKey ? jobs.find((j) => jobKey(j) === openKey) ?? null : null;
 
@@ -558,8 +711,13 @@ function MonthView({
   return (
     <div className="px-3 py-3" onMouseLeave={() => setHovered(null)}>
       <div className="grid grid-cols-7 mb-1">
-        {dayLabels.map((d) => (
-          <div key={d} className="text-center text-[11px] font-semibold text-ios-gray-500 py-1">
+        {dayLabels.map((d, i) => (
+          <div
+            key={d}
+            className={`text-center text-[11px] font-semibold py-1 ${
+              i === 0 || i === 6 ? 'text-ios-gray-400' : 'text-ios-gray-500'
+            }`}
+          >
             {d}
           </div>
         ))}
@@ -576,7 +734,9 @@ function MonthView({
             <div
               key={day.toISOString()}
               className={`flex flex-col rounded-xl lg:min-h-[112px] lg:p-1 lg:border ${
-                inMonth ? 'lg:border-ios-gray-200 lg:bg-white' : 'lg:border-transparent'
+                inMonth
+                  ? `lg:border-ios-gray-200 ${isWeekend(day) ? 'lg:bg-ios-gray-50' : 'lg:bg-white'}`
+                  : 'lg:border-transparent'
               }`}
             >
               <button
@@ -696,7 +856,7 @@ function MonthJobDetail({
 
         <dl className="space-y-1.5 text-xs">
           <DetailRow label="Shift">
-            {job.shift} · {shiftTimeRange(job.shift, job.hours, shiftTimes)} · {job.hours} hrs
+            {job.shift} · {shiftTimeRange(job.shift, job.hours, shiftTimes, job.startTime)} · {job.hours} hrs
           </DetailRow>
           <DetailRow label="PM">{job.projectManagerName ?? 'Unassigned'}</DetailRow>
           <DetailRow label="Crew">
@@ -847,6 +1007,12 @@ function FilterSheet({
 export function CalendarPage() {
   const { state, dispatch, movePhaseDate } = useApp();
   const [view, setView] = useState<CalendarView>('week');
+  /*
+   * Two ways to read a week. The block view stacks whatever is on a day; the
+   * hourly one puts it against a clock, which is the view you want when two
+   * shifts share a date and you need to see that they don't overlap.
+   */
+  const [hourly, setHourly] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -928,7 +1094,7 @@ export function CalendarPage() {
   function dateLabel() {
     if (view === 'day') return format(currentDate, 'EEE, MMM d');
     if (view === 'week') {
-      const s = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const s = startOfWeek(currentDate, { weekStartsOn: 0 });
       const e = addDays(s, 6);
       return format(s, 'MMM') === format(e, 'MMM')
         ? `${format(s, 'MMM d')}–${format(e, 'd, yyyy')}`
@@ -946,6 +1112,22 @@ export function CalendarPage() {
       >
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-teal-900">Calendar</h1>
+          <div className="flex items-center gap-1">
+          {view === 'week' && (
+            <button
+              onClick={() => setHourly((h) => !h)}
+              aria-pressed={hourly}
+              aria-label={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
+              title={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl ${
+                hourly ? 'bg-teal-50 text-teal-600' : 'text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
           <button
             onClick={() => setShowFilters(true)}
             className="relative w-10 h-10 flex items-center justify-center rounded-xl text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
@@ -959,6 +1141,7 @@ export function CalendarPage() {
               </span>
             )}
           </button>
+          </div>
         </div>
 
         {/* View toggle */}
@@ -1031,6 +1214,16 @@ export function CalendarPage() {
           />
         )}
         {view === 'week' && (
+          hourly ? (
+            <WeekHourView
+              date={currentDate}
+              jobs={filteredJobs}
+              colorMap={colorMap}
+              shiftTimes={state.shiftTimes}
+              onSelectDay={handleSelectDay}
+              onJobDoubleClick={handleJobDoubleClick}
+            />
+          ) : (
           <WeekView
             date={currentDate}
             jobs={filteredJobs}
@@ -1044,6 +1237,7 @@ export function CalendarPage() {
             onDayDragOver={(d) => setDragOverDate(d || null)}
             onDayDrop={handleDayDrop}
           />
+          )
         )}
         {view === 'month' && (
           <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} shiftTimes={state.shiftTimes} onSelectDay={handleSelectDay} />

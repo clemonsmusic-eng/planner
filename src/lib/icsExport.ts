@@ -52,8 +52,13 @@ function utcStamp(at: Date): string {
   );
 }
 
-const startMinutes = (shift: 'AM' | 'PM' | 'Full Day', times: ShiftTimeSettings): number => {
-  const [h, m] = (shift === 'PM' ? times.pm : times.am).split(':').map(Number);
+const startMinutes = (
+  shift: 'AM' | 'PM' | 'Full Day',
+  times: ShiftTimeSettings,
+  /** A start set on this shift, which beats the Settings time for its slot. */
+  override?: string
+): number => {
+  const [h, m] = (override || (shift === 'PM' ? times.pm : times.am)).split(':').map(Number);
   return (Number.isFinite(h) ? h : 9) * 60 + (Number.isFinite(m) ? m : 0);
 };
 
@@ -77,7 +82,7 @@ export function buildScheduleIcs(
   ];
 
   for (const row of rows) {
-    const start = startMinutes(row.shift, shiftTimes);
+    const start = startMinutes(row.shift, shiftTimes, row.start);
     const end = start + Math.round(row.hoursEach * 60);
     // The crew and the note are what someone reads off a calendar entry when
     // they are already on their way, so both go in the description.
