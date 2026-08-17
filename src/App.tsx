@@ -42,8 +42,16 @@ function AppContent() {
     }
   })();
 
+  /*
+   * A bounded shell, not a growing one. With `min-h-screen` the wrapper grew to
+   * fit its content, so `main`'s `overflow-hidden` clipped nothing, the pages'
+   * own scroll containers never got a height to scroll within, and the document
+   * scrolled instead — which took every page's sticky header off the top of the
+   * screen with it. `dvh` rather than `vh` so a phone's collapsing address bar
+   * doesn't leave the last row under the browser chrome.
+   */
   return (
-    <div className="flex flex-col min-h-screen bg-ios-gray-100 lg:pl-64">
+    <div className="flex flex-col h-screen h-[100dvh] overflow-hidden bg-ios-gray-100 lg:pl-64">
       <HamburgerMenu />
       <Sidebar />
       {/*

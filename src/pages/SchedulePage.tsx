@@ -16,6 +16,10 @@ import { can } from '../lib/access';
 import { ExportScheduleButton } from '../components/ExportPlanButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType, ProjectInputs } from '../types';
 
+const RAIL_WIDTH_KEY = 'st-planner-schedule-rail-width';
+const RAIL_MIN = 260;
+const RAIL_MAX = 620;
+
 const PACK_SORT_PHASES = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
 const CLEANOUT_PHASES  = new Set(['phase-6', 'phase-lot-prep', 'phase-pickup-prep', 'phase-7']);
 
@@ -132,6 +136,42 @@ export function SchedulePage() {
     edit({ kind: 'moveShift', fromDate: payload.date, toDate, phaseId: payload.phaseId })
   );
   const [focusDate, setFocusDate] = useState<string | null>(null);
+
+  /*
+   * How wide the calendar rail is, kept on the device so it survives a reload.
+   * Clamped so neither side can be dragged away to nothing.
+   */
+  const [railWidth, setRailWidth] = useState(() => {
+    const stored = Number(localStorage.getItem(RAIL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored >= RAIL_MIN && stored <= RAIL_MAX ? stored : 360;
+  });
+
+  function startRailDrag(e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = railWidth;
+    // Window listeners, not pointer capture: the divider re-renders on every
+    // move, which would take a capture on it with each new node.
+    const move = (ev: PointerEvent) => {
+      const next = Math.min(RAIL_MAX, Math.max(RAIL_MIN, startWidth + ev.clientX - startX));
+      setRailWidth(next);
+    };
+    const up = (ev: PointerEvent) => {
+      move(ev);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      try {
+        localStorage.setItem(RAIL_WIDTH_KEY, String(Math.min(RAIL_MAX, Math.max(RAIL_MIN, startWidth + ev.clientX - startX))));
+      } catch {
+        /* storage blocked; the width simply won't persist */
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
 
   /** Clicking a day in the calendar opens it in the list and scrolls it in. */
   function revealDay(date: string) {
@@ -396,7 +436,10 @@ export function SchedulePage() {
         >
           {/* Calendar rail — wide layout only; the phone keeps the plain list. */}
           {schedule && (
-            <div className="hidden lg:block lg:w-[360px] xl:w-[400px] flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50">
+            <div
+              className="hidden lg:block flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50"
+              style={{ width: railWidth }}
+            >
               <ScheduleCalendar
                 days={schedule.days}
                 activeDate={focusDate}
@@ -405,6 +448,24 @@ export function SchedulePage() {
                 dragging={!!drag}
                 disabled={scheduleLocked}
               />
+            </div>
+          )}
+
+          {/*
+            The split between the calendar and the list. Dragged rather than
+            fixed because which side matters changes with the job — a long plan
+            wants a wide calendar, a heavily crewed one wants the list.
+          */}
+          {schedule && (
+            <div
+              onPointerDown={startRailDrag}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize the calendar"
+              className="hidden lg:flex w-1.5 flex-shrink-0 cursor-col-resize items-center justify-center bg-ios-gray-100 hover:bg-teal-200 active:bg-teal-300 transition-colors"
+              style={{ touchAction: 'none' }}
+            >
+              <span className="w-0.5 h-8 rounded-full bg-ios-gray-400" />
             </div>
           )}
 

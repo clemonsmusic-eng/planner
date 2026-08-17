@@ -120,7 +120,10 @@ export function DragGhost({ drag }: { drag: DragState | null }) {
   );
 }
 
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+/** Saturday and Sunday, which the business doesn't normally work. */
+const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
 /**
  * A month cell is about six characters wide, and phase names are prefixed with
@@ -157,8 +160,8 @@ export function ScheduleCalendar({
 
   const byDate = new Map(days.map((d) => [d.date, d]));
   const cells = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
-    end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+    start: startOfWeek(startOfMonth(month), { weekStartsOn: 0 }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn: 0 }),
   });
 
   return (
@@ -189,7 +192,12 @@ export function ScheduleCalendar({
 
       <div className="grid grid-cols-7 mb-1">
         {WEEKDAYS.map((d, i) => (
-          <div key={i} className="text-center text-[10px] font-semibold uppercase text-ios-gray-500 py-1">
+          <div
+            key={i}
+            className={`text-center text-[10px] font-semibold uppercase py-1 ${
+              i === 0 || i === 6 ? 'text-ios-gray-400' : 'text-ios-gray-500'
+            }`}
+          >
             {d}
           </div>
         ))}
@@ -201,6 +209,16 @@ export function ScheduleCalendar({
           const day = byDate.get(iso);
           const phases = day ? [...new Map(day.entries.map((e) => [e.phaseId, e])).values()] : [];
           const isDrop = dropDate === iso;
+          const weekend = isWeekend(cell);
+
+          /*
+           * A weekend nobody is working isn't drawn at all — the grid keeps its
+           * seven columns so the weekdays stay under their own headings, but an
+           * empty Saturday is a gap rather than a box inviting a drop onto one.
+           * A weekend that does carry a shift is drawn like any other day.
+           */
+          if (weekend && !day) return <div key={iso} aria-hidden="true" className="min-h-[62px]" />;
+
           return (
             <div
               key={iso}
@@ -208,7 +226,7 @@ export function ScheduleCalendar({
               onClick={() => day && onPickDate(iso)}
               className={[
                 'min-h-[62px] rounded-lg border p-1 flex flex-col gap-0.5 transition-colors',
-                isSameMonth(cell, month) ? 'bg-white' : 'bg-ios-gray-50 opacity-60',
+                isSameMonth(cell, month) ? (weekend ? 'bg-ios-gray-50' : 'bg-white') : 'bg-ios-gray-50 opacity-60',
                 isDrop
                   ? 'border-teal-500 ring-2 ring-teal-400 bg-teal-50'
                   : activeDate === iso
