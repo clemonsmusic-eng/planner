@@ -1,4 +1,5 @@
 import { formatDateLabel, shiftTimeRange } from './dateUtils';
+import { startTimeLookup } from './shiftStartTimes';
 import { totalBudgetedHours } from './budgets';
 import type { DocBlock, DocumentModel } from './docModel';
 import type { Project, ScheduleDay, ScheduleResult, ShiftTimeSettings } from '../types';
@@ -20,10 +21,13 @@ interface ShiftRow {
   hoursEach: number;
   crew: { role: string; name: string }[];
   note: string;
+  /** A start set on this shift, which beats the Settings time for its slot. */
+  start?: string;
 }
 
 export function shiftsOf(days: ScheduleDay[], project: Project): ShiftRow[] {
   const notes = project.inputs.shiftNotes ?? [];
+  const startOf = startTimeLookup(project.inputs);
   const rows: ShiftRow[] = [];
   for (const day of days) {
     // Entries arrive grouped by phase; a Map keeps that grouping and its order.
@@ -40,6 +44,7 @@ export function shiftsOf(days: ScheduleDay[], project: Project): ShiftRow[] {
         hoursEach: entries[0].hours,
         crew: entries.map((e) => ({ role: e.role, name: e.assignedMemberName ?? 'Unassigned' })),
         note: notes.find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? '',
+        start: startOf(phaseId, day.date),
       });
     }
   }
@@ -117,7 +122,7 @@ export function buildScheduleDocument(
                 r.phaseName,
                 // The slot name is dropped: "9:00 AM-1:00 PM" already says which
                 // half of the day it is, and repeating it cost a second line.
-                shiftTimeRange(r.shift, r.hoursEach, shiftTimes),
+                shiftTimeRange(r.shift, r.hoursEach, shiftTimes, r.start),
                 hours(r.hoursEach),
                 r.crew.map((c) => `${c.name} (${c.role})`).join(', '),
               ]),

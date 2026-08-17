@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { useApp } from '../store/AppContext';
 import { shiftTimeRange } from '../lib/dateUtils';
+import { startTimeLookup } from '../lib/shiftStartTimes';
 import type { Project, TeamMember, ExperienceLevel, ShiftTimeSettings } from '../types';
 
 const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -44,6 +45,8 @@ interface CalendarJob {
   /** Whether this shift ends at the destination rather than the origin. */
   isMoveDay: boolean;
   note: string;
+  /** A start set on this shift, which beats the Settings time for its slot. */
+  startTime?: string;
 }
 
 /**
@@ -88,6 +91,8 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
       ? teamMemberMap.get(project.inputs.projectManagerId)?.name ?? null
       : null;
 
+    const startOf = startTimeLookup(project.inputs);
+
     for (const day of project.schedule.days) {
       const groups = new Map<string, CalendarJob>();
 
@@ -120,6 +125,7 @@ function buildJobs(projects: Project[], teamMemberMap: Map<string, TeamMember>):
               (project.inputs.shiftNotes ?? []).find(
                 (n) => n.phaseId === entry.phaseId && n.date === day.date
               )?.note ?? '',
+            startTime: startOf(entry.phaseId, day.date),
           });
         }
         const job = groups.get(key)!;
@@ -393,8 +399,8 @@ function WeekHourView({
   const hours = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
 
   /** Where a shift starts, in minutes past midnight. */
-  const startMinutes = (shift: string) => {
-    const [h, m] = (shift === 'PM' ? shiftTimes.pm : shiftTimes.am).split(':').map(Number);
+  const startMinutes = (shift: string, override?: string) => {
+    const [h, m] = (override || (shift === 'PM' ? shiftTimes.pm : shiftTimes.am)).split(':').map(Number);
     return (Number.isFinite(h) ? h : 9) * 60 + (Number.isFinite(m) ? m : 0);
   };
 
@@ -453,7 +459,7 @@ function WeekHourView({
                 ))}
 
                 {dayJobs.map((j, i) => {
-                  const start = startMinutes(j.shift);
+                  const start = startMinutes(j.shift, j.startTime);
                   const top = ((start - HOUR_START * 60) / 60) * HOUR_PX;
                   const height = Math.max((j.hours || 1) * HOUR_PX, 28);
                   const c = j.isArchived
@@ -472,7 +478,7 @@ function WeekHourView({
                         {j.phaseName.split(':').pop()!.trim()}
                       </p>
                       <p className="text-[9px] text-ios-gray-600 leading-tight truncate">
-                        {shiftTimeRange(j.shift, j.hours, shiftTimes)}
+                        {shiftTimeRange(j.shift, j.hours, shiftTimes, j.startTime)}
                       </p>
                       {j.memberNames.length > 0 && height > 70 && (
                         <p className="text-[9px] text-ios-gray-600 leading-tight truncate">
@@ -605,7 +611,7 @@ function WeekView({
                       {j.phaseName.replace('First Visit: ', '').replace('Second Visit: ', '').split(':')[0]}
                     </p>
                     <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
-                      {j.shift} · {shiftTimeRange(j.shift, j.hours, shiftTimes)}
+                      {j.shift} · {shiftTimeRange(j.shift, j.hours, shiftTimes, j.startTime)}
                     </p>
                     <p className="hidden lg:block text-[10px] text-ios-gray-600 leading-tight truncate">
                       PM: {j.projectManagerName ?? 'Unassigned'}
@@ -850,7 +856,7 @@ function MonthJobDetail({
 
         <dl className="space-y-1.5 text-xs">
           <DetailRow label="Shift">
-            {job.shift} · {shiftTimeRange(job.shift, job.hours, shiftTimes)} · {job.hours} hrs
+            {job.shift} · {shiftTimeRange(job.shift, job.hours, shiftTimes, job.startTime)} · {job.hours} hrs
           </DetailRow>
           <DetailRow label="PM">{job.projectManagerName ?? 'Unassigned'}</DetailRow>
           <DetailRow label="Crew">

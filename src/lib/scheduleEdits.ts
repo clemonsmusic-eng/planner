@@ -33,7 +33,11 @@ export type ScheduleEdit =
   /** Re-date a shift, or the whole day when phaseId is omitted. Nothing else changes. */
   | { kind: 'moveShift'; fromDate: string; toDate: string; phaseId?: string }
   /** Copy a shift, or the whole day when phaseId is omitted, onto another date. */
-  | { kind: 'duplicateShift'; fromDate: string; toDate: string; phaseId?: string };
+  | { kind: 'duplicateShift'; fromDate: string; toDate: string; phaseId?: string }
+  /** Move a shift between the AM, PM and Full Day slots. */
+  | { kind: 'setShiftType'; date: string; phaseId: string; shift: 'AM' | 'PM' | 'Full Day' }
+  /** Set the clock time a shift starts, or clear it back to the Settings default. */
+  | { kind: 'setStartTime'; date: string; phaseId: string; time: string | null };
 
 /**
  * Totals, per-member hours and the plan's milestone dates are produced by
@@ -249,6 +253,47 @@ export function applyScheduleEdit(
       return { ...project, inputs, updatedAt: new Date().toISOString() };
     }
 
+    case 'setShiftType': {
+      const days = schedule.days.map((d) =>
+        d.date === edit.date
+          ? {
+              ...d,
+              entries: d.entries.map((e) => (e.phaseId === edit.phaseId ? { ...e, shift: edit.shift } : e)),
+            }
+          : d
+      );
+      // Recorded as a date override so a regenerate places the day in the same
+      // slot, which is what that list has always been for.
+      const inputs = {
+        ...project.inputs,
+        dateOverrides: [
+          ...project.inputs.dateOverrides.filter((o) => o.date !== edit.date),
+          { id: newEntryId('shift'), date: edit.date, shift: edit.shift, reason: 'Set on the shift' },
+        ],
+        // A hand-added shift carries its own slot, so that has to move too.
+        addedShifts: (project.inputs.addedShifts ?? []).map((a) =>
+          a.phaseId === edit.phaseId && a.date === edit.date ? { ...a, shift: edit.shift } : a
+        ),
+      };
+      return rebuild(days, inputs, true);
+    }
+
+    case 'setStartTime': {
+      // Start times are read at render rather than stored on the entries, so
+      // this only touches the inputs. Clearing one drops the row entirely,
+      // which is what puts the shift back on the Settings default.
+      const rest = (project.inputs.shiftStartTimes ?? []).filter(
+        (t) => !(t.phaseId === edit.phaseId && t.date === edit.date)
+      );
+      const inputs = {
+        ...project.inputs,
+        shiftStartTimes: edit.time
+          ? [...rest, { phaseId: edit.phaseId, date: edit.date, time: edit.time }]
+          : rest,
+      };
+      return { ...project, inputs, updatedAt: new Date().toISOString() };
+    }
+
     /*
      * Re-dating a shift is deliberately not a regenerate. Dragging a card onto
      * another day carries the entries across exactly as they stand — crew,
@@ -298,9 +343,12 @@ export function applyScheduleEdit(
         ...project.inputs,
         addedShifts,
         phaseDateMoves,
-        // The note belongs to the shift, so it travels with it.
+        // The note and the start time belong to the shift, so they travel with it.
         shiftNotes: (project.inputs.shiftNotes ?? []).map((n) =>
           set.has(n.phaseId) && n.date === edit.fromDate ? { ...n, date: edit.toDate } : n
+        ),
+        shiftStartTimes: (project.inputs.shiftStartTimes ?? []).map((t) =>
+          set.has(t.phaseId) && t.date === edit.fromDate ? { ...t, date: edit.toDate } : t
         ),
         removedShifts: (project.inputs.removedShifts ?? []).filter(
           (r) => !(set.has(r.phaseId) && r.date === edit.toDate)
@@ -342,11 +390,19 @@ export function applyScheduleEdit(
       const copiedNotes = notes
         .filter((n) => set.has(n.phaseId) && n.date === edit.fromDate)
         .map((n) => ({ ...n, date: edit.toDate }));
+      const times = project.inputs.shiftStartTimes ?? [];
+      const copiedTimes = times
+        .filter((t) => set.has(t.phaseId) && t.date === edit.fromDate)
+        .map((t) => ({ ...t, date: edit.toDate }));
 
       const inputs = {
         ...project.inputs,
         addedShifts: [...(project.inputs.addedShifts ?? []), ...added],
         shiftNotes: [...notes.filter((n) => !(set.has(n.phaseId) && n.date === edit.toDate)), ...copiedNotes],
+        shiftStartTimes: [
+          ...times.filter((t) => !(set.has(t.phaseId) && t.date === edit.toDate)),
+          ...copiedTimes,
+        ],
         removedShifts: (project.inputs.removedShifts ?? []).filter(
           (r) => !(set.has(r.phaseId) && r.date === edit.toDate)
         ),

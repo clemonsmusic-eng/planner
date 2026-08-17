@@ -1,4 +1,5 @@
 import { formatDateLabel, shiftTimeRange } from './dateUtils';
+import { startTimeLookup } from './shiftStartTimes';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from './budgets';
 import { resolveContact } from './contacts';
 import type { DocBlock, DocumentModel } from './docModel';
@@ -76,15 +77,21 @@ function dateRows(
     ...(s.auctionPickup ? [{ label: 'Pickup Day', date: s.auctionPickup }] : []),
   ].filter((i) => i.date);
 
+  const startOf = startTimeLookup(inputs);
+
   return items.map(({ label, date }) => {
     const slot = shiftOn(schedule, date);
     const entries = schedule.days.find((d) => d.date === date)?.entries ?? [];
-    // One window per shift on the date. A day running both an AM and a PM
-    // shift — move day, usually — states both rather than neither.
-    const window = [...new Map(entries.map((e) => [e.shift, e])).values()]
-      .map((e) => shiftTimeRange(e.shift, e.hours, shiftTimes))
-      .filter(Boolean)
-      .join(', ');
+    // One window per distinct clock time on the date. A day running both an AM
+    // and a PM shift — move day, usually — states both rather than neither, and
+    // two shifts sharing a slot state both where one was given its own start.
+    const window = [
+      ...new Set(
+        entries
+          .map((e) => shiftTimeRange(e.shift, e.hours, shiftTimes, startOf(e.phaseId, date)))
+          .filter(Boolean)
+      ),
+    ].join(', ');
     return [label, formatDateLabel(date), slot ?? '-', window || '-', notesOn(schedule, inputs, date) || '-'];
   });
 }
@@ -323,6 +330,7 @@ export function buildClientDocument(
   const { inputs } = project;
   const client = inputs.clientName || 'Untitled project';
   const moveDate = schedule.suggestedDates.moveDay || inputs.targetMoveDate;
+  const startOf = startTimeLookup(inputs);
 
   // One row per shift, so a day running an AM and a PM crew states both.
   const rows: string[][] = [];
@@ -335,7 +343,9 @@ export function buildClientDocument(
         formatDateLabel(day.date),
         entry.phaseName,
         entry.shift,
-        shiftTimeRange(entry.shift, entry.hours, shiftTimes).split('–')[0].trim(),
+        shiftTimeRange(entry.shift, entry.hours, shiftTimes, startOf(entry.phaseId, day.date))
+          .split('–')[0]
+          .trim(),
       ]);
     }
   }
