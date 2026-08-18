@@ -86,6 +86,11 @@ const SHIFT_LABELS: Record<string, string> = {
   'Full Day': 'Full Day',
 };
 
+/** The distinct shifts on a day, in the order they appear on it. */
+function phasesOn(day: ScheduleDay): { id: string; name: string }[] {
+  return [...new Map(day.entries.map((e) => [e.phaseId, { id: e.phaseId, name: e.phaseName }])).values()];
+}
+
 /** What the edit window was opened on: one shift, or every shift on a day. */
 interface ShiftEditorTarget {
   date: string;
@@ -186,6 +191,24 @@ export function SchedulePage() {
     if (next !== activeProject) dispatch({ type: 'SET_SCHEDULE_DRAFT', project: next });
   }
 
+  /**
+   * Drop every shift on a day.
+   *
+   * The date line acts on the day, so a day carrying two shifts loses both —
+   * composed into one dispatch rather than a call per phase, since each edit
+   * reads the project it was handed and they would otherwise overwrite one
+   * another.
+   */
+  function removeWholeDay(day: ScheduleDay) {
+    if (!activeProject || scheduleLocked) return;
+    const next = phasesOn(day).reduce(
+      (project, phase) =>
+        applyScheduleEdit(project, { kind: 'removeShift', date: day.date, phaseId: phase.id }, state.teamMembers),
+      activeProject
+    );
+    if (next !== activeProject) dispatch({ type: 'SET_SCHEDULE_DRAFT', project: next });
+  }
+
   const addShift = useAddShift();
   const [filter, setFilter] = useState<FilterMode>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
@@ -195,7 +218,7 @@ export function SchedulePage() {
   // every shift that day, the one on a shift card acts on that shift alone.
   const [shiftEditor, setShiftEditor] = useState<ShiftEditorTarget | null>(null);
   const [memberPickerEntry, setMemberPickerEntry] = useState<ScheduleEntry | null>(null);
-  const [removeShift, setRemoveShift] = useState<{ phaseId: string; phaseName: string; date: string } | null>(null);
+  const [removeDay, setRemoveDay] = useState<ScheduleDay | null>(null);
   const [copyPicker, setCopyPicker] = useState<{ phaseId?: string; fromDate: string; label: string } | null>(null);
   const memberMap = new Map<string, TeamMember>(state.teamMembers.map((m) => [m.id, m]));
 
@@ -371,9 +394,14 @@ export function SchedulePage() {
                 onClick={() => setPickerOpen(o => !o)}
                 className="flex items-center gap-1 min-w-0 max-w-full"
               >
-                <div className="min-w-0">
-                  <h1 className="text-xl font-bold text-teal-900 leading-tight text-left">Schedule</h1>
-                  <p className="text-xs text-ios-gray-600 truncate text-left">
+                {/*
+                  On a wide screen the project rides beside the title rather
+                  than under it — that row has the width to spare, and it buys
+                  the list back a line of height.
+                */}
+                <div className="min-w-0 lg:flex lg:items-baseline lg:gap-2">
+                  <h1 className="text-xl font-bold text-teal-900 leading-tight text-left lg:flex-shrink-0">Schedule</h1>
+                  <p className="text-xs lg:text-sm text-ios-gray-600 truncate text-left lg:min-w-0">
                     {activeProject.inputs.clientName || 'No project'} · {schedule?.days.length ?? 0} days
                   </p>
                 </div>
@@ -454,23 +482,15 @@ export function SchedulePage() {
             </div>
           )}
 
-          {/* Add a shift the generator didn't place */}
-          {!readOnly && <button
-            onClick={addShift.openSheet}
-            disabled={!schedule}
-            className="w-full lg:w-auto lg:px-5 lg:self-start flex items-center justify-center gap-1.5 mb-2 py-2 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[40px] active:bg-teal-50 lg:hover:bg-teal-50 disabled:opacity-40"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
-            Add Shift
-          </button>}
-
-          {/* Filter bar */}
+          {/*
+            Filter and Add Shift share a row. One narrows the list and the
+            other adds to it, and between them they were costing two lines of
+            a header that has to leave the list some screen.
+          */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilterSheet(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-ios-gray-100 rounded-full text-sm font-medium text-teal-700 min-h-[36px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-ios-gray-100 rounded-full text-sm font-medium text-teal-700 min-h-[36px] flex-shrink-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                 <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
@@ -480,20 +500,35 @@ export function SchedulePage() {
             {filter !== 'all' && (
               <button
                 onClick={() => setFilter('all')}
-                className="text-xs text-ios-gray-600 px-2 py-1"
+                className="text-xs text-ios-gray-600 px-2 py-1 flex-shrink-0"
               >
                 Clear
               </button>
             )}
-            {conflictCount > 0 && filter !== 'conflicts' && (
-              <button
-                onClick={() => setFilter('conflicts')}
-                className="ml-auto flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-semibold"
-              >
-                <span className="w-2 h-2 bg-red-500 rounded-full" />
-                {conflictCount} issues
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+              {conflictCount > 0 && filter !== 'conflicts' && (
+                <button
+                  onClick={() => setFilter('conflicts')}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-semibold"
+                >
+                  <span className="w-2 h-2 bg-red-500 rounded-full" />
+                  {conflictCount} issues
+                </button>
+              )}
+              {/* Add a shift the generator didn't place */}
+              {!readOnly && (
+                <button
+                  onClick={addShift.openSheet}
+                  disabled={!schedule}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-600 text-teal-600 text-sm font-semibold min-h-[36px] active:bg-teal-50 lg:hover:bg-teal-50 disabled:opacity-40"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                  </svg>
+                  Add Shift
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -573,11 +608,8 @@ export function SchedulePage() {
                   onToggle={() => toggleDay(day.date)}
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
                   onEditDay={() => openEditor(day)}
-                  onEditShift={(phaseId) => openEditor(day, phaseId)}
                   onCopyDay={() => setCopyPicker({ fromDate: day.date, label: day.label })}
-                  onCopyShift={(phaseId, phaseName) =>
-                    setCopyPicker({ phaseId, fromDate: day.date, label: `${phaseName} · ${day.label}` })
-                  }
+                  onRemoveDay={() => setRemoveDay(day)}
                   dragHandle={dragHandle}
                   memberMap={memberMap}
                   onPickMember={setMemberPickerEntry}
@@ -588,7 +620,6 @@ export function SchedulePage() {
                   }
                   hasSetTime={(phaseId) => startTimeOf(phaseId, day.date) !== undefined}
                   highlighted={focusDate === day.date}
-                  onRemoveShift={(phaseId, phaseName) => setRemoveShift({ phaseId, phaseName, date: day.date })}
                   noteFor={(phaseId) =>
                     (activeProject.inputs.shiftNotes ?? []).find((n) => n.phaseId === phaseId && n.date === day.date)?.note ?? ''
                   }
@@ -654,16 +685,18 @@ export function SchedulePage() {
         />
       )}
 
-      {removeShift && (
+      {removeDay && (
         <ConfirmSheet
           title="Remove shift"
-          message={`Remove ${removeShift.phaseName} on ${formatDateLabel(removeShift.date)}? Any other shift that day stays.`}
+          message={`Remove ${phasesOn(removeDay).map((p) => p.name).join(' and ')} on ${formatDateLabel(
+            removeDay.date
+          )}? A regenerate will not bring it back.`}
           confirmLabel="Remove Shift"
           onConfirm={() => {
-            edit({ kind: 'removeShift', date: removeShift.date, phaseId: removeShift.phaseId });
-            setRemoveShift(null);
+            removeWholeDay(removeDay);
+            setRemoveDay(null);
           }}
-          onClose={() => setRemoveShift(null)}
+          onClose={() => setRemoveDay(null)}
         />
       )}
 
@@ -701,14 +734,12 @@ function DaySection({
   onToggle,
   hasOverride,
   onEditDay,
-  onEditShift,
   memberMap,
   onPickMember,
   onAddRole,
   onRemoveRole,
-  onRemoveShift,
+  onRemoveDay,
   onCopyDay,
-  onCopyShift,
   dragHandle,
   highlighted,
   noteFor,
@@ -722,14 +753,12 @@ function DaySection({
   onToggle: () => void;
   hasOverride: boolean;
   onEditDay: () => void;
-  onEditShift: (phaseId: string) => void;
   memberMap: Map<string, TeamMember>;
   onPickMember: (entry: ScheduleEntry) => void;
   onAddRole: (phaseId: string) => void;
   onRemoveRole: (entryId: string) => void;
-  onRemoveShift: (phaseId: string, phaseName: string) => void;
+  onRemoveDay: () => void;
   onCopyDay: () => void;
-  onCopyShift: (phaseId: string, phaseName: string) => void;
   dragHandle: (payload: DragPayload) => Record<string, unknown>;
   highlighted: boolean;
   noteFor: (phaseId: string) => string;
@@ -744,6 +773,20 @@ function DaySection({
 
   const visitTypes = [...new Map(day.entries.map((e) => [e.phaseId, e.phaseName])).values()];
 
+  /*
+   * The clock windows for the day, on the date line where the date is.
+   * One per distinct window rather than one per shift: two phases running the
+   * same hours have one answer between them, and a day with an AM and a PM
+   * crew has two worth stating.
+   */
+  const windows = [
+    ...new Set(
+      [...new Map(day.entries.map((e) => [e.phaseId, e])).values()]
+        .map((e) => timeFor(e.phaseId, e.shift, e.hours))
+        .filter(Boolean)
+    ),
+  ];
+
   return (
     <div id={`sched-day-${day.date}`} className={highlighted ? 'ring-2 ring-inset ring-teal-400 rounded-lg' : ''}>
       {/* Sticky section header */}
@@ -754,6 +797,11 @@ function DaySection({
         <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="text-sm font-bold text-teal-800 flex-shrink-0">{day.label}</h3>
+            {windows.length > 0 && (
+              <span className="text-xs font-semibold text-teal-700 whitespace-nowrap flex-shrink-0">
+                {windows.join(', ')}
+              </span>
+            )}
             {visitTypes.length > 0 && (
               <span className="text-xs text-ios-gray-500 truncate">· {visitTypes.join(' · ')}</span>
             )}
@@ -804,6 +852,15 @@ function DaySection({
             <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
           </svg>
         </button>
+        <button
+          onClick={onRemoveDay}
+          className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
+          aria-label={`Remove ${day.label}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
+          </svg>
+        </button>
       </div>
 
       {!collapsed && (
@@ -835,44 +892,15 @@ function DaySection({
                 ))}
               </div>
               {/*
-                Per-shift controls. A day can hold more than one shift, so
-                moving or deleting has to act on this phase alone rather than
-                on everything scheduled that day.
+                What is left on the shift is its crew and its hours. Editing,
+                copying and removing all live on the date line above, so the
+                three of them are in one place rather than repeated per card.
               */}
               <div className="flex items-center gap-1 px-3 py-2 bg-ios-gray-50 border-t border-ios-gray-100">
-                <button
-                  onClick={() => onEditShift(phaseEntries[0].phaseId)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
-                  aria-label={`Edit the ${phaseName} shift`}
-                >
-                  <PencilIcon />
-                </button>
-                <button
-                  onClick={() => onCopyShift(phaseEntries[0].phaseId, phaseName)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
-                  aria-label={`Copy the ${phaseName} shift to another date`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.62V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-                    <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => onRemoveShift(phaseEntries[0].phaseId, phaseName)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-red-100 active:text-red-600 lg:hover:text-red-600 flex-shrink-0"
-                  aria-label={`Remove the ${phaseName} shift`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                    <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
-                  </svg>
-                </button>
                 <div className="flex-1 flex items-center justify-end gap-1.5 pr-1 min-w-0">
-                  {/* Dropped wherever this row is short of width — on a phone,
-                      and again in the narrow band of the split layout where the
-                      calendar rail takes it. Without that the row overflows and
-                      the count is drawn back over the buttons. The day header
-                      states the same figure either way. */}
-                  <span className="text-xs text-ios-gray-500 whitespace-nowrap hidden sm:inline lg:hidden xl:inline">
+                  {/* Hidden in the narrow band of the split layout, where the
+                      calendar rail leaves this row no room for it. */}
+                  <span className="text-xs text-ios-gray-500 whitespace-nowrap lg:hidden xl:inline">
                     {phaseEntries.length} {phaseEntries.length === 1 ? 'role' : 'roles'}
                   </span>
                   {/*
@@ -999,8 +1027,10 @@ function ShiftNoteField({
         onClick={() => setOpen(true)}
         className="w-full flex items-center gap-1.5 px-3 py-2 border-t border-ios-gray-100 text-xs font-semibold text-ios-gray-500 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
       >
+        {/* A plus, like every other "add" in the app — the pencil read as
+            editing a note that isn't there yet. */}
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-          <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+          <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
         </svg>
         Add a note
       </button>

@@ -6,7 +6,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { DEFAULT_PASSCODES, canOpenTab, fallbackTab } from '../lib/access';
-import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory } from '../types';
+import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory, LoggedHours } from '../types';
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
@@ -66,7 +66,8 @@ type Action =
   | { type: 'REPLACE_PROJECT'; project: Project }
   | { type: 'SET_ACCESS'; access: AccessState }
   | { type: 'UPDATE_CRM_CONTACTS'; contacts: CrmContact[] }
-  | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] };
+  | { type: 'SET_SHIFT_NOTES'; projectId: string; notes: ShiftNote[] }
+  | { type: 'SET_LOGGED_HOURS'; projectId: string; logged: LoggedHours[] };
 
 /** A shift built by hand on the Schedule tab rather than by the generator. */
 export type NewShift = ManualShift;
@@ -300,6 +301,17 @@ function reducer(state: AppState, action: Action): AppState {
       const projects = state.projects.map((p) =>
         p.id === action.projectId
           ? { ...p, inputs: { ...p.inputs, shiftNotes: action.notes }, updatedAt: new Date().toISOString() }
+          : p
+      );
+      saveProjects(projects);
+      return { ...state, projects };
+    }
+
+    /* Logged hours are a record of what happened, so they never touch the plan. */
+    case 'SET_LOGGED_HOURS': {
+      const projects = state.projects.map((p) =>
+        p.id === action.projectId
+          ? { ...p, inputs: { ...p.inputs, loggedHours: action.logged }, updatedAt: new Date().toISOString() }
           : p
       );
       saveProjects(projects);

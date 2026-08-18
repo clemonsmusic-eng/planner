@@ -264,6 +264,8 @@ export interface ProjectInputs {
   shiftNotes?: ShiftNote[];
   /** Per-shift start times, where one was set rather than left to Settings. */
   shiftStartTimes?: ShiftStartTime[];
+  /** Hours actually worked, entered after the fact. */
+  loggedHours?: LoggedHours[];
   /** People outside the team this job goes through. */
   contacts?: ProjectContact[];
 }
@@ -299,6 +301,19 @@ export interface ScheduleDay {
   date: string;
   label: string; // e.g. "Mon Apr 28"
   entries: ScheduleEntry[];
+}
+
+/**
+ * What someone actually worked on a project.
+ *
+ * The schedule says how many hours a job was planned to take; this says how
+ * many it took. Kept per person for the whole project rather than per shift:
+ * hours get logged off a timesheet at the end of a job, not shift by shift as
+ * it runs, and a figure nobody will realistically enter is worse than none.
+ */
+export interface LoggedHours {
+  memberId: string;
+  hours: number;
 }
 
 export interface TeamHoursSummary {
