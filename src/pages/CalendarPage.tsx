@@ -361,6 +361,19 @@ function DayView({
 /** Saturday and Sunday, which the business doesn't normally work. */
 const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
+/**
+ * The days a grid actually draws.
+ *
+ * Saturday and Sunday are dropped outright — not greyed, not left blank —
+ * so an ordinary week is five columns of the days the business works and the
+ * weekdays get the width back. A weekend that does carry a shift is kept,
+ * because a hidden column would be hidden work; the decision is taken across
+ * the whole grid so it stays rectangular.
+ */
+function weekdaysOnly(all: Date[], worked: (d: Date) => boolean): Date[] {
+  return all.some((d) => isWeekend(d) && worked(d)) ? all : all.filter((d) => !isWeekend(d));
+}
+
 /** The hours an hourly week grid draws, and how tall each one is. */
 const HOUR_START = 6;
 const HOUR_END = 20;
@@ -394,9 +407,13 @@ function WeekHourView({
   onJobDoubleClick: (job: CalendarJob) => void;
 }) {
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
-  const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+  const days = weekdaysOnly(
+    eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }),
+    (d) => jobsForDate(jobs, d).length > 0
+  );
   const today = new Date();
   const hours = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
+  const columns = `3.5rem repeat(${days.length}, 1fr)`;
 
   /** Where a shift starts, in minutes past midnight. */
   const startMinutes = (shift: string, override?: string) => {
@@ -408,7 +425,7 @@ function WeekHourView({
     <div className="overflow-x-auto">
       <div className="min-w-[46rem]">
         {/* Day headings, held above the grid so they stay while it scrolls. */}
-        <div className="grid sticky top-0 z-10 bg-white border-b border-ios-gray-200" style={{ gridTemplateColumns: '3.5rem repeat(7, 1fr)' }}>
+        <div className="grid sticky top-0 z-10 bg-white border-b border-ios-gray-200" style={{ gridTemplateColumns: columns }}>
           <div />
           {days.map((day) => (
             <button
@@ -433,7 +450,7 @@ function WeekHourView({
         </div>
 
         {/* The half-line of padding keeps the first hour label off the top edge. */}
-        <div className="grid relative pt-2" style={{ gridTemplateColumns: '3.5rem repeat(7, 1fr)' }}>
+        <div className="grid relative pt-2" style={{ gridTemplateColumns: columns }}>
           {/* Hour rail */}
           <div className="border-r border-ios-gray-200">
             {hours.map((h) => (
@@ -523,13 +540,17 @@ function WeekView({
   onDayDrop: (dateStr: string) => void;
 }) {
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
-  const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+  const days = weekdaysOnly(
+    eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) }),
+    (d) => jobsForDate(jobs, d).length > 0
+  );
   const today = new Date();
+  const cols = days.length === 7 ? 'grid-cols-7' : 'grid-cols-5';
 
   return (
     <div className="flex flex-col">
       {/* Day column headers */}
-      <div className="grid grid-cols-7 border-b border-ios-gray-200">
+      <div className={`grid ${cols} border-b border-ios-gray-200`}>
         {days.map((day) => {
           const isToday = isSameDay(day, today);
           const dayJobs = jobsForDate(jobs, day);
@@ -570,7 +591,7 @@ function WeekView({
       </div>
 
       {/* Events per day */}
-      <div className="grid grid-cols-7 flex-1 divide-x divide-ios-gray-100">
+      <div className={`grid ${cols} flex-1 divide-x divide-ios-gray-100`}>
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayJobs = jobsForDate(jobs, day);
@@ -671,8 +692,13 @@ function MonthView({
   const monthEnd = endOfMonth(date);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-  const calDays = eachDayOfInterval({ start: calStart, end: calEnd });
+  const allCalDays = eachDayOfInterval({ start: calStart, end: calEnd });
+  const calDays = weekdaysOnly(allCalDays, (d) => jobsForDate(jobs, d).length > 0);
   const today = new Date();
+  // Dropping the weekends leaves whole Monday-to-Friday rows, so the grid stays
+  // rectangular either way — five columns or seven.
+  const showWeekend = calDays.length === allCalDays.length;
+  const monthCols = showWeekend ? 'grid-cols-7' : 'grid-cols-5';
 
   // Which chip's details are showing, and whether a click pinned them there.
   const [hovered, setHovered] = useState<string | null>(null);
@@ -691,7 +717,9 @@ function MonthView({
     return () => window.removeEventListener('keydown', onKey);
   }, [pinned]);
 
-  const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const dayLabels = showWeekend
+    ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+    : ['Mo', 'Tu', 'We', 'Th', 'Fr'];
   const jobKey = (j: CalendarJob) => `${j.projectId}:${j.date}:${j.phaseId}:${j.shift}`;
   const openJob = openKey ? jobs.find((j) => jobKey(j) === openKey) ?? null : null;
 
@@ -710,12 +738,12 @@ function MonthView({
 
   return (
     <div className="px-3 py-3" onMouseLeave={() => setHovered(null)}>
-      <div className="grid grid-cols-7 mb-1">
+      <div className={`grid ${monthCols} mb-1`}>
         {dayLabels.map((d, i) => (
           <div
             key={d}
             className={`text-center text-[11px] font-semibold py-1 ${
-              i === 0 || i === 6 ? 'text-ios-gray-400' : 'text-ios-gray-500'
+              showWeekend && (i === 0 || i === 6) ? 'text-ios-gray-400' : 'text-ios-gray-500'
             }`}
           >
             {d}
@@ -723,7 +751,7 @@ function MonthView({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1 lg:gap-1">
+      <div className={`grid ${monthCols} gap-y-1 lg:gap-1`}>
         {calDays.map((day) => {
           const inMonth = isSameMonth(day, date);
           const isToday = isSameDay(day, today);

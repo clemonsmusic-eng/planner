@@ -120,18 +120,32 @@ export function DragGhost({ drag }: { drag: DragState | null }) {
   );
 }
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAYS_FULL = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAYS_WORK = ['M', 'T', 'W', 'T', 'F'];
 
 /** Saturday and Sunday, which the business doesn't normally work. */
 const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
 
 /**
- * A month cell is about six characters wide, and phase names are prefixed with
- * the visit they belong to ("Second Visit: Initial Sort & Pack"). The prefix is
- * the part a month grid can least afford, so it goes; the full name stays on
- * the chip's tooltip.
+ * Which visit a phase belongs to, and what happens on it.
+ *
+ * Phase names read "Second Visit: Initial Sort & Pack" — the visit on one side
+ * of the colon, the work on the other. A month cell has room for both only if
+ * the visit is cut down to its number, so "Second Visit" becomes "V2" and sits
+ * against the work rather than replacing it. A phase with no visit prefix
+ * — move day, the cleanout — is just its own name.
  */
-const shortPhase = (name: string) => name.split(':').pop()!.trim();
+const VISIT_NUMBERS: Record<string, string> = {
+  first: '1', second: '2', third: '3', fourth: '4', fifth: '5', sixth: '6',
+};
+
+function phaseParts(name: string): { visit: string | null; work: string } {
+  const [head, ...rest] = name.split(':');
+  if (rest.length === 0) return { visit: null, work: head.trim() };
+  const ordinal = head.trim().split(/\s+/)[0].toLowerCase();
+  const n = VISIT_NUMBERS[ordinal] ?? (/^\d+/.exec(ordinal)?.[0] ?? null);
+  return { visit: n ? `V${n}` : head.trim(), work: rest.join(':').trim() };
+}
 
 export function ScheduleCalendar({
   days,
@@ -159,10 +173,20 @@ export function ScheduleCalendar({
   }, [anchor]);
 
   const byDate = new Map(days.map((d) => [d.date, d]));
-  const cells = eachDayOfInterval({
+  const allCells = eachDayOfInterval({
     start: startOfWeek(startOfMonth(month), { weekStartsOn: 0 }),
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 0 }),
   });
+  /*
+   * Saturday and Sunday are dropped from the grid outright, so the five days
+   * the business works get the width instead of spending a seventh of it on
+   * two empty boxes. A weekend that carries a shift keeps its column — hiding
+   * one would hide the shift on it — and since the filter takes whole rows out
+   * of whole weeks the grid stays rectangular either way.
+   */
+  const worked = allCells.some((c) => isWeekend(c) && byDate.has(format(c, 'yyyy-MM-dd')));
+  const cells = worked ? allCells : allCells.filter((c) => !isWeekend(c));
+  const headings = worked ? WEEKDAYS_FULL : WEEKDAYS_WORK;
 
   return (
     <div className="p-3">
@@ -190,12 +214,12 @@ export function ScheduleCalendar({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 mb-1">
-        {WEEKDAYS.map((d, i) => (
+      <div className={`grid ${worked ? 'grid-cols-7' : 'grid-cols-5'} mb-1`}>
+        {headings.map((d, i) => (
           <div
             key={i}
             className={`text-center text-[10px] font-semibold uppercase py-1 ${
-              i === 0 || i === 6 ? 'text-ios-gray-400' : 'text-ios-gray-500'
+              worked && (i === 0 || i === 6) ? 'text-ios-gray-400' : 'text-ios-gray-500'
             }`}
           >
             {d}
@@ -203,21 +227,13 @@ export function ScheduleCalendar({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className={`grid ${worked ? 'grid-cols-7' : 'grid-cols-5'} gap-1`}>
         {cells.map((cell) => {
           const iso = format(cell, 'yyyy-MM-dd');
           const day = byDate.get(iso);
           const phases = day ? [...new Map(day.entries.map((e) => [e.phaseId, e])).values()] : [];
           const isDrop = dropDate === iso;
           const weekend = isWeekend(cell);
-
-          /*
-           * A weekend nobody is working isn't drawn at all — the grid keeps its
-           * seven columns so the weekdays stay under their own headings, but an
-           * empty Saturday is a gap rather than a box inviting a drop onto one.
-           * A weekend that does carry a shift is drawn like any other day.
-           */
-          if (weekend && !day) return <div key={iso} aria-hidden="true" className="min-h-[62px]" />;
 
           return (
             <div
@@ -242,15 +258,21 @@ export function ScheduleCalendar({
               >
                 {format(cell, 'd')}
               </span>
-              {phases.slice(0, 2).map((e) => (
-                <span
-                  key={e.phaseId}
-                  className="text-[9px] leading-tight font-semibold px-1 py-0.5 rounded bg-teal-100 text-teal-800 truncate"
-                  title={e.phaseName}
-                >
-                  {shortPhase(e.phaseName)}
-                </span>
-              ))}
+              {phases.slice(0, 2).map((e) => {
+                const { visit, work } = phaseParts(e.phaseName);
+                return (
+                  <span
+                    key={e.phaseId}
+                    className="flex items-center gap-0.5 text-[9px] leading-tight font-semibold px-1 py-0.5 rounded bg-teal-100 text-teal-800 min-w-0"
+                    title={e.phaseName}
+                  >
+                    {visit && (
+                      <span className="flex-shrink-0 px-1 rounded bg-teal-700 text-white tabular-nums">{visit}</span>
+                    )}
+                    <span className="truncate">{work}</span>
+                  </span>
+                );
+              })}
               {phases.length > 2 && (
                 <span className="text-[9px] text-ios-gray-500 px-1">+{phases.length - 2} more</span>
               )}

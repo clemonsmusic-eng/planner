@@ -119,19 +119,32 @@ export function PlanPage() {
             />
           ) : (
             <>
-              <SuggestedDatesCard
-                schedule={schedule}
-                overrides={activeProject.inputs.dateOverrides}
-                shiftNotes={activeProject.inputs.shiftNotes ?? []}
-              />
-              <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} catalog={state.services} />
-              {/* Who to ring on the day, above the crew who will be ringing. */}
-              <ProjectContactsCard contacts={activeProject.inputs.contacts ?? []} crm={state.crmContacts} />
-              <MoveDaySnapshotCard
-                schedule={schedule}
-                teamMembers={state.teamMembers}
-                moveDate={schedule.suggestedDates.moveDay || activeProject.inputs.targetMoveDate}
-              />
+              {/*
+                Two independent stacks on a wide screen, not a two-column grid.
+                A grid ties each pair into a row, so folding one card away opens
+                a gap beside it and leaves its neighbour stranded; two columns
+                let each side close up on its own. The full-width cards below
+                are the two nobody reads side by side.
+              */}
+              <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                <div className="space-y-4">
+                  {/* Who to ring on the day, above the crew who will be ringing. */}
+                  <ProjectContactsCard contacts={activeProject.inputs.contacts ?? []} crm={state.crmContacts} />
+                  <MoveDaySnapshotCard
+                    schedule={schedule}
+                    teamMembers={state.teamMembers}
+                    moveDate={schedule.suggestedDates.moveDay || activeProject.inputs.targetMoveDate}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <SuggestedDatesCard
+                    schedule={schedule}
+                    overrides={activeProject.inputs.dateOverrides}
+                    shiftNotes={activeProject.inputs.shiftNotes ?? []}
+                  />
+                  <ServicesContractedCard services={activeProject.inputs.contractedServices ?? []} catalog={state.services} />
+                </div>
+              </div>
               {/*
                 Budget sits with the hours it is measured against — and both
                 are kept off a Team Member's plan: what a job costs and what
