@@ -35,7 +35,18 @@ jobs:
 
       - run: npm ci
 
+      # Both are read at build time and baked into the bundle. Until the
+      # secrets exist they come through empty, and an empty pair is what tells
+      # the app to run on the device with no sign-in — so this is inert until
+      # the day it is wanted, and needs no second commit to switch on.
+      #
+      # The anon key belongs in the bundle: it identifies the project and
+      # nothing more, and row-level security is what protects the data behind
+      # it. The service_role key must never appear here.
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - uses: actions/configure-pages@v4
 
