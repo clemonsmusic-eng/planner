@@ -3,9 +3,11 @@ import React, {
   useContext,
   useReducer,
   useEffect,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { DEFAULT_PASSCODES, canOpenTab, fallbackTab } from '../lib/access';
+import { useAuth, clampToCeiling } from './AuthContext';
 import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory, LoggedHours } from '../types';
 import {
   loadProjects, saveProjects,
@@ -415,6 +417,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { ceiling } = useAuth();
 
   useEffect(() => {
     const projects = loadProjects();
@@ -631,10 +634,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_DOCUMENTS', projectId, documents: fn(normalizeDocuments(project.documents)) });
   }
 
+  /*
+   * The level every reader sees, never above what the account allows.
+   *
+   * Clamped here rather than corrected by an effect, because an effect leaves
+   * one render where the device is still showing the higher level — which on a
+   * crew phone is a flash of the admin app. The stored value is left alone: a
+   * device that dropped to Team Member keeps that choice, and an account
+   * downgraded on the server simply stops being able to reach past it.
+   */
+  const access = useMemo(
+    () => ({ ...state.access, level: clampToCeiling(state.access.level, ceiling) }),
+    [state.access, ceiling]
+  );
+  const guarded = useMemo(() => ({ ...state, access }), [state, access]);
+
   return (
     <AppContext.Provider
       value={{
-        state, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
+        state: guarded, dispatch, activeProject, generateAndSaveSchedule, setShiftOverride, movePhaseDate,
         toggleChecklistItem, setChecklistDueDate, setChecklistNote,
         addChecklistItem, removeChecklistItem, restoreChecklistItems, resetChecklistProgress,
         updateDocuments, setShiftNote, planFrom,
