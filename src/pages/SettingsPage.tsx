@@ -7,6 +7,8 @@ import {
 import { loadSettingsOrder, saveSettingsOrder } from '../lib/storage';
 import { GRIP_PATH, useReorder } from '../lib/useReorder';
 import { ACCESS_LABELS, GUARDED_LEVELS } from '../lib/access';
+import { isRemoteEnabled } from '../lib/supabase';
+import { AccountsPanel } from '../components/AccountsPanel';
 import type { ServiceCategory } from '../types';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
@@ -1769,11 +1771,28 @@ export function SettingsPage() {
   };
 
   /*
+   * Accounts, where the app has a server to keep them on. Sits above the
+   * passcodes because with accounts the password replaces them — the panel
+   * below is what a standalone install uses instead, and only shows there.
+   */
+  if (isRemoteEnabled) {
+    SUBS.accounts = {
+      title: 'Accounts',
+      subtitle: 'Who can sign in, and at what level',
+      body: <AccountsPanel />,
+    };
+  }
+
+  /*
    * The passcodes that guard stepping up to each level. Edited here rather
    * than in the access sheet itself, because changing them is an admin act and
    * Settings is the one place only an admin can reach.
+   *
+   * Only where there are no accounts: with them, stepping up asks for the
+   * account password, and a second shared secret beside it would be one more
+   * thing to leak and nothing to gain.
    */
-  SUBS.passcodes = {
+  if (!isRemoteEnabled) SUBS.passcodes = {
     title: 'Passcodes',
     subtitle: 'What someone types to step up a level',
     body: (

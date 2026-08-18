@@ -1,4 +1,6 @@
 import { AppProvider, useApp } from './store/AppContext';
+import { AuthProvider, useAuth } from './store/AuthContext';
+import { SignInPage } from './pages/SignInPage';
 import { MenuProvider } from './components/MenuContext';
 import { AddShiftProvider } from './components/AddShiftContext';
 import { ProjectDocsProvider } from './components/ProjectDocsContext';
@@ -73,16 +75,42 @@ function AppContent() {
   );
 }
 
+/**
+ * The gate, where there is one.
+ *
+ * A build with no Supabase configured has nothing to sign in to and drops
+ * straight through — the app runs on the device as it always has. A build that
+ * does talk to a server waits for the session check before deciding, so a
+ * signed-in user never sees the sign-in form flash past on a reload.
+ */
+function Gate({ children }: { children: React.ReactNode }) {
+  const { remote, loading, session } = useAuth();
+  if (!remote) return <>{children}</>;
+  if (loading) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] flex items-center justify-center bg-ios-gray-100">
+        <span className="sr-only">Signing in…</span>
+        <div className="w-8 h-8 rounded-full border-2 border-teal-200 border-t-teal-600 animate-spin" />
+      </div>
+    );
+  }
+  return session ? <>{children}</> : <SignInPage />;
+}
+
 export function App() {
   return (
-    <AppProvider>
-      <MenuProvider>
-        <AddShiftProvider>
-          <ProjectDocsProvider>
-            <AppContent />
-          </ProjectDocsProvider>
-        </AddShiftProvider>
-      </MenuProvider>
-    </AppProvider>
+    <AuthProvider>
+      <Gate>
+        <AppProvider>
+          <MenuProvider>
+            <AddShiftProvider>
+              <ProjectDocsProvider>
+                <AppContent />
+              </ProjectDocsProvider>
+            </AddShiftProvider>
+          </MenuProvider>
+        </AppProvider>
+      </Gate>
+    </AuthProvider>
   );
 }

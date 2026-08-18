@@ -1,25 +1,36 @@
 import { useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { ACCESS_LEVELS, RANK, isStepUp, type AccessLevel } from '../lib/access';
+import { useAuth } from '../store/AuthContext';
+import { ACCESS_LEVELS, ACCESS_LABELS, RANK, isStepUp, type AccessLevel } from '../lib/access';
 
 /**
  * Choosing the level this device works at.
  *
  * Stepping *down* is always allowed — handing a phone to a mover should never
- * need a code. Stepping up asks for that level's passcode, which is what stops
- * the level being a suggestion. The passcodes themselves are changed in
- * Settings, behind the level they protect.
+ * need a code. Stepping back up asks for proof, because by then the person
+ * holding the device may not be the person who put it down.
+ *
+ * What counts as proof depends on the build. With accounts, it is the password
+ * of whoever is signed in, and the account's role is a hard ceiling nothing on
+ * the device can argue with. Without them, it is the level's passcode from
+ * Settings, which is the older behaviour and still what a standalone install
+ * gets.
  */
 export function AccessSheet({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useApp();
   const { level, passcodes } = state.access;
+  const { remote, ceiling, profile, session, signOut, verifyPassword } = useAuth();
 
   const [pending, setPending] = useState<AccessLevel | null>(null);
   const [entry, setEntry] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function choose(next: AccessLevel) {
     if (next === level) return onClose();
+    // Above the account's role is not a locked door, it is a level this person
+    // does not have. Nothing to enter.
+    if (remote && RANK[next] > RANK[ceiling]) return;
     if (isStepUp(level, next)) {
       setPending(next);
       setEntry('');
@@ -30,9 +41,14 @@ export function AccessSheet({ onClose }: { onClose: () => void }) {
     onClose();
   }
 
-  function confirm() {
+  async function confirm() {
     if (!pending || pending === 'team') return;
-    if (entry.trim() !== passcodes[pending]) {
+    if (remote) {
+      setBusy(true);
+      const ok = await verifyPassword(entry);
+      setBusy(false);
+      if (!ok) { setError('That password does not match this account.'); return; }
+    } else if (entry.trim() !== passcodes[pending]) {
       setError('That passcode does not match.');
       return;
     }
@@ -51,20 +67,36 @@ export function AccessSheet({ onClose }: { onClose: () => void }) {
           Sets what this device can reach. It is remembered here until it is changed.
         </p>
 
+        {remote && (
+          <div className="mb-4 rounded-xl bg-ios-gray-50 border border-ios-gray-200 px-3 py-2.5">
+            <p className="text-xs text-ios-gray-500">Signed in as</p>
+            <p className="text-sm font-semibold text-teal-900 truncate">
+              {profile?.full_name || session?.user.email}
+            </p>
+            <p className="text-xs text-ios-gray-600">
+              {ACCESS_LABELS[ceiling]}
+              {level !== ceiling && ` · working as ${ACCESS_LABELS[level]}`}
+            </p>
+          </div>
+        )}
+
         {pending ? (
           <div className="space-y-3">
             <p className="text-sm text-teal-900">
-              Enter the passcode for {ACCESS_LEVELS.find((l) => l.level === pending)?.label}.
+              {remote
+                ? `Enter your account password to work as ${ACCESS_LABELS[pending]}.`
+                : `Enter the passcode for ${ACCESS_LABELS[pending]}.`}
             </p>
             <input
               type="password"
               autoFocus
               autoCapitalize="none"
               autoCorrect="off"
+              autoComplete={remote ? 'current-password' : 'off'}
               value={entry}
               onChange={(e) => { setEntry(e.target.value); setError(null); }}
               onKeyDown={(e) => e.key === 'Enter' && confirm()}
-              aria-label="Passcode"
+              aria-label={remote ? 'Account password' : 'Passcode'}
               className="w-full min-h-[44px] rounded-xl border border-ios-gray-300 bg-white px-3 text-base text-teal-900"
             />
             {error && <p className="text-xs text-red-600">{error}</p>}
@@ -77,52 +109,80 @@ export function AccessSheet({ onClose }: { onClose: () => void }) {
               </button>
               <button
                 onClick={confirm}
-                className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold"
+                disabled={busy}
+                className="flex-1 py-3 rounded-xl bg-teal-600 text-white font-semibold disabled:opacity-50"
               >
-                Unlock
+                {busy ? 'Checking…' : 'Unlock'}
               </button>
             </div>
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              {ACCESS_LEVELS.map((option) => (
-                <button
-                  key={option.level}
-                  onClick={() => choose(option.level)}
-                  className={`w-full text-left rounded-xl border px-4 py-3 ${
-                    option.level === level
-                      ? 'border-teal-500 bg-teal-50'
-                      : 'border-ios-gray-200 active:bg-ios-gray-50 lg:hover:bg-ios-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-teal-900">{option.label}</span>
-                    {option.level === level && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-600 text-white">
-                        Current
-                      </span>
-                    )}
-                    {RANK[option.level] > RANK[level] && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-ios-gray-400 ml-auto">
-                        <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-xs text-ios-gray-600 mt-0.5">{option.blurb}</p>
-                </button>
-              ))}
+              {ACCESS_LEVELS.map((option) => {
+                const beyond = remote && RANK[option.level] > RANK[ceiling];
+                return (
+                  <button
+                    key={option.level}
+                    onClick={() => choose(option.level)}
+                    disabled={beyond}
+                    className={`w-full text-left rounded-xl border px-4 py-3 ${
+                      option.level === level
+                        ? 'border-teal-500 bg-teal-50'
+                        : beyond
+                        ? 'border-ios-gray-200 opacity-45'
+                        : 'border-ios-gray-200 active:bg-ios-gray-50 lg:hover:bg-ios-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-teal-900">{option.label}</span>
+                      {option.level === level && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-teal-600 text-white">
+                          Current
+                        </span>
+                      )}
+                      {beyond && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-ios-gray-500 ml-auto">
+                          Not on your account
+                        </span>
+                      )}
+                      {!beyond && RANK[option.level] > RANK[level] && (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-ios-gray-400 ml-auto">
+                          <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <p className="text-xs text-ios-gray-600 mt-0.5">{option.blurb}</p>
+                  </button>
+                );
+              })}
             </div>
 
-            {/*
-              Said plainly rather than implied: this is a working mode on a
-              shared device, not a login. The data is in this browser.
-            */}
-            <p className="text-[11px] text-ios-gray-500 mt-4 leading-snug">
-              Levels control what this app shows. They are not a login — project data is stored in
-              this browser and someone determined can still reach it. Passcodes are changed in
-              Settings.
-            </p>
+            {remote ? (
+              <>
+                <p className="text-[11px] text-ios-gray-500 mt-4 leading-snug">
+                  Dropping to a lower level is free, so a device can be handed over mid-job. Coming
+                  back up asks for your password. Your account's level is set by an admin and is the
+                  most this device can reach.
+                </p>
+                <button
+                  onClick={async () => { await signOut(); onClose(); }}
+                  className="mt-4 w-full min-h-[44px] rounded-xl border border-ios-gray-300 text-ios-gray-700 font-semibold"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              /*
+                Said plainly rather than implied: with no accounts configured
+                this is a working mode on a shared device, not a login.
+              */
+              <p className="text-[11px] text-ios-gray-500 mt-4 leading-snug">
+                Levels control what this app shows. They are not a login — project data is stored in
+                this browser and someone determined can still reach it. Passcodes are changed in
+                Settings.
+              </p>
+            )}
           </>
         )}
       </div>
