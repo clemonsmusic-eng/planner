@@ -773,6 +773,20 @@ function DaySection({
 
   const visitTypes = [...new Map(day.entries.map((e) => [e.phaseId, e.phaseName])).values()];
 
+  /*
+   * The clock windows for the day, on the date line where the date is.
+   * One per distinct window rather than one per shift: two phases running the
+   * same hours have one answer between them, and a day with an AM and a PM
+   * crew has two worth stating.
+   */
+  const windows = [
+    ...new Set(
+      [...new Map(day.entries.map((e) => [e.phaseId, e])).values()]
+        .map((e) => timeFor(e.phaseId, e.shift, e.hours))
+        .filter(Boolean)
+    ),
+  ];
+
   return (
     <div id={`sched-day-${day.date}`} className={highlighted ? 'ring-2 ring-inset ring-teal-400 rounded-lg' : ''}>
       {/* Sticky section header */}
@@ -783,6 +797,11 @@ function DaySection({
         <button onClick={onToggle} className="flex items-center justify-between flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="text-sm font-bold text-teal-800 flex-shrink-0">{day.label}</h3>
+            {windows.length > 0 && (
+              <span className="text-xs font-semibold text-teal-700 whitespace-nowrap flex-shrink-0">
+                {windows.join(', ')}
+              </span>
+            )}
             {visitTypes.length > 0 && (
               <span className="text-xs text-ios-gray-500 truncate">· {visitTypes.join(' · ')}</span>
             )}

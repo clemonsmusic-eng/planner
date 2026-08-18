@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ExportPlanButton } from '../components/ExportPlanButton';
@@ -7,7 +7,7 @@ import { StatusBadge, getScheduleStatusVariant } from '../components/StatusBadge
 import { formatDateLabel } from '../lib/dateUtils';
 import { BUDGET_POOLS, poolBudget, poolScheduled, totalBudgetedHours } from '../lib/budgets';
 import { contactSummary, resolveContact } from '../lib/contacts';
-import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory, CrmContact, ProjectContact } from '../types';
+import type { ScheduleResult, TeamHoursSummary, DateOverride, PhaseBudgetHours, ShiftNote, RoleType, ServiceCategory, CrmContact, ProjectContact, LoggedHours } from '../types';
 
 function ChevronDownIcon() {
   return (
@@ -151,10 +151,34 @@ export function PlanPage() {
                 everyone else is working are not a crew member's business.
               */}
               {can(state.access.level, 'viewCosts') && (
-                <>
+                /*
+                  A real grid here, unlike the stacks above: each logged card
+                  has to stay beside the budget it is measured against, and two
+                  independent stacks would let one drift up past the other.
+                */
+                <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
                   <JobSummaryCard schedule={schedule} budgets={activeProject.inputs.phaseBudgets} />
+                  <LoggedSummaryCard
+                    logged={activeProject.inputs.loggedHours ?? []}
+                    scheduledHours={schedule.totalScheduledHours}
+                    budgets={activeProject.inputs.phaseBudgets}
+                  />
                   <TeamHoursCard teamHours={schedule.teamHours} />
-                </>
+                  <TeamHoursLoggedCard
+                    teamHours={schedule.teamHours}
+                    logged={activeProject.inputs.loggedHours ?? []}
+                    onSave={(memberId, hours) => {
+                      const rest = (activeProject.inputs.loggedHours ?? []).filter((l) => l.memberId !== memberId);
+                      dispatch({
+                        type: 'SET_LOGGED_HOURS',
+                        projectId: activeProject.id,
+                        // A zero is "none logged", which is the absence of a row
+                        // rather than a row saying nothing.
+                        logged: hours > 0 ? [...rest, { memberId, hours }] : rest,
+                      });
+                    }}
+                  />
+                </div>
               )}
             </>
           )}
@@ -330,6 +354,196 @@ function JobSummaryCard({
       </div>
     </CollapsibleCard>
   );
+}
+
+/**
+ * What the job actually cost in hours, against what it was sold for.
+ *
+ * The budget card beside this one is a forecast — what the generator put in
+ * the plan. This is the outturn, and the two only agree on a job that ran
+ * exactly as planned, which is the interesting part.
+ */
+function LoggedSummaryCard({
+  logged,
+  scheduledHours,
+  budgets,
+}: {
+  logged: LoggedHours[];
+  scheduledHours: number;
+  budgets: PhaseBudgetHours;
+}) {
+  const budgetedHours = totalBudgetedHours(budgets);
+  const total = logged.reduce((sum, l) => sum + l.hours, 0);
+  const remaining = budgetedHours - total;
+  const pct = budgetedHours > 0 ? Math.round((total / budgetedHours) * 100) : 0;
+  const over = budgetedHours > 0 && total > budgetedHours;
+  // Against the plan rather than the budget: a job can come in under what was
+  // sold and still have taken half again as long as it was scheduled for.
+  const vsPlan = scheduledHours > 0 ? Math.round(((total - scheduledHours) / scheduledHours) * 100) : 0;
+
+  return (
+    <CollapsibleCard
+      title="Project Hourly Logged"
+      trailing={
+        total > 0 ? (
+          <StatusBadge
+            label={over ? 'OVER BUDGET' : 'ON TRACK'}
+            variant={over ? 'error' : 'success'}
+            size="md"
+          />
+        ) : undefined
+      }
+    >
+      {total === 0 ? (
+        <p className="text-sm text-ios-gray-600">
+          Nothing logged yet. Enter the hours each person worked in Team Hours Logged.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-teal-900">{formatHours(total)}</p>
+              <p className="text-xs text-ios-gray-600">Logged</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-teal-900">{budgetedHours}</p>
+              <p className="text-xs text-ios-gray-600">Budget</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-2xl font-bold ${remaining < 0 ? 'text-red-600' : 'text-teal-900'}`}>
+                {remaining < 0 ? '-' : '+'}{formatHours(Math.abs(remaining))}
+              </p>
+              <p className="text-xs text-ios-gray-600">Remaining</p>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-ios-gray-600">
+              <span>Logged</span>
+              <span>{pct}%</span>
+            </div>
+            <div className="h-2 bg-ios-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-ios-gray-100 flex justify-between items-baseline gap-2 text-xs">
+            <span className="text-ios-gray-600">Against the schedule ({formatHours(scheduledHours)}h)</span>
+            <span className={`tabular-nums flex-shrink-0 font-semibold ${vsPlan > 0 ? 'text-red-600' : 'text-teal-900'}`}>
+              {vsPlan > 0 ? '+' : ''}{vsPlan}%
+            </span>
+          </div>
+        </>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+/**
+ * Hours logged per person, and the only place they are entered.
+ *
+ * A row per person the schedule put on the job, so logging is a matter of
+ * filling in the names already there rather than remembering who worked it.
+ * Committed on blur, not per keystroke, since every change rewrites the
+ * project.
+ */
+function TeamHoursLoggedCard({
+  teamHours,
+  logged,
+  onSave,
+}: {
+  teamHours: TeamHoursSummary[];
+  logged: LoggedHours[];
+  onSave: (memberId: string, hours: number) => void;
+}) {
+  if (teamHours.length === 0) return null;
+  const loggedFor = (id: string) => logged.find((l) => l.memberId === id)?.hours ?? 0;
+
+  return (
+    <CollapsibleCard title="Team Hours Logged">
+      <div className="space-y-3">
+        {[...teamHours]
+          .sort((a, b) => b.scheduledHours - a.scheduledHours)
+          .map((member) => {
+            const actual = loggedFor(member.memberId);
+            const over = actual > member.scheduledHours;
+            const share = member.scheduledHours > 0 ? Math.min((actual / member.scheduledHours) * 100, 100) : 0;
+            return (
+              <div key={member.memberId}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-sm font-medium text-teal-900 min-w-0 truncate">{member.memberName}</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <LoggedHoursInput
+                      hours={actual}
+                      label={member.memberName}
+                      onChange={(h) => onSave(member.memberId, h)}
+                    />
+                    <span className="text-xs text-ios-gray-500 whitespace-nowrap">
+                      of {formatHours(member.scheduledHours)}h
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 bg-ios-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${over ? 'bg-red-500' : 'bg-green-500'}`}
+                    style={{ width: `${over ? 100 : share}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+/** Hours worked by one person, committed on blur rather than per keystroke. */
+function LoggedHoursInput({
+  hours,
+  label,
+  onChange,
+}: {
+  hours: number;
+  label: string;
+  onChange: (hours: number) => void;
+}) {
+  const [draft, setDraft] = useState(hours > 0 ? String(hours) : '');
+  useEffect(() => { setDraft(hours > 0 ? String(hours) : ''); }, [hours]);
+
+  function commit() {
+    // An emptied box means "none logged", which is a real answer and has to be
+    // able to undo a number typed by mistake.
+    if (draft.trim() === '') { if (hours !== 0) onChange(0); return; }
+    const parsed = parseFloat(draft);
+    if (!Number.isFinite(parsed) || parsed < 0) { setDraft(hours > 0 ? String(hours) : ''); return; }
+    const rounded = Math.round(parsed * 4) / 4;
+    if (rounded !== hours) onChange(rounded);
+    setDraft(rounded > 0 ? String(rounded) : '');
+  }
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      min={0}
+      step={0.25}
+      value={draft}
+      placeholder="0"
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      aria-label={`Hours logged for ${label}`}
+      className="w-14 text-center text-sm font-semibold text-teal-700 rounded-lg border border-ios-gray-300 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+    />
+  );
+}
+
+/** One decimal at most, and no trailing ".0" on a whole number. */
+function formatHours(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '');
 }
 
 /**
