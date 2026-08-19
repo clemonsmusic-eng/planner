@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ACCESS_LABELS, can, canOpenTab } from '../lib/access';
 import { AccessSheet } from './AccessSheet';
+import { SyncBadge } from './SyncBadge';
 import { useMenu } from './MenuContext';
 import { useApp } from '../store/AppContext';
 import { emptyPhaseBudgets } from '../lib/budgets';
@@ -304,7 +305,10 @@ export function HamburgerMenu() {
                 <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
               </svg>
             </span>
-            <span className="text-sm font-semibold flex-1 min-w-0">Access</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold">Access</span>
+              <SyncBadge />
+            </span>
             <span className="text-xs text-ios-gray-500 flex-shrink-0">{ACCESS_LABELS[level]}</span>
           </button>
         </div>

@@ -48,7 +48,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     key: 'access',
     label: 'Access',
     subtitle: 'Who can reach what on a device',
-    subs: ['accounts', 'passcodes'],
+    subs: ['accounts', 'sync', 'passcodes'],
   },
   {
     key: 'shiftVariables',
@@ -70,6 +70,7 @@ export const SUB_LABELS: Record<string, string> = {
   communities: 'Communities',
   services: 'Services Contracted',
   accounts: 'Accounts',
+  sync: 'Sync',
   passcodes: 'Passcodes',
   shiftTimes: 'Shift Times',
   templates: 'Task Template',

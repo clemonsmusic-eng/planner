@@ -126,3 +126,67 @@ The session is cached, so once someone has signed in on a device the app opens
 offline as before. What now needs signal is the **first** sign-in on a device,
 and stepping up a level (which re-checks the password). Worth knowing before a
 job: get a new phone signed in at the office, not in the driveway.
+
+---
+
+# Sharing the data (step three)
+
+Accounts were step one, the tables step two. This is the app actually using
+them: projects, the team roster, the contact book and everything in Settings
+live on the server and turn up on every device.
+
+## Joining a device
+
+Nothing syncs until somebody says which way the first sync runs, and the app
+will not guess. Go to **Settings → Access → Sync** and pick one:
+
+- **Upload this device to the server** — what is on this machine becomes the
+  shared copy. Do this **once**, from whichever device holds the projects
+  everyone should be working from. Usually the office computer.
+- **Use the server's copy instead** — this device's shared data is replaced by
+  what is already up there. This is what every other device does.
+
+The guard exists because a pull replaces local storage wholesale. A device
+holding a year of work, syncing for the first time against a server that is
+still empty, would pull nothing over all of it and call that success. So the
+first move is a decision, not a default.
+
+Photos, floor plans and the furniture inventory are **not** part of this. They
+stay on the device they were added to; moving them is a later step.
+
+## What happens after that
+
+Every save goes into local storage first, exactly as before — the app opens and
+works with no signal, and nothing waits on the network. What changed is queued
+and pushed a second or so later, and changes from anyone else arrive within a
+second or two over a live connection, with a minute's poll behind it in case
+that connection drops without saying so.
+
+The queue survives closing the app. Eight edits to one shift are one push, not
+eight, and the value sent is whatever local storage holds at the moment it
+goes — the one the person last saw.
+
+## When two people change the same thing
+
+The app stops and asks rather than picking. Under **Settings → Access → Sync**
+the clash is listed with both sides named and dated:
+
+- **Keep mine** — this device's version overwrites the server's.
+- **Take theirs** — this device's change is dropped and the server's copy comes
+  down.
+
+Nothing is pushed over and nothing is discarded until one of those is chosen,
+and the rest of syncing waits while the question is open. A row deleted on the
+server while this device was editing it counts as a clash too — recreating it
+silently would undo a deliberate delete.
+
+## Where to look when something seems wrong
+
+The access control — bottom of the sidebar on a computer, **Menu → Access** on
+a phone — shows a coloured line whenever sync needs attention: offline with
+changes waiting, a clash to settle, or a device not joined yet. Nothing is
+shown when it is simply working. **Settings → Access → Sync** has the detail
+and a **Sync now** button.
+
+Offline is not an error. The line says how many changes are waiting; they go up
+on their own when the signal comes back.
