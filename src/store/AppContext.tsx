@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import { DEFAULT_PASSCODES, canOpenTab, fallbackTab } from '../lib/access';
 import { useAuth, clampToCeiling } from './AuthContext';
+import { isRemoteEnabled } from '../lib/supabase';
+import { onRemoteChange, start as startSync, stop as stopSync } from '../lib/sync/engine';
 import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs, ScheduleResult, PhaseTemplate, ListCategory, AvailabilitySlot, AuctionAppSettings, ProjectStatus, RoleType, ChecklistTemplateSection, ChecklistTemplateItem, ProjectChecklist, ManualShift, ProjectDocuments, SupplyItem, ShiftTimeSettings, ShiftNote, ServiceCategory, LoggedHours } from '../types';
 import {
   loadProjects, saveProjects,
@@ -417,44 +419,57 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { ceiling } = useAuth();
+  const { ceiling, session } = useAuth();
+
+  /** Everything local storage holds, as app state. */
+  function readStored() {
+    return {
+      projects: loadProjects(),
+      teamMembers: loadTeamMembers(),
+      communities: loadCommunities(),
+      lists: loadLists(),
+      phaseTemplates: loadPhaseTemplates(),
+      auctionSettings: loadAuctionSettings(),
+      checklistTemplate: loadChecklistTemplate(),
+      supplies: loadSupplies(),
+      supplyCategories: loadSupplyCategories(),
+      shiftTimes: loadShiftTimes(),
+      services: loadServices(),
+      crmContacts: loadCrmContacts(),
+      access: loadAccess(),
+    };
+  }
 
   useEffect(() => {
-    const projects = loadProjects();
-    const teamMembers = loadTeamMembers();
-    const communities = loadCommunities();
-    const lists = loadLists();
-    const phaseTemplates = loadPhaseTemplates();
-    const auctionSettings = loadAuctionSettings();
-    const checklistTemplate = loadChecklistTemplate();
-    const supplies = loadSupplies();
-    const supplyCategories = loadSupplyCategories();
-    const shiftTimes = loadShiftTimes();
-    const services = loadServices();
-    const access = loadAccess();
-    const crmContacts = loadCrmContacts();
     dispatch({
       type: 'LOAD_STATE',
       state: {
-        projects,
-        teamMembers,
-        communities,
-        lists,
-        phaseTemplates,
-        auctionSettings,
-        checklistTemplate,
-        supplies,
-        supplyCategories,
-        shiftTimes,
-        services,
-        crmContacts,
-        access,
+        ...readStored(),
         // Nothing is opened for you. Auto-selecting the first stored project
         // made whichever one happened to be first look like a default.
         activeProjectId: null,
       },
     });
   }, []);
+
+  /*
+   * Sync runs only where there is a server and somebody signed in to it.
+   *
+   * A pull rewrites local storage underneath us, so the engine says when it
+   * has, and state is re-read from there. Deliberately without touching the
+   * open project or the schedule draft: work in progress is not something a
+   * colleague's save two hundred miles away gets to close.
+   */
+  useEffect(() => {
+    if (!isRemoteEnabled || !session) return;
+    onRemoteChange(() => dispatch({ type: 'LOAD_STATE', state: readStored() }));
+    void startSync();
+    return () => {
+      onRemoteChange(null);
+      stopSync();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const activeProject =
     state.projects.find((p) => p.id === state.activeProjectId) ?? null;

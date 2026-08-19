@@ -67,7 +67,7 @@ export function loadProjects(): Project[] {
   }
 }
 
-export function saveProjects(projects: Project[]): void {
+export function saveProjectsLocal(projects: Project[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
   } catch (e) {
@@ -134,7 +134,7 @@ export function loadTeamMembers(): TeamMember[] {
   }
 }
 
-export function saveTeamMembers(members: TeamMember[]): void {
+export function saveTeamMembersLocal(members: TeamMember[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_TEAM, JSON.stringify(members));
   } catch (e) {
@@ -152,7 +152,7 @@ export function loadCommunities(): string[] {
   return [...DEFAULT_COMMUNITIES];
 }
 
-export function saveCommunities(communities: string[]): void {
+export function saveCommunitiesLocal(communities: string[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_COMMUNITIES, JSON.stringify(communities));
   } catch (e) {
@@ -200,7 +200,7 @@ export function loadLists(): ListCategory[] {
   return DEFAULT_LISTS.map(l => ({ ...l, items: [...l.items] }));
 }
 
-export function saveLists(lists: ListCategory[]): void {
+export function saveListsLocal(lists: ListCategory[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_LISTS, JSON.stringify(lists));
   } catch (e) {
@@ -242,7 +242,7 @@ export function loadPhaseTemplates(): PhaseTemplate[] {
   return DEFAULT_PHASE_TEMPLATES.map((t) => ({ ...t }));
 }
 
-export function savePhaseTemplates(templates: PhaseTemplate[]): void {
+export function savePhaseTemplatesLocal(templates: PhaseTemplate[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_PHASE_TEMPLATES, JSON.stringify(templates));
   } catch (e) {
@@ -262,7 +262,7 @@ export function loadAuctionSettings(): AuctionAppSettings {
   return { ...DEFAULT_AUCTION_SETTINGS };
 }
 
-export function saveAuctionSettings(settings: AuctionAppSettings): void {
+export function saveAuctionSettingsLocal(settings: AuctionAppSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY_AUCTION_SETTINGS, JSON.stringify(settings));
   } catch (e) {
@@ -298,7 +298,7 @@ export function loadChecklistTemplate(): ChecklistTemplateSection[] {
   return cloneChecklistTemplate(DEFAULT_CHECKLIST_TEMPLATE);
 }
 
-export function saveChecklistTemplate(template: ChecklistTemplateSection[]): void {
+export function saveChecklistTemplateLocal(template: ChecklistTemplateSection[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_CHECKLIST, JSON.stringify(template));
   } catch (e) {
@@ -318,7 +318,7 @@ export function loadSupplies(): SupplyItem[] {
   return DEFAULT_SUPPLIES.map((s) => ({ ...s }));
 }
 
-export function saveSupplies(supplies: SupplyItem[]): void {
+export function saveSuppliesLocal(supplies: SupplyItem[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_SUPPLIES, JSON.stringify(supplies));
   } catch (e) {
@@ -334,7 +334,7 @@ export function loadSupplyCategories(): string[] {
   return [...DEFAULT_SUPPLY_CATEGORIES];
 }
 
-export function saveSupplyCategories(categories: string[]): void {
+export function saveSupplyCategoriesLocal(categories: string[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_SUPPLY_CATS, JSON.stringify(categories));
   } catch (e) {
@@ -366,7 +366,7 @@ export function loadShiftTimes(): ShiftTimeSettings {
   }
 }
 
-export function saveShiftTimes(times: ShiftTimeSettings): void {
+export function saveShiftTimesLocal(times: ShiftTimeSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY_SHIFT_TIMES, JSON.stringify(times));
   } catch (e) {
@@ -420,7 +420,7 @@ export function loadServices(): ServiceCategory[] {
   }
 }
 
-export function saveServices(services: ServiceCategory[]): void {
+export function saveServicesLocal(services: ServiceCategory[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(services));
   } catch (e) {
@@ -505,10 +505,90 @@ export function loadCrmContacts(): CrmContact[] {
   }
 }
 
-export function saveCrmContacts(contacts: CrmContact[]): void {
+export function saveCrmContactsLocal(contacts: CrmContact[]): void {
   try {
     localStorage.setItem(STORAGE_KEY_CRM, JSON.stringify(contacts));
   } catch {
     /* storage full or blocked */
   }
 }
+
+
+// ─── Telling the sync layer what changed ─────────────────────────────────────
+
+/**
+ * Where a save goes after it has hit local storage.
+ *
+ * The sync engine registers itself here rather than being imported, because
+ * the engine has to import this module to write a pull back down and the two
+ * would otherwise depend on each other. It is also what keeps the split
+ * honest: a `saveX` is a save the user made and gets queued for the server, a
+ * `saveXLocal` is a save the server made and must not be echoed back to it.
+ */
+type SaveObserver = (key: string, after: unknown) => void;
+
+let observer: SaveObserver | null = null;
+
+export function observeSaves(fn: SaveObserver | null): void {
+  observer = fn;
+}
+
+export const saveProjects: typeof saveProjectsLocal = (value) => {
+  saveProjectsLocal(value);
+  observer?.('projects', value);
+};
+
+export const saveTeamMembers: typeof saveTeamMembersLocal = (value) => {
+  saveTeamMembersLocal(value);
+  observer?.('teamMembers', value);
+};
+
+export const saveCommunities: typeof saveCommunitiesLocal = (value) => {
+  saveCommunitiesLocal(value);
+  observer?.('communities', value);
+};
+
+export const saveLists: typeof saveListsLocal = (value) => {
+  saveListsLocal(value);
+  observer?.('lists', value);
+};
+
+export const savePhaseTemplates: typeof savePhaseTemplatesLocal = (value) => {
+  savePhaseTemplatesLocal(value);
+  observer?.('phaseTemplates', value);
+};
+
+export const saveAuctionSettings: typeof saveAuctionSettingsLocal = (value) => {
+  saveAuctionSettingsLocal(value);
+  observer?.('appSettings', value);
+};
+
+export const saveChecklistTemplate: typeof saveChecklistTemplateLocal = (value) => {
+  saveChecklistTemplateLocal(value);
+  observer?.('checklistTemplate', value);
+};
+
+export const saveSupplies: typeof saveSuppliesLocal = (value) => {
+  saveSuppliesLocal(value);
+  observer?.('supplies', value);
+};
+
+export const saveSupplyCategories: typeof saveSupplyCategoriesLocal = (value) => {
+  saveSupplyCategoriesLocal(value);
+  observer?.('supplyCategories', value);
+};
+
+export const saveShiftTimes: typeof saveShiftTimesLocal = (value) => {
+  saveShiftTimesLocal(value);
+  observer?.('appSettings', value);
+};
+
+export const saveServices: typeof saveServicesLocal = (value) => {
+  saveServicesLocal(value);
+  observer?.('services', value);
+};
+
+export const saveCrmContacts: typeof saveCrmContactsLocal = (value) => {
+  saveCrmContactsLocal(value);
+  observer?.('crmContacts', value);
+};

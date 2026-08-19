@@ -9,6 +9,7 @@ import { GRIP_PATH, useReorder } from '../lib/useReorder';
 import { ACCESS_LABELS, GUARDED_LEVELS } from '../lib/access';
 import { isRemoteEnabled } from '../lib/supabase';
 import { AccountsPanel } from '../components/AccountsPanel';
+import { SyncPanel } from '../components/SyncPanel';
 import type { ServiceCategory } from '../types';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import type { AvailabilitySlot, PhaseId, MemberPhaseRole, MemberPhaseRoles, RoleType, TeamMember, TeamMemberAvailability, PhaseTemplate, ListCategory, ExperienceLevel, AuctionAppSettings, TimeOffRequest, ChecklistTemplateSection, ChecklistTemplateItem, ChecklistAnchor, ChecklistOwner } from '../types';
@@ -1780,6 +1781,14 @@ export function SettingsPage() {
       title: 'Accounts',
       subtitle: 'Who can sign in, and at what level',
       body: <AccountsPanel />,
+    };
+  }
+
+  if (isRemoteEnabled) {
+    SUBS.sync = {
+      title: 'Sync',
+      subtitle: 'Sharing this data between devices',
+      body: <SyncPanel />,
     };
   }
 
