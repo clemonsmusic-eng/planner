@@ -10,6 +10,7 @@ import { startTimeLookup } from '../lib/shiftStartTimes';
 import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
+import { applyShiftEdit } from '../lib/applyShiftEdit';
 import { totalBudgetedHours } from '../lib/budgets';
 import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
 import { useIsWideLayout } from '../lib/useMediaQuery';
@@ -155,39 +156,10 @@ export function SchedulePage() {
     });
   }
 
-  /**
-   * Apply the window's three answers as one change.
-   *
-   * The date goes first so the rest lands where the shift ended up: a move onto
-   * a day already running the same phase is refused, and a shift type written
-   * against the date that was asked for rather than the one it is on would
-   * override a day nothing moved to.
-   */
-  function applyShiftEdit(target: ShiftEditorTarget, values: ShiftEditValues) {
+  /** Route the edit window's answers into the draft. */
+  function applyShiftEditor(target: ShiftEditorTarget, values: ShiftEditValues) {
     if (!activeProject || scheduleLocked) return;
-    let next = activeProject;
-    const apply = (e: ScheduleEdit) => { next = applyScheduleEdit(next, e, state.teamMembers); };
-
-    const phases = target.phaseId
-      ? [target.phaseId]
-      : [...new Set(activeProject.schedule?.days.find((d) => d.date === target.date)?.entries.map((e) => e.phaseId) ?? [])];
-
-    if (values.date && values.date !== target.date) {
-      apply({ kind: 'moveShift', fromDate: target.date, toDate: values.date, phaseId: target.phaseId });
-    }
-
-    for (const phaseId of phases) {
-      const on = (date: string) =>
-        next.schedule?.days.find((d) => d.date === date)?.entries.find((e) => e.phaseId === phaseId);
-      const date = on(values.date) ? values.date : target.date;
-      const current = on(date);
-      if (!current) continue;
-      if (current.shift !== values.shift) apply({ kind: 'setShiftType', date, phaseId, shift: values.shift });
-      if ((startTimeOf(phaseId, target.date) ?? null) !== values.startTime) {
-        apply({ kind: 'setStartTime', date, phaseId, time: values.startTime });
-      }
-    }
-
+    const next = applyShiftEdit(activeProject, target, values, state.teamMembers);
     if (next !== activeProject) dispatch({ type: 'SET_SCHEDULE_DRAFT', project: next });
   }
 
@@ -663,7 +635,7 @@ export function SchedulePage() {
           subtitle={shiftEditor.subtitle}
           initial={shiftEditor.initial}
           shiftTimes={state.shiftTimes}
-          onApply={(values) => applyShiftEdit(shiftEditor, values)}
+          onApply={(values) => applyShiftEditor(shiftEditor, values)}
           onClose={() => setShiftEditor(null)}
         />
       )}
