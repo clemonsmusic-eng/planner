@@ -23,6 +23,7 @@ export function FloorPlansPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <FileList
           files={files}
+          projectId={activeProject.id}
           accept="application/pdf,image/*"
           emptyLabel="No floor plans yet. Add the PDF or image once it's exported."
           addLabel="+ Add Floor Plan"

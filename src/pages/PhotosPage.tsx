@@ -33,6 +33,7 @@ export function PhotosPage() {
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <FileList
             files={files}
+            projectId={activeProject.id}
             accept="image/*"
             emptyLabel={`No photos in ${openFolder} yet.`}
             addLabel="+ Add Photos"
