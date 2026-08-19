@@ -110,9 +110,18 @@ export function SyncPanel() {
         </button>
       )}
 
+      {state.filesWaiting > 0 && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          {state.filesWaiting} file{state.filesWaiting === 1 ? '' : 's'} on this device
+          {' '}{state.filesWaiting === 1 ? 'has' : 'have'} not gone up yet. They go with the next
+          sync; leave this device on until they do.
+        </p>
+      )}
+
       <p className="text-[11px] text-ios-gray-500 leading-snug">
-        Projects, the team, the contact book and everything in Settings are shared. Photos, floor
-        plans and the furniture inventory are still only on the device they were added to.
+        Projects, the team, the contact book, Settings, photos and floor plans are all shared.
+        Photos are fetched when you open them rather than downloaded to every device, so the
+        first look at one needs a connection. The furniture inventory travels with its project.
       </p>
 
       {confirm === 'upload' && (

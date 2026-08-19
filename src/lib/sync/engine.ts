@@ -6,6 +6,8 @@ import {
   readOutbox, setBaseline, setBaselines, type Pending,
 } from './outbox';
 import { errorDetail, errorSummary } from './errors';
+import { countOutstanding, sweepFiles } from '../fileStore';
+import { loadProjects } from '../storage';
 
 /**
  * Keeping this device and the server in step.
@@ -46,6 +48,8 @@ export interface SyncState {
   /** What the database actually said, kept for when the summary is not enough. */
   errorDetail: string | null;
   conflicts: Conflict[];
+  /** Files held on this device that the bucket has not got yet. */
+  filesWaiting: number;
 }
 
 type Listener = (state: SyncState) => void;
@@ -77,6 +81,7 @@ let state: SyncState = {
   error: null,
   errorDetail: null,
   conflicts: [],
+  filesWaiting: 0,
 };
 
 const listeners = new Set<Listener>();
@@ -281,6 +286,18 @@ export function sync(): Promise<void> {
         pending: readOutbox().length,
         lastSyncedAt: localStorage.getItem(LAST_SYNC_KEY),
       });
+
+      /*
+       * Files come last and do not fail the sync.
+       *
+       * They are big and slow next to a project document, and a photo that has
+       * not gone up yet is a smaller problem than a schedule that has not — so
+       * the schedule is never held up behind a hundred megabytes of pictures,
+       * and a bucket that is briefly unreachable does not turn the whole round
+       * trip red. What is outstanding is counted and said instead.
+       */
+      const swept = await sweepFiles(loadProjects()).catch(() => null);
+      emit({ filesWaiting: swept ? swept.outstanding : await countOutstanding(loadProjects()) });
     } catch (e) {
       const detail = errorDetail(e);
       const offline = /fetch|network|load failed/i.test(detail) || !navigator.onLine;

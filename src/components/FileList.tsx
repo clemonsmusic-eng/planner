@@ -14,6 +14,7 @@ import type { ProjectFile } from '../types';
  */
 export function FileList({
   files,
+  projectId,
   accept,
   emptyLabel,
   addLabel,
@@ -21,6 +22,12 @@ export function FileList({
   onRemove,
 }: {
   files: ProjectFile[];
+  /**
+   * The job these belong to. Files are stored under it, which is what lets a
+   * device that never had the bytes fetch them, and what the storage rules
+   * read to decide who may add or remove one.
+   */
+  projectId: string;
   /** File input accept string, e.g. 'application/pdf' or 'image/*'. */
   accept: string;
   emptyLabel: string;
@@ -44,7 +51,7 @@ export function FileList({
     try {
       for (const file of Array.from(list)) {
         const id = `f-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        await putFile(id, file);
+        await putFile(id, file, projectId);
         added.push({
           id,
           name: file.name,
@@ -57,7 +64,7 @@ export function FileList({
     } catch {
       // Quota or a private-mode browser with IndexedDB disabled. Roll back the
       // blobs that did land so we don't leave orphans behind the metadata.
-      for (const a of added) await deleteFile(a.id);
+      for (const a of added) await deleteFile(a.id, projectId);
       setError("Couldn't save — the browser is out of storage for this site.");
     } finally {
       setBusy(false);
@@ -66,9 +73,9 @@ export function FileList({
   }
 
   async function openPreview(file: ProjectFile) {
-    const url = await getFileUrl(file.id);
+    const url = await getFileUrl(file.id, projectId);
     if (url) setPreview({ file, url });
-    else setError("That file's contents are missing.");
+    else setError("That file could not be fetched. It may still be on the device it was added to, or you may be offline.");
   }
 
   function closePreview() {
@@ -92,7 +99,7 @@ export function FileList({
         ) : isImages ? (
           <div className="grid grid-cols-3 gap-2">
             {files.map((file) => (
-              <Thumbnail key={file.id} file={file} onOpen={() => openPreview(file)} />
+              <Thumbnail key={file.id} file={file} projectId={projectId} onOpen={() => openPreview(file)} />
             ))}
           </div>
         ) : (
@@ -193,7 +200,7 @@ export function FileList({
           message={`Delete ${confirmDelete.name}? This can't be undone.`}
           confirmLabel="Delete"
           onConfirm={() => {
-            deleteFile(confirmDelete.id);
+            deleteFile(confirmDelete.id, projectId);
             onRemove(confirmDelete.id);
             if (preview?.file.id === confirmDelete.id) closePreview();
             setConfirmDelete(null);
@@ -206,13 +213,13 @@ export function FileList({
 }
 
 /** Grid tile that loads its own object URL and revokes it on unmount. */
-function Thumbnail({ file, onOpen }: { file: ProjectFile; onOpen: () => void }) {
+function Thumbnail({ file, projectId, onOpen }: { file: ProjectFile; projectId: string; onOpen: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     let made: string | null = null;
-    getFileUrl(file.id).then((u) => {
+    getFileUrl(file.id, projectId).then((u) => {
       if (!live) {
         if (u) URL.revokeObjectURL(u);
         return;
@@ -224,7 +231,7 @@ function Thumbnail({ file, onOpen }: { file: ProjectFile; onOpen: () => void }) 
       live = false;
       if (made) URL.revokeObjectURL(made);
     };
-  }, [file.id]);
+  }, [file.id, projectId]);
 
   return (
     <button

@@ -190,3 +190,57 @@ and a **Sync now** button.
 
 Offline is not an error. The line says how many changes are waiting; they go up
 on their own when the signal comes back.
+
+---
+
+# Files (step five)
+
+Photos and floor plans. Step three shared the file *metadata* — which is why a
+second device showed a grid of photo tiles it could never open — and this puts
+the bytes somewhere everyone can reach.
+
+## Running it
+
+**SQL Editor** → paste `migrations/0003_project_files.sql`. It creates a
+private `project-files` bucket and its rules. Run it after `0002`.
+
+Files are stored as `<project id>/<file id>`, so the rules are the ones the
+project already has: anyone signed in may look, and only the PM it belongs to
+or an admin may add or remove. Keying off the folder also means the Supabase
+dashboard lists them by job, which is worth something the first time somebody
+goes looking for one.
+
+The bucket is **private**. These are photographs of the inside of somebody's
+home, taken while they are moving out of it; a public bucket would put them
+behind a URL that works for anyone who ever sees it, indefinitely.
+
+## How it behaves
+
+**Adding a photo is instant and works with no signal.** The file is written to
+the device first and that is what the app waits on. The upload happens after,
+and if it fails the file is simply not marked as uploaded — the next sync
+sweeps it up.
+
+**Downloads are lazy.** A device that pulls a job gets the photo *list* in
+kilobytes and fetches a photo when somebody opens it. A phone is never made to
+download three hundred megabytes of pictures nobody asked for. Once fetched, a
+file is cached on the device, so the second look is instant and works offline.
+
+**Files never hold up the schedule.** They are swept after the rest of a sync
+has finished, and a bucket that is briefly unreachable does not turn the whole
+round trip red. What is outstanding is counted instead — **Settings → Access →
+Sync** says "3 files on this device have not gone up yet".
+
+## Catching up an old device
+
+Nothing to do. The sweep works out what should exist from the projects
+themselves, so a device holding photos from before any of this is caught up by
+the same pass as one that added a photo a second ago. Leave it open and signed
+in until the sync panel stops counting.
+
+## Storage limits
+
+Supabase's free tier includes 1 GB. Phone photos run 3–5 MB each, so that is
+roughly 200–300 photos across every job. Worth watching under **Reports →
+Storage** — the app does not compress before uploading, so a job documented
+thoroughly can spend a tenth of that on its own.
