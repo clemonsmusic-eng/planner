@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSync, syncSummary } from '../lib/sync/useSync';
-import { adoptServer, serverIsEmpty, sync, uploadEverything, type Conflict } from '../lib/sync/engine';
+import { adoptServer, isAdopted, serverIsEmpty, sync, uploadEverything, type Conflict } from '../lib/sync/engine';
 import { resolveKeepMine, resolveTakeTheirs } from '../lib/sync/engine';
 import { ConfirmSheet } from './ConfirmSheet';
 
@@ -16,7 +16,14 @@ export function SyncPanel() {
   const state = useSync();
   const [empty, setEmpty] = useState<boolean | null>(null);
   const [confirm, setConfirm] = useState<'upload' | 'adopt' | null>(null);
-  const unlinked = state.phase === 'unlinked';
+  /*
+   * Read from the flag, not from the phase. A failed upload leaves the phase on
+   * 'error', and keying the choice off that took the only two buttons that
+   * could get the device joined off the screen — leaving a Sync now that
+   * refuses to run because the device is not joined. Whether the device is
+   * joined is a fact, not a mood.
+   */
+  const unlinked = !isAdopted();
 
   useEffect(() => {
     let live = true;
@@ -36,6 +43,12 @@ export function SyncPanel() {
       <div className={`rounded-xl border px-3 py-2.5 ${tone}`}>
         <p className="text-sm font-semibold">{syncSummary(state)}</p>
         {state.error && <p className="text-xs mt-0.5 break-words">{state.error}</p>}
+        {state.errorDetail && state.errorDetail !== state.error && (
+          <details className="mt-1.5">
+            <summary className="text-[11px] font-semibold cursor-pointer">What the database said</summary>
+            <p className="text-[11px] mt-1 break-words font-mono leading-snug">{state.errorDetail}</p>
+          </details>
+        )}
         {state.phase === 'offline' && (
           <p className="text-xs mt-0.5">
             Everything still works. What you change here goes up when the signal comes back.
