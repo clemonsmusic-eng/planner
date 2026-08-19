@@ -5,6 +5,7 @@ import {
   clearBaseline, clearOutbox, dequeue, enqueue, getBaseline,
   readOutbox, setBaseline, setBaselines, type Pending,
 } from './outbox';
+import { errorDetail, errorSummary } from './errors';
 
 /**
  * Keeping this device and the server in step.
@@ -42,6 +43,8 @@ export interface SyncState {
   pending: number;
   lastSyncedAt: string | null;
   error: string | null;
+  /** What the database actually said, kept for when the summary is not enough. */
+  errorDetail: string | null;
   conflicts: Conflict[];
 }
 
@@ -72,6 +75,7 @@ let state: SyncState = {
   pending: 0,
   lastSyncedAt: null,
   error: null,
+  errorDetail: null,
   conflicts: [],
 };
 
@@ -250,7 +254,7 @@ export function sync(): Promise<void> {
   if (!supabase || state.phase === 'off' || !isAdopted()) return Promise.resolve();
   if (running) return running;
   running = (async () => {
-    emit({ phase: 'syncing', error: null });
+    emit({ phase: 'syncing', error: null, errorDetail: null });
     try {
       const conflicts: Conflict[] = [];
       const sent: Pending[] = [];
@@ -272,15 +276,18 @@ export function sync(): Promise<void> {
       emit({
         phase: 'idle',
         conflicts: [],
+        error: null,
+        errorDetail: null,
         pending: readOutbox().length,
         lastSyncedAt: localStorage.getItem(LAST_SYNC_KEY),
       });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      const offline = /fetch|network|load failed/i.test(message) || !navigator.onLine;
+      const detail = errorDetail(e);
+      const offline = /fetch|network|load failed/i.test(detail) || !navigator.onLine;
       emit({
         phase: offline ? 'offline' : 'error',
-        error: offline ? null : message,
+        error: offline ? null : errorSummary(e),
+        errorDetail: offline ? null : detail,
         pending: readOutbox().length,
       });
     } finally {
@@ -353,7 +360,7 @@ export async function uploadEverything(): Promise<void> {
     emit({ phase: 'idle', pending: 0, lastSyncedAt: localStorage.getItem(LAST_SYNC_KEY) });
     beginLive();
   } catch (e) {
-    emit({ phase: 'error', error: e instanceof Error ? e.message : String(e) });
+    emit({ phase: 'error', error: errorSummary(e), errorDetail: errorDetail(e) });
   }
 }
 
@@ -380,7 +387,7 @@ export async function adoptServer(): Promise<void> {
     });
     beginLive();
   } catch (e) {
-    emit({ phase: 'error', error: e instanceof Error ? e.message : String(e) });
+    emit({ phase: 'error', error: errorSummary(e), errorDetail: errorDetail(e) });
   }
 }
 
@@ -406,7 +413,7 @@ export async function start(): Promise<void> {
    * misleading, and an upload sends everything regardless.
    */
   if (!isAdopted()) {
-    emit({ phase: 'unlinked', pending: 0, conflicts: [], error: null });
+    emit({ phase: 'unlinked', pending: 0, conflicts: [], error: null, errorDetail: null });
     return;
   }
 
