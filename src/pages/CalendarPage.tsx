@@ -379,8 +379,16 @@ function weekdaysOnly(all: Date[], worked: (d: Date) => boolean): Date[] {
   return all.some((d) => isWeekend(d) && worked(d)) ? all : all.filter((d) => !isWeekend(d));
 }
 
-/** The hours an hourly week grid draws, and how tall each one is. */
-const HOUR_START = 6;
+/**
+ * The hours an hourly week grid draws, and how tall each one is.
+ *
+ * Eight to seven: the span a moving crew actually works. The grid used to
+ * start at six and spend a fifth of its height on two hours nothing is ever
+ * scheduled in. A shift starting earlier than this is not hidden — it is
+ * pinned to the top of the grid and shortened to match, so it still reads as
+ * something that began before the day shown.
+ */
+const HOUR_START = 8;
 const HOUR_END = 20;
 const HOUR_PX = 56;
 
@@ -483,7 +491,10 @@ function WeekHourView({
                 {dayJobs.map((j, i) => {
                   const start = startMinutes(j.shift, j.startTime);
                   const top = ((start - HOUR_START * 60) / 60) * HOUR_PX;
-                  const height = Math.max((j.hours || 1) * HOUR_PX, 28);
+                  // Clipped at the top rather than pushed off it, and short by
+                  // however much was clipped so the end still lands right.
+                  const clipped = Math.max(-top, 0);
+                  const height = Math.max((j.hours || 1) * HOUR_PX - clipped, 28);
                   const c = j.isArchived
                     ? { bg: 'bg-ios-gray-100', border: 'border-gray-200', text: 'text-ios-gray-400' }
                     : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
@@ -807,8 +818,16 @@ function MonthView({
 
               {/* Desktop and iPad landscape: the shifts themselves. */}
               <div className="hidden lg:flex flex-col gap-0.5 mt-0.5 min-w-0">
-                {dayJobs.slice(0, 3).map((job) => {
+                {dayJobs.slice(0, 3).map((job, i, shown) => {
                   const key = jobKey(job);
+                  /*
+                   * A job running twice in a day — the AM and PM halves of a
+                   * move — reads better as one thing layered than as two
+                   * unrelated rows. The second chip laps the first and sits
+                   * over it, which is the shape people already draw when they
+                   * write two shifts into one box.
+                   */
+                  const laps = i > 0 && shown[i - 1].projectId === job.projectId;
                   const colors = job.isArchived
                     ? { bg: 'bg-ios-gray-100', text: 'text-ios-gray-500', border: 'border-ios-gray-200' }
                     : PROJECT_COLORS[(colorMap.get(job.projectId) ?? 0) % PROJECT_COLORS.length];
@@ -822,15 +841,20 @@ function MonthView({
                       onMouseEnter={(e) => show(key, e.currentTarget, false)}
                       onClick={(e) => show(key, e.currentTarget, true)}
                       aria-expanded={openKey === key}
-                      className={`w-full text-left px-1.5 py-1 rounded-md border ${colors.bg} ${colors.border} ${
-                        pinned === key ? 'ring-2 ring-teal-500' : ''
-                      }`}
+                      style={laps ? { marginTop: -10, marginLeft: 6, zIndex: i + 1 } : undefined}
+                      className={`relative w-full text-left px-1.5 py-1 rounded-md border ${colors.bg} ${colors.border} ${
+                        laps ? 'shadow-sm' : ''
+                      } ${pinned === key ? 'ring-2 ring-teal-500 z-10' : ''}`}
                     >
-                      <span className={`block text-[11px] font-semibold leading-tight truncate ${colors.text}`}>
-                        {job.projectName}
-                      </span>
+                      {!laps && (
+                        <span className={`block text-[11px] font-semibold leading-tight truncate ${colors.text}`}>
+                          {job.projectName}
+                        </span>
+                      )}
                       <span className="block text-[10px] leading-tight truncate text-ios-gray-600">
-                        {job.projectManagerName ?? 'No PM'} · {job.shift}
+                        {laps
+                          ? `${job.phaseName.split(':').pop()!.trim()} · ${job.shift}`
+                          : `${job.projectManagerName ?? 'No PM'} · ${job.shift}`}
                       </span>
                     </button>
                   );

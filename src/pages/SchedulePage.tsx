@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftEditSheet, type ShiftEditValues } from '../components/ShiftEditSheet';
@@ -282,6 +282,36 @@ export function SchedulePage() {
   const budgetHours = totalBudgetedHours(activeProject.inputs.phaseBudgets);
   const budgetPct = budgetHours > 0 ? Math.round(((schedule?.totalScheduledHours ?? 0) / budgetHours) * 100) : 0;
 
+  /*
+   * A plan opens folded.
+   *
+   * Sixteen days of shifts with every crew member listed is several screens
+   * before you reach the second week, and the question the page is usually
+   * asked is "what days is this job on" rather than "who is on the fourth
+   * one". The date lines carry the shift, its window and its crew count
+   * already, so the folded list is a plan you can take in at once and open
+   * where you need to.
+   *
+   * Applied once per project rather than on every render, so opening a day and
+   * then editing it does not fold it up again underneath you.
+   */
+  const folded = useRef<string | null>(null);
+  useEffect(() => {
+    const id = activeProject?.id;
+    if (!id || !schedule || folded.current === id) return;
+    folded.current = id;
+    setCollapsedDays(new Set(schedule.days.map((d) => d.date)));
+  }, [activeProject?.id, schedule]);
+
+  const allFolded = (schedule?.days.length ?? 0) > 0
+    && collapsedDays.size >= (schedule?.days.length ?? 0);
+
+  /** Fold or unfold every day at once, from the header. */
+  function toggleAllDays() {
+    const days = schedule?.days.map((d) => d.date) ?? [];
+    setCollapsedDays((prev) => (prev.size >= days.length ? new Set() : new Set(days)));
+  }
+
   function toggleDay(date: string) {
     setCollapsedDays((prev) => {
       const next = new Set(prev);
@@ -475,6 +505,23 @@ export function SchedulePage() {
                 className="text-xs text-ios-gray-600 px-2 py-1 flex-shrink-0"
               >
                 Clear
+              </button>
+            )}
+            {/*
+              The way back out of a folded plan. Reads as what it will do
+              rather than what the list currently is, since that is the thing
+              being decided.
+            */}
+            {schedule && schedule.days.length > 0 && (
+              <button
+                onClick={toggleAllDays}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-teal-700 bg-ios-gray-100 min-h-[36px] flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                  className={`w-3.5 h-3.5 transition-transform ${allFolded ? '' : 'rotate-180'}`}>
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+                {allFolded ? 'Expand all' : 'Collapse all'}
               </button>
             )}
             <div className="ml-auto flex items-center gap-2 flex-shrink-0">
