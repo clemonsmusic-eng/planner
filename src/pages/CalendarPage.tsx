@@ -15,6 +15,11 @@ import {
 import { useApp } from '../store/AppContext';
 import { shiftTimeRange } from '../lib/dateUtils';
 import { startTimeLookup } from '../lib/shiftStartTimes';
+import { DragGhost, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
+import { ShiftEditSheet, type ShiftEditValues } from '../components/ShiftEditSheet';
+import { applyShiftEdit } from '../lib/applyShiftEdit';
+import { can } from '../lib/access';
+import { useIsWideLayout } from '../lib/useMediaQuery';
 import type { Project, TeamMember, ExperienceLevel, ShiftTimeSettings } from '../types';
 
 const PACK_SORT_PHASES_CAL = new Set(['phase-3', 'phase-4-1', 'phase-4-2']);
@@ -374,8 +379,16 @@ function weekdaysOnly(all: Date[], worked: (d: Date) => boolean): Date[] {
   return all.some((d) => isWeekend(d) && worked(d)) ? all : all.filter((d) => !isWeekend(d));
 }
 
-/** The hours an hourly week grid draws, and how tall each one is. */
-const HOUR_START = 6;
+/**
+ * The hours an hourly week grid draws, and how tall each one is.
+ *
+ * Eight to seven: the span a moving crew actually works. The grid used to
+ * start at six and spend a fifth of its height on two hours nothing is ever
+ * scheduled in. A shift starting earlier than this is not hidden — it is
+ * pinned to the top of the grid and shortened to match, so it still reads as
+ * something that began before the day shown.
+ */
+const HOUR_START = 8;
 const HOUR_END = 20;
 const HOUR_PX = 56;
 
@@ -478,7 +491,10 @@ function WeekHourView({
                 {dayJobs.map((j, i) => {
                   const start = startMinutes(j.shift, j.startTime);
                   const top = ((start - HOUR_START * 60) / 60) * HOUR_PX;
-                  const height = Math.max((j.hours || 1) * HOUR_PX, 28);
+                  // Clipped at the top rather than pushed off it, and short by
+                  // however much was clipped so the end still lands right.
+                  const clipped = Math.max(-top, 0);
+                  const height = Math.max((j.hours || 1) * HOUR_PX - clipped, 28);
                   const c = j.isArchived
                     ? { bg: 'bg-ios-gray-100', border: 'border-gray-200', text: 'text-ios-gray-400' }
                     : PROJECT_COLORS[(colorMap.get(j.projectId) ?? 0) % PROJECT_COLORS.length];
@@ -523,9 +539,7 @@ function WeekView({
   dragJob,
   dragOverDate,
   onJobDoubleClick,
-  onJobDragStart,
-  onDayDragOver,
-  onDayDrop,
+  dragHandle,
 }: {
   date: Date;
   jobs: CalendarJob[];
@@ -535,9 +549,7 @@ function WeekView({
   dragJob: CalendarJob | null;
   dragOverDate: string | null;
   onJobDoubleClick: (job: CalendarJob) => void;
-  onJobDragStart: (job: CalendarJob) => void;
-  onDayDragOver: (dateStr: string) => void;
-  onDayDrop: (dateStr: string) => void;
+  dragHandle: (payload: DragPayload) => Record<string, unknown>;
 }) {
   const weekStart = startOfWeek(date, { weekStartsOn: 0 });
   const days = weekdaysOnly(
@@ -599,12 +611,10 @@ function WeekView({
           return (
             <div
               key={day.toISOString()}
+              data-cal-date={dateStr}
               className={`min-h-[120px] lg:min-h-[420px] p-1 space-y-1 transition-colors ${
-                isDropTarget ? 'bg-teal-50' : isWeekend(day) ? 'bg-ios-gray-50' : ''
+                isDropTarget ? 'bg-teal-50 ring-2 ring-inset ring-teal-400' : isWeekend(day) ? 'bg-ios-gray-50' : ''
               }`}
-              onDragOver={(e) => { e.preventDefault(); onDayDragOver(dateStr); }}
-              onDrop={() => onDayDrop(dateStr)}
-              onDragLeave={() => onDayDragOver('')}
             >
               {dayJobs.slice(0, 4).map((j, i) => {
                 const c = j.isArchived
@@ -614,8 +624,10 @@ function WeekView({
                 return (
                   <div
                     key={i}
-                    draggable={!j.isArchived}
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onJobDragStart(j); }}
+                    {...(j.isArchived ? {} : dragHandle({
+                      date: j.date, phaseId: j.phaseId, projectId: j.projectId,
+                      label: `${j.projectName} · ${j.phaseName}`,
+                    }))}
                     onDoubleClick={() => onJobDoubleClick(j)}
                     className={`rounded px-1 py-0.5 lg:px-1.5 lg:py-1 border cursor-grab active:cursor-grabbing select-none transition-opacity ${c.bg} ${c.border} ${isDragging ? 'opacity-40' : ''}`}
                   >
@@ -681,12 +693,19 @@ function MonthView({
   colorMap,
   shiftTimes,
   onSelectDay,
+  onEditJob,
+  dragHandle,
+  dropDate,
 }: {
   date: Date;
   jobs: CalendarJob[];
   colorMap: Map<string, number>;
   shiftTimes: ShiftTimeSettings;
   onSelectDay: (d: Date) => void;
+  onEditJob?: (job: CalendarJob) => void;
+  dragHandle: (payload: DragPayload) => Record<string, unknown>;
+  /** The day a drag is currently over, so the cell can say it will take it. */
+  dropDate: string | null;
 }) {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
@@ -761,8 +780,11 @@ function MonthView({
           return (
             <div
               key={day.toISOString()}
+              data-cal-date={format(day, 'yyyy-MM-dd')}
               className={`flex flex-col rounded-xl lg:min-h-[112px] lg:p-1 lg:border ${
-                inMonth
+                dropDate === format(day, 'yyyy-MM-dd')
+                  ? 'lg:border-teal-500 lg:bg-teal-50 ring-2 ring-inset ring-teal-400'
+                  : inMonth
                   ? `lg:border-ios-gray-200 ${isWeekend(day) ? 'lg:bg-ios-gray-50' : 'lg:bg-white'}`
                   : 'lg:border-transparent'
               }`}
@@ -796,26 +818,43 @@ function MonthView({
 
               {/* Desktop and iPad landscape: the shifts themselves. */}
               <div className="hidden lg:flex flex-col gap-0.5 mt-0.5 min-w-0">
-                {dayJobs.slice(0, 3).map((job) => {
+                {dayJobs.slice(0, 3).map((job, i, shown) => {
                   const key = jobKey(job);
+                  /*
+                   * A job running twice in a day — the AM and PM halves of a
+                   * move — reads better as one thing layered than as two
+                   * unrelated rows. The second chip laps the first and sits
+                   * over it, which is the shape people already draw when they
+                   * write two shifts into one box.
+                   */
+                  const laps = i > 0 && shown[i - 1].projectId === job.projectId;
                   const colors = job.isArchived
                     ? { bg: 'bg-ios-gray-100', text: 'text-ios-gray-500', border: 'border-ios-gray-200' }
                     : PROJECT_COLORS[(colorMap.get(job.projectId) ?? 0) % PROJECT_COLORS.length];
                   return (
                     <button
                       key={key}
+                      {...(job.isArchived ? {} : dragHandle({
+                        date: job.date, phaseId: job.phaseId, projectId: job.projectId,
+                        label: `${job.projectName} · ${job.phaseName}`,
+                      }))}
                       onMouseEnter={(e) => show(key, e.currentTarget, false)}
                       onClick={(e) => show(key, e.currentTarget, true)}
                       aria-expanded={openKey === key}
-                      className={`w-full text-left px-1.5 py-1 rounded-md border ${colors.bg} ${colors.border} ${
-                        pinned === key ? 'ring-2 ring-teal-500' : ''
-                      }`}
+                      style={laps ? { marginTop: -10, marginLeft: 6, zIndex: i + 1 } : undefined}
+                      className={`relative w-full text-left px-1.5 py-1 rounded-md border ${colors.bg} ${colors.border} ${
+                        laps ? 'shadow-sm' : ''
+                      } ${pinned === key ? 'ring-2 ring-teal-500 z-10' : ''}`}
                     >
-                      <span className={`block text-[11px] font-semibold leading-tight truncate ${colors.text}`}>
-                        {job.projectName}
-                      </span>
+                      {!laps && (
+                        <span className={`block text-[11px] font-semibold leading-tight truncate ${colors.text}`}>
+                          {job.projectName}
+                        </span>
+                      )}
                       <span className="block text-[10px] leading-tight truncate text-ios-gray-600">
-                        {job.projectManagerName ?? 'No PM'} · {job.shift}
+                        {laps
+                          ? `${job.phaseName.split(':').pop()!.trim()} · ${job.shift}`
+                          : `${job.projectManagerName ?? 'No PM'} · ${job.shift}`}
                       </span>
                     </button>
                   );
@@ -841,6 +880,9 @@ function MonthView({
           shiftTimes={shiftTimes}
           pinned={pinned !== null}
           onClose={() => { setPinned(null); setHovered(null); }}
+          onEdit={onEditJob && !openJob.isArchived
+            ? () => { setPinned(null); setHovered(null); onEditJob(openJob); }
+            : undefined}
         />
       )}
     </div>
@@ -854,12 +896,15 @@ function MonthJobDetail({
   shiftTimes,
   pinned,
   onClose,
+  onEdit,
 }: {
   job: CalendarJob;
   anchor: { x: number; y: number; below: boolean };
   shiftTimes: ShiftTimeSettings;
   pinned: boolean;
   onClose: () => void;
+  /** Absent where the level or the lock says this shift is not theirs to move. */
+  onEdit?: () => void;
 }) {
   return (
     <>
@@ -896,6 +941,19 @@ function MonthJobDetail({
           )}
           {job.note && <DetailRow label="Note">{job.note}</DetailRow>}
         </dl>
+
+        {/*
+          Only on a pinned card. A hover card does not take the pointer, so a
+          button on one would be a button nobody could press.
+        */}
+        {pinned && onEdit && (
+          <button
+            onClick={onEdit}
+            className="mt-3 w-full min-h-[40px] rounded-xl bg-teal-600 text-white text-sm font-semibold"
+          >
+            Edit shift
+          </button>
+        )}
       </div>
     </>
   );
@@ -1034,13 +1092,31 @@ function FilterSheet({
 
 export function CalendarPage() {
   const { state, dispatch, movePhaseDate } = useApp();
-  const [view, setView] = useState<CalendarView>('week');
+  // The month is what people open the calendar to see — where the jobs sit
+  // against each other across weeks, not what is on today.
+  const [view, setView] = useState<CalendarView>('month');
   /*
    * Two ways to read a week. The block view stacks whatever is on a day; the
    * hourly one puts it against a clock, which is the view you want when two
    * shifts share a date and you need to see that they don't overlap.
    */
-  const [hourly, setHourly] = useState(false);
+  // A week is worth looking at for when things start and how long they run, so
+  // the hourly grid is the default and the block view is the toggle off it.
+  const [hourly, setHourly] = useState(true);
+  const [editing, setEditing] = useState<CalendarJob | null>(null);
+  /*
+   * A Team Member reads the calendar and does not rearrange it, and a locked
+   * schedule is locked from here too — moving a shift on the calendar is the
+   * same act as moving it on the Schedule tab.
+   */
+  const canEdit = can(state.access.level, 'editSchedule');
+  /*
+   * Dragging is for the layouts with room for it — desktop and a landscape
+   * iPad. A drag handle sets touch-action: none so the gesture is not stolen
+   * by the page, which on a phone would mean a finger landing on a shift
+   * could no longer scroll the week past it.
+   */
+  const isWide = useIsWideLayout();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -1101,6 +1177,58 @@ export function CalendarPage() {
   function handleJobDoubleClick(job: CalendarJob) {
     dispatch({ type: 'SET_ACTIVE_PROJECT', id: job.projectId });
     dispatch({ type: 'SET_ACTIVE_TAB', tab: 'plan' });
+  }
+
+  /*
+   * Dragging on pointer events rather than HTML5 drag-and-drop.
+   *
+   * The same reason the project calendar uses them: HTML5 dragging never fires
+   * on iPad Safari, and half the people who move a shift are doing it on one.
+   * The hook is shared with that calendar, so a drop lands on any element
+   * carrying data-cal-date.
+   */
+  const { drag, dragHandle } = useShiftDrag(canEdit && isWide, (payload, toDate) => {
+    if (!payload.projectId) return;
+    moveJob(payload.projectId, payload.phaseId!, payload.date, toDate);
+  });
+
+  /** Re-date one shift, and say so if the move made a mess of the day. */
+  function moveJob(projectId: string, phaseId: string, fromDate: string, toDate: string) {
+    if (fromDate === toDate) return;
+    const project = state.projects.find((p) => p.id === projectId);
+    if (!project || project.inputs.status === 'archived') return;
+    const newSchedule = movePhaseDate(projectId, phaseId, fromDate, toDate);
+    const newDay = newSchedule.days.find((d) => d.date === toDate);
+    const issues = (newDay?.entries ?? [])
+      .filter((e) => e.phaseId === phaseId && (e.status === 'conflict' || e.status === 'needs-assignment' || e.status === 'over-max'))
+      .flatMap((e) => (e.warnings.length > 0 ? e.warnings : [`${e.assignedMemberName ?? 'Unassigned'}: ${e.status}`]));
+    if (issues.length > 0) {
+      const job = allJobs.find((j) => j.projectId === projectId && j.phaseId === phaseId && j.date === fromDate);
+      if (job) setConflictInfo({ job, newDate: toDate, issues });
+    }
+  }
+
+  /**
+   * The edit window, opened from a shift on the calendar.
+   *
+   * Applied and kept, rather than held as a draft the way the Schedule tab
+   * does. That draft exists because a mis-tap there was already saved before
+   * anyone noticed; this arrives through a dialog with a Save button on it, so
+   * there is nothing to protect against — and a draft left behind on a project
+   * the person is not looking at would be worse.
+   */
+  function applyEditorValues(values: ShiftEditValues) {
+    if (!editing) return;
+    const project = state.projects.find((p) => p.id === editing.projectId);
+    if (!project) return;
+    const next = applyShiftEdit(
+      project,
+      { date: editing.date, phaseId: editing.phaseId },
+      values,
+      state.teamMembers
+    );
+    if (next !== project) dispatch({ type: 'REPLACE_PROJECT', project: next });
+    setEditing(null);
   }
 
   function handleDayDrop(dateStr: string) {
@@ -1261,16 +1389,36 @@ export function CalendarPage() {
             dragJob={dragJob}
             dragOverDate={dragOverDate}
             onJobDoubleClick={handleJobDoubleClick}
-            onJobDragStart={(j) => setDragJob(j)}
-            onDayDragOver={(d) => setDragOverDate(d || null)}
-            onDayDrop={handleDayDrop}
+            dragHandle={dragHandle}
           />
           )
         )}
         {view === 'month' && (
-          <MonthView date={currentDate} jobs={filteredJobs} colorMap={colorMap} shiftTimes={state.shiftTimes} onSelectDay={handleSelectDay} />
+          <MonthView
+            date={currentDate}
+            jobs={filteredJobs}
+            colorMap={colorMap}
+            shiftTimes={state.shiftTimes}
+            onSelectDay={handleSelectDay}
+            onEditJob={canEdit ? setEditing : undefined}
+            dragHandle={dragHandle}
+            dropDate={drag?.over ?? null}
+          />
         )}
       </div>
+
+      <DragGhost drag={drag} />
+
+      {editing && (
+        <ShiftEditSheet
+          title={`Edit ${editing.phaseName}`}
+          subtitle={`${editing.projectName} · ${format(new Date(`${editing.date}T12:00:00`), 'EEE, MMM d')}`}
+          initial={{ shift: editing.shift, date: editing.date, startTime: editing.startTime ?? null }}
+          shiftTimes={state.shiftTimes}
+          onApply={applyEditorValues}
+          onClose={() => setEditing(null)}
+        />
+      )}
 
       {conflictInfo && (
         <ConflictDialog

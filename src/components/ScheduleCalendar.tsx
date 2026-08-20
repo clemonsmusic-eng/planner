@@ -27,6 +27,12 @@ export interface DragPayload {
   date: string;
   phaseId?: string;
   label: string;
+  /**
+   * Which job the shift belongs to. The project calendar only ever shows one,
+   * so it goes unset there; the main calendar shows every project at once and
+   * a drop has to know whose schedule it is moving.
+   */
+  projectId?: string;
 }
 
 interface DragState {

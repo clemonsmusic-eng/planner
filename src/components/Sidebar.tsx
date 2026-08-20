@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ACCESS_LABELS, canOpenTab } from '../lib/access';
 import { AccessSheet } from './AccessSheet';
 import { SyncBadge } from './SyncBadge';
@@ -14,6 +14,8 @@ import type { TabName } from '../types';
 
 /** Matches the lg:pl-64 the page area reserves in App.tsx. */
 export const SIDEBAR_WIDTH_CLASS = 'w-64';
+
+const SECTIONS_KEY = 'st-planner-sidebar-sections';
 
 /**
  * Desktop navigation.
@@ -32,6 +34,34 @@ export function Sidebar() {
   const [accessOpen, setAccessOpen] = useState(false);
   const addShift = useAddShift();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  /*
+   * Whether the open project's own sections are showing.
+   *
+   * Kept on the device rather than in app state: which parts of a rail someone
+   * wants out of the way is a preference about this screen, not something to
+   * push at the rest of the team. Both start open — the tabs are the whole
+   * point of having a project open — and a collapse sticks until it is undone.
+   */
+  const [openSections, setOpenSections] = useState<{ tabs: boolean; files: boolean }>(() => {
+    try {
+      const raw = localStorage.getItem(SECTIONS_KEY);
+      const parsed = raw ? (JSON.parse(raw) as Partial<{ tabs: boolean; files: boolean }>) : {};
+      return { tabs: parsed.tabs !== false, files: parsed.files !== false };
+    } catch {
+      return { tabs: true, files: true };
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(openSections));
+    } catch {
+      /* storage blocked; the choice simply won't outlive the tab */
+    }
+  }, [openSections]);
+
+  const toggleSection = (which: 'tabs' | 'files') =>
+    setOpenSections((v) => ({ ...v, [which]: !v[which] }));
 
   const activeProject = state.activeProjectId
     ? state.projects.find((p) => p.id === state.activeProjectId)
@@ -90,21 +120,35 @@ export function Sidebar() {
         {/* Open project — its working tabs and its documents, all visible */}
         {activeProject && (
           <>
-            <SidebarHeading className="mt-5">{projectName}</SidebarHeading>
-            <nav className="px-2 space-y-0.5" aria-label="Project">
-              {PROJECT_TABS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
-                <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
-              ))}
-            </nav>
+            <SectionHeading
+              label={projectName}
+              open={openSections.tabs}
+              onToggle={() => toggleSection('tabs')}
+              className="mt-5"
+            />
+            {openSections.tabs && (
+              <nav className="px-2 space-y-0.5" aria-label="Project">
+                {PROJECT_TABS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
+                  <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
+                ))}
+              </nav>
+            )}
 
             {DOC_DESTINATIONS.some((d) => canOpenTab(level, d.tab)) && (
               <>
-                <SidebarHeading className="mt-4">Files</SidebarHeading>
-                <nav className="px-2 space-y-0.5" aria-label="Project files">
-                  {DOC_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
-                    <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
-                  ))}
-                </nav>
+                <SectionHeading
+                  label="Files"
+                  open={openSections.files}
+                  onToggle={() => toggleSection('files')}
+                  className="mt-4"
+                />
+                {openSections.files && (
+                  <nav className="px-2 space-y-0.5" aria-label="Project files">
+                    {DOC_DESTINATIONS.filter((d) => canOpenTab(level, d.tab)).map((d) => (
+                      <SidebarLink key={d.tab} dest={d} current={state.activeTab === d.tab} onClick={() => go(d.tab)} />
+                    ))}
+                  </nav>
+                )}
               </>
             )}
           </>
@@ -177,11 +221,42 @@ export function Sidebar() {
   );
 }
 
-function SidebarHeading({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+/**
+ * A heading that folds its section away.
+ *
+ * The same disclosure the active-projects switcher already uses, so the rail
+ * reads as one thing rather than a mixture of headings that do something and
+ * headings that do not.
+ */
+function SectionHeading({
+  label,
+  open,
+  onToggle,
+  className = '',
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
   return (
-    <p className={`px-4 pb-1 text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider truncate ${className}`}>
-      {children}
-    </p>
+    <button
+      onClick={onToggle}
+      aria-expanded={open}
+      className={`w-full px-4 pb-1 flex items-center gap-1.5 text-left hover:text-teal-700 ${className}`}
+    >
+      <span className="text-[11px] font-bold text-ios-gray-500 uppercase tracking-wider flex-1 min-w-0 truncate">
+        {label}
+      </span>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className={`w-4 h-4 text-ios-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+      >
+        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+      </svg>
+    </button>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Card } from '../components/Card';
 import { ShiftEditSheet, type ShiftEditValues } from '../components/ShiftEditSheet';
@@ -10,6 +10,7 @@ import { startTimeLookup } from '../lib/shiftStartTimes';
 import { useAddShift } from '../components/AddShiftContext';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
+import { applyShiftEdit } from '../lib/applyShiftEdit';
 import { totalBudgetedHours } from '../lib/budgets';
 import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
 import { useIsWideLayout } from '../lib/useMediaQuery';
@@ -155,39 +156,10 @@ export function SchedulePage() {
     });
   }
 
-  /**
-   * Apply the window's three answers as one change.
-   *
-   * The date goes first so the rest lands where the shift ended up: a move onto
-   * a day already running the same phase is refused, and a shift type written
-   * against the date that was asked for rather than the one it is on would
-   * override a day nothing moved to.
-   */
-  function applyShiftEdit(target: ShiftEditorTarget, values: ShiftEditValues) {
+  /** Route the edit window's answers into the draft. */
+  function applyShiftEditor(target: ShiftEditorTarget, values: ShiftEditValues) {
     if (!activeProject || scheduleLocked) return;
-    let next = activeProject;
-    const apply = (e: ScheduleEdit) => { next = applyScheduleEdit(next, e, state.teamMembers); };
-
-    const phases = target.phaseId
-      ? [target.phaseId]
-      : [...new Set(activeProject.schedule?.days.find((d) => d.date === target.date)?.entries.map((e) => e.phaseId) ?? [])];
-
-    if (values.date && values.date !== target.date) {
-      apply({ kind: 'moveShift', fromDate: target.date, toDate: values.date, phaseId: target.phaseId });
-    }
-
-    for (const phaseId of phases) {
-      const on = (date: string) =>
-        next.schedule?.days.find((d) => d.date === date)?.entries.find((e) => e.phaseId === phaseId);
-      const date = on(values.date) ? values.date : target.date;
-      const current = on(date);
-      if (!current) continue;
-      if (current.shift !== values.shift) apply({ kind: 'setShiftType', date, phaseId, shift: values.shift });
-      if ((startTimeOf(phaseId, target.date) ?? null) !== values.startTime) {
-        apply({ kind: 'setStartTime', date, phaseId, time: values.startTime });
-      }
-    }
-
+    const next = applyShiftEdit(activeProject, target, values, state.teamMembers);
     if (next !== activeProject) dispatch({ type: 'SET_SCHEDULE_DRAFT', project: next });
   }
 
@@ -309,6 +281,36 @@ export function SchedulePage() {
   const schedule = activeProject.schedule;
   const budgetHours = totalBudgetedHours(activeProject.inputs.phaseBudgets);
   const budgetPct = budgetHours > 0 ? Math.round(((schedule?.totalScheduledHours ?? 0) / budgetHours) * 100) : 0;
+
+  /*
+   * A plan opens folded.
+   *
+   * Sixteen days of shifts with every crew member listed is several screens
+   * before you reach the second week, and the question the page is usually
+   * asked is "what days is this job on" rather than "who is on the fourth
+   * one". The date lines carry the shift, its window and its crew count
+   * already, so the folded list is a plan you can take in at once and open
+   * where you need to.
+   *
+   * Applied once per project rather than on every render, so opening a day and
+   * then editing it does not fold it up again underneath you.
+   */
+  const folded = useRef<string | null>(null);
+  useEffect(() => {
+    const id = activeProject?.id;
+    if (!id || !schedule || folded.current === id) return;
+    folded.current = id;
+    setCollapsedDays(new Set(schedule.days.map((d) => d.date)));
+  }, [activeProject?.id, schedule]);
+
+  const allFolded = (schedule?.days.length ?? 0) > 0
+    && collapsedDays.size >= (schedule?.days.length ?? 0);
+
+  /** Fold or unfold every day at once, from the header. */
+  function toggleAllDays() {
+    const days = schedule?.days.map((d) => d.date) ?? [];
+    setCollapsedDays((prev) => (prev.size >= days.length ? new Set() : new Set(days)));
+  }
 
   function toggleDay(date: string) {
     setCollapsedDays((prev) => {
@@ -505,6 +507,23 @@ export function SchedulePage() {
                 Clear
               </button>
             )}
+            {/*
+              The way back out of a folded plan. Reads as what it will do
+              rather than what the list currently is, since that is the thing
+              being decided.
+            */}
+            {schedule && schedule.days.length > 0 && (
+              <button
+                onClick={toggleAllDays}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-teal-700 bg-ios-gray-100 min-h-[36px] flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                  className={`w-3.5 h-3.5 transition-transform ${allFolded ? '' : 'rotate-180'}`}>
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+                {allFolded ? 'Expand all' : 'Collapse all'}
+              </button>
+            )}
             <div className="ml-auto flex items-center gap-2 flex-shrink-0">
               {conflictCount > 0 && filter !== 'conflicts' && (
                 <button
@@ -663,7 +682,7 @@ export function SchedulePage() {
           subtitle={shiftEditor.subtitle}
           initial={shiftEditor.initial}
           shiftTimes={state.shiftTimes}
-          onApply={(values) => applyShiftEdit(shiftEditor, values)}
+          onApply={(values) => applyShiftEditor(shiftEditor, values)}
           onClose={() => setShiftEditor(null)}
         />
       )}
