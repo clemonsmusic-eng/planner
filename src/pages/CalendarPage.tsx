@@ -1247,16 +1247,35 @@ export function CalendarPage() {
     setDragOverDate(null);
   }
 
+  /**
+   * Whether today is somewhere on screen.
+   *
+   * Judged against what the view actually spans rather than against the date
+   * being paged, so scrolling a month away hides the button only once today
+   * has genuinely gone with it.
+   */
+  const showingToday = (() => {
+    const today = new Date();
+    if (view === 'day') return isSameDay(currentDate, today);
+    if (view === 'month') return isSameMonth(currentDate, today);
+    const start = startOfWeek(currentDate, { weekStartsOn: 0 });
+    return today >= start && today < addDays(start, 7);
+  })();
+
   function dateLabel() {
     if (view === 'day') return format(currentDate, 'EEE, MMM d');
     if (view === 'week') {
       const s = startOfWeek(currentDate, { weekStartsOn: 0 });
       const e = addDays(s, 6);
+      const year = isWide ? ', yyyy' : '';
       return format(s, 'MMM') === format(e, 'MMM')
-        ? `${format(s, 'MMM d')}–${format(e, 'd, yyyy')}`
-        : `${format(s, 'MMM d')}–${format(e, 'MMM d, yyyy')}`;
+        ? `${format(s, 'MMM d')}–${format(e, `d${year}`)}`
+        : `${format(s, 'MMM d')}–${format(e, `MMM d${year}`)}`;
     }
-    return format(currentDate, 'MMMM yyyy');
+    // Sharing the title row leaves a phone about eighty pixels for this, and
+    // "September" alone wants more than that. The long month is a desktop
+    // luxury; narrow screens get the three letters rather than an ellipsis.
+    return format(currentDate, isWide ? 'MMMM yyyy' : 'MMM yyyy');
   }
 
   return (
@@ -1266,22 +1285,50 @@ export function CalendarPage() {
         className="sticky top-0 z-10 bg-white border-b border-ios-gray-200 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)', paddingBottom: '12px' }}
       >
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-teal-900">Calendar</h1>
-          <div className="flex items-center gap-1">
-          {view === 'week' && (
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-teal-900 flex-shrink-0">Calendar</h1>
+
+          {/*
+            The date and the arrows that move it, alongside the title rather
+            than on a row of their own. It was a whole line carrying one label
+            and two chevrons, on a header that has to leave the month some
+            screen — and the arrows follow the date because a pair of them
+            stranded on an empty row means nothing.
+          */}
+          <div className="flex items-center gap-0.5 min-w-0 flex-1 justify-center">
             <button
-              onClick={() => setHourly((h) => !h)}
-              aria-pressed={hourly}
-              aria-label={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
-              title={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl ${
-                hourly ? 'bg-teal-50 text-teal-600' : 'text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100'
-              }`}
+              onClick={() => navigate(-1)}
+              aria-label="Previous"
+              className="w-7 h-8 lg:w-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 flex-shrink-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
               </svg>
+            </button>
+            <span className="text-sm font-semibold text-teal-900 truncate min-w-0 px-0.5 lg:px-1">{dateLabel()}</span>
+            <button
+              onClick={() => navigate(1)}
+              aria-label="Next"
+              className="w-7 h-8 lg:w-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100 flex-shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 flex-shrink-0">
+          {/*
+            2. The way back. Only shown once today has gone off the screen,
+            because a button that does nothing is a button that gets ignored
+            when it would have helped.
+          */}
+          {!showingToday && (
+            <button
+              onClick={goToday}
+              className="px-3 h-10 rounded-xl text-sm font-semibold text-teal-700 bg-teal-50 active:opacity-70 lg:hover:opacity-80"
+            >
+              Today
             </button>
           )}
           <button
@@ -1301,41 +1348,42 @@ export function CalendarPage() {
         </div>
 
         {/* View toggle */}
-        <div className="flex gap-1 mt-3 bg-ios-gray-100 rounded-xl p-1">
-          {(['day', 'week', 'month'] as CalendarView[]).map((v) => (
+        <div className="flex items-center gap-2 mt-3">
+          <div className="flex gap-1 flex-1 min-w-0 bg-ios-gray-100 rounded-xl p-1">
+            {/* Widest span first, narrowing to the right — month is the one
+                people open the calendar for, so it leads. */}
+            {(['month', 'week', 'day'] as CalendarView[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`flex-1 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
+                  view === v ? 'bg-white text-teal-900 shadow-sm' : 'text-ios-gray-600'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {/*
+            Hours or blocks. It sits with the view switch rather than up in the
+            title row: it is another way of saying how the week is drawn, and
+            the row above has a phone's worth of width to spend on the date.
+          */}
+          {view === 'week' && (
             <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`flex-1 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
-                view === v ? 'bg-white text-teal-900 shadow-sm' : 'text-ios-gray-600'
+              onClick={() => setHourly((h) => !h)}
+              aria-pressed={hourly}
+              aria-label={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
+              title={hourly ? 'Show the week as blocks' : 'Show the week by the hour'}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 ${
+                hourly ? 'bg-teal-50 text-teal-600' : 'text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100'
               }`}
             >
-              {v}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+              </svg>
             </button>
-          ))}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button onClick={goToday} className="flex-1 text-center">
-            <span className="text-sm font-semibold text-teal-900">{dateLabel()}</span>
-          </button>
-          <button
-            onClick={() => navigate(1)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-ios-gray-600 active:bg-ios-gray-100 lg:hover:bg-ios-gray-100"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-            </svg>
-          </button>
+          )}
         </div>
 
         {/* Project color legend */}
