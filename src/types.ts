@@ -90,6 +90,7 @@ export interface ListCategory {
 export type MoveType =
   | 'Full Move'
   | 'Long Distance Move'
+  | 'Inbound'
   | 'Emergency Move'
   | 'Downsize Only'
   | 'Cleanout'

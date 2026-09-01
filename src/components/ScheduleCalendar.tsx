@@ -153,6 +153,14 @@ function phaseParts(name: string): { visit: string | null; work: string } {
   return { visit: n ? `V${n}` : head.trim(), work: rest.join(':').trim() };
 }
 
+/** A shift on another project, shown greyed under this project's own pills. */
+export interface ExternalCalShift {
+  /** Short pill text — the other project's client. */
+  label: string;
+  /** Full context for the hover title: client, phase, shift. */
+  title: string;
+}
+
 export function ScheduleCalendar({
   days,
   activeDate,
@@ -160,6 +168,7 @@ export function ScheduleCalendar({
   dropDate,
   dragging,
   disabled,
+  externalByDate,
 }: {
   days: ScheduleDay[];
   activeDate: string | null;
@@ -167,6 +176,8 @@ export function ScheduleCalendar({
   dropDate: string | null;
   dragging: boolean;
   disabled: boolean;
+  /** Other projects' shifts by ISO date — only passed when the toggle is on. */
+  externalByDate?: Map<string, ExternalCalShift[]> | null;
 }) {
   // Opens on the month the plan starts in, and follows the plan if it moves
   // wholesale — but not once the user has paged somewhere themselves.
@@ -240,6 +251,15 @@ export function ScheduleCalendar({
           const phases = day ? [...new Map(day.entries.map((e) => [e.phaseId, e])).values()] : [];
           const isDrop = dropDate === iso;
           const weekend = isWeekend(cell);
+          /*
+           * This project's shifts come first and keep their two slots; other
+           * projects' shifts fill whatever pill space is left, and the rest
+           * fold into the "+n more" count.
+           */
+          const extras = externalByDate?.get(iso) ?? [];
+          const own = phases.slice(0, 2);
+          const extShown = extras.slice(0, Math.max(0, 2 - own.length));
+          const hiddenCount = phases.length - own.length + extras.length - extShown.length;
 
           return (
             <div
@@ -264,7 +284,7 @@ export function ScheduleCalendar({
               >
                 {format(cell, 'd')}
               </span>
-              {phases.slice(0, 2).map((e) => {
+              {own.map((e) => {
                 const { visit, work } = phaseParts(e.phaseName);
                 return (
                   <span
@@ -279,8 +299,17 @@ export function ScheduleCalendar({
                   </span>
                 );
               })}
-              {phases.length > 2 && (
-                <span className="text-[9px] text-ios-gray-500 px-1">+{phases.length - 2} more</span>
+              {extShown.map((x, i) => (
+                <span
+                  key={`ext-${i}`}
+                  className="text-[9px] leading-tight font-semibold px-1 py-0.5 rounded bg-ios-gray-200 text-ios-gray-600 min-w-0 truncate"
+                  title={x.title}
+                >
+                  {x.label}
+                </span>
+              ))}
+              {hiddenCount > 0 && (
+                <span className="text-[9px] text-ios-gray-500 px-1">+{hiddenCount} more</span>
               )}
             </div>
           );

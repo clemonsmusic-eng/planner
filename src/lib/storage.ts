@@ -187,11 +187,17 @@ export function loadLists(): ListCategory[] {
         }
         // Migrate: add 'Long Distance Move', inserted after 'Full Move' to match
         // the default ordering rather than being appended to the end.
-        if (l.id === 'move-types' && !l.items.includes('Long Distance Move')) {
-          const at = l.items.indexOf('Full Move');
+        if (l.id === 'move-types') {
           const items = [...l.items];
-          items.splice(at >= 0 ? at + 1 : items.length, 0, 'Long Distance Move');
-          return { ...l, items };
+          if (!items.includes('Long Distance Move')) {
+            const at = items.indexOf('Full Move');
+            items.splice(at >= 0 ? at + 1 : items.length, 0, 'Long Distance Move');
+          }
+          if (!items.includes('Inbound')) {
+            const at = items.indexOf('Long Distance Move');
+            items.splice(at >= 0 ? at + 1 : items.length, 0, 'Inbound');
+          }
+          if (items.length !== l.items.length) return { ...l, items };
         }
         return l;
       });

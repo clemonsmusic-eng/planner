@@ -309,7 +309,7 @@ export function getDensityMultiplier(density: DensityLevel): number {
 // Crew sizes are not listed here — every phase starts from its template team size
 // and is adjusted per shift on the Schedule tab.
 export const DEFAULT_LISTS: ListCategory[] = [
-  { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Long Distance Move', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
+  { id: 'move-types',          name: 'Move Types',          items: ['Full Move', 'Long Distance Move', 'Inbound', 'Emergency Move', 'Downsize Only', 'Cleanout', 'Pack Only'] },
   { id: 'flexibility',         name: 'Flexibility',         items: ['None', 'Low', 'Medium', 'High'] },
   { id: 'shift-type',          name: 'Shift Type',          items: ['AM', 'PM', 'Full Day'] },
   { id: 'role',                name: 'Role',                items: ['PM', 'Assist PM', 'Lead', 'PM/Lead', 'Specialist', 'Mover'] },

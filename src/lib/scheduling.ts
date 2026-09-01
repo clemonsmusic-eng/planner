@@ -167,6 +167,13 @@ export function generateSchedule(
     dateOverrides,
   } = inputs;
 
+  /*
+   * An inbound move is receiving only. There is no origin to visit, sort, pack
+   * or clean out, so the whole plan is the move day itself: an AM crew of
+   * PM + Assist PM + Specialist, and a PM crew of two Specialists.
+   */
+  const isInbound = inputs.moveType === 'Inbound';
+
   // ── 1. Team sizes (needed for sort day calculation) ──────────────────────────
   // Crew size is no longer derived from square footage. Every phase starts at its
   // template team size (2 by default) and is adjusted per shift on the Schedule tab.
@@ -184,7 +191,8 @@ export function generateSchedule(
   const baseMoveDayDate = parseISO(targetMoveDate);
   let moveDayDate: Date;
   const flexibilityLevel = inputs.flexibilityLevel ?? 'Low';
-  if (flexibilityLevel === 'None' || teamMembers.length === 0) {
+  // Inbound moves land on the date the client is arriving — nothing to flex.
+  if (isInbound || flexibilityLevel === 'None' || teamMembers.length === 0) {
     moveDayDate = baseMoveDayDate;
   } else {
     const flexDays = flexibilityLevel === 'Low' ? 1 : flexibilityLevel === 'Medium' ? 3 : 7;
@@ -210,7 +218,9 @@ export function generateSchedule(
     moveDayDate = bestDate;
   }
 
-  const startDate = parseISO(earliestStartDate);
+  // Inbound hides the start date on the form, so fall back to the move date to
+  // keep the (unused) planning-date math off NaN.
+  const startDate = parseISO(earliestStartDate || targetMoveDate);
 
   const firstVisitDate = startDate;
   // Keep ~2 workdays between the first and second visit (weekends skipped).
@@ -356,7 +366,7 @@ export function generateSchedule(
 
   const cleanoutDates: string[] = [];
   let cleanoutHoursPerPerson = 0;
-  if (cleanoutBudget > 0 && cleanoutTeam > 0) {
+  if (!isInbound && cleanoutBudget > 0 && cleanoutTeam > 0) {
     const perDay = cleanoutTeam * cleanoutMaxPerPerson;
     // Half-hours are the finest granularity the rest of the app shows, so the
     // per-person figure is floored to one: rounding it up bought hours the
@@ -386,7 +396,7 @@ export function generateSchedule(
   interface LotPrepDay { date: string; hoursPerPerson: number | undefined; teamSizeOverride?: number }
   const lotPrepSchedule: LotPrepDay[] = [];
 
-  if (auction.enabled) {
+  if (!isInbound && auction.enabled) {
     const lotOrgDate = addWorkdays(moveDayDate, 8);
     auctionLotOrg = toISODate(lotOrgDate);
 
@@ -423,19 +433,33 @@ export function generateSchedule(
     }
   }
 
-  const suggestedDates: SuggestedDates = {
-    firstVisit: toISODate(firstVisitDate),
-    secondVisit: toISODate(secondVisitDate),
-    sortDays: sortDates.map(toISODate),
-    finalPackDay: toISODate(finalPackDayDate),
-    moveDay: toISODate(moveDayDate),
-    cleanoutDays: cleanoutDates,
-    lotPrepDays: lotPrepDates,
-    auctionLotOrg,
-    auctionStart,
-    auctionPickupPrep,
-    auctionPickup,
-  };
+  const suggestedDates: SuggestedDates = isInbound
+    ? {
+        firstVisit: '',
+        secondVisit: '',
+        sortDays: [],
+        finalPackDay: '',
+        moveDay: toISODate(moveDayDate),
+        cleanoutDays: [],
+        lotPrepDays: [],
+        auctionLotOrg: null,
+        auctionStart: null,
+        auctionPickupPrep: null,
+        auctionPickup: null,
+      }
+    : {
+        firstVisit: toISODate(firstVisitDate),
+        secondVisit: toISODate(secondVisitDate),
+        sortDays: sortDates.map(toISODate),
+        finalPackDay: toISODate(finalPackDayDate),
+        moveDay: toISODate(moveDayDate),
+        cleanoutDays: cleanoutDates,
+        lotPrepDays: lotPrepDates,
+        auctionLotOrg,
+        auctionStart,
+        auctionPickupPrep,
+        auctionPickup,
+      };
 
   // ── 2. Build date → override map ─────────────────────────────────────────────
 
@@ -464,7 +488,8 @@ export function generateSchedule(
     phaseId: string,
     date: Date,
     teamSizeOverride?: number,
-    hoursOverride?: number
+    hoursOverride?: number,
+    rolesOverride?: Array<{ role: RoleType; isLocked?: boolean }>
   ) {
     const template = phaseTemplates.find((p) => p.id === phaseId);
     if (!template) return;
@@ -479,12 +504,15 @@ export function generateSchedule(
       overrideShift
     );
 
-    // Cap team size: override (from the budget calc) bounded by template min/max
-    const rawSize = teamSizeOverride ?? template.minTeamSize;
-    const size = Math.min(Math.max(rawSize, template.minTeamSize), template.maxTeamSize);
-    // Build role list, padding with Specialist if size > template.roles.length
+    // A roles override names the crew outright, so the template's size bounds
+    // don't apply to it — inbound move day runs three on a two-person template.
+    const rawSize = teamSizeOverride ?? rolesOverride?.length ?? template.minTeamSize;
+    const size = rolesOverride
+      ? rawSize
+      : Math.min(Math.max(rawSize, template.minTeamSize), template.maxTeamSize);
+    // Build role list, padding with Specialist if size > the named roles
     const roles: Array<{ role: RoleType; isLocked?: boolean }> = [
-      ...template.roles,
+      ...(rolesOverride ?? template.roles),
     ];
     while (roles.length < size) {
       roles.push({ role: 'Specialist' });
@@ -506,6 +534,15 @@ export function generateSchedule(
     }
   }
 
+  if (isInbound) {
+    // Inbound: the two move-day shifts and nothing else.
+    addPhaseOnDate('phase-5-1', moveDayDate, undefined, undefined, [
+      { role: 'PM', isLocked: true },
+      { role: 'Assist PM', isLocked: true },
+      { role: 'Specialist' },
+    ]);
+    addPhaseOnDate('phase-5-2', moveDayDate, 2);
+  } else {
   // Phase 1 – First Visit (always required)
   addPhaseOnDate('phase-1', firstVisitDate);
 
@@ -528,6 +565,7 @@ export function generateSchedule(
 
   // Phase 5-2 – PM Move Day (budget-scaled team size)
   if (moveDayPMActual > 0) addPhaseOnDate('phase-5-2', moveDayDate, moveDayPMActual);
+  }
 
   // Phase 6 – Cleanout, as many days as its budget buys
   for (const dateStr of cleanoutDates) {
@@ -841,7 +879,10 @@ export function generateSchedule(
   const percentScheduled = budgetedManHours > 0 ? (totalScheduledHours / budgetedManHours) * 100 : 0;
 
   let scheduleStatus: ScheduleResult['status'];
-  if (percentScheduled > 120) scheduleStatus = 'OVER BUDGET';
+  // No budget entered (an inbound move has none) — there is nothing to be
+  // under or over, so the plan is simply on track.
+  if (budgetedManHours <= 0) scheduleStatus = 'ON TRACK';
+  else if (percentScheduled > 120) scheduleStatus = 'OVER BUDGET';
   else if (percentScheduled < 85) scheduleStatus = 'UNDER SCHEDULED';
   else scheduleStatus = 'ON TRACK';
 

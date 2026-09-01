@@ -176,6 +176,13 @@ export function InputFormPage() {
   // form would stay disabled with no way back.
   const isLocked = !!activeProject?.inputs.isLocked;
 
+  /*
+   * An inbound move is receiving only: no origin to clear, no packing sold,
+   * no cleanout. The form drops everything that only exists on the sending
+   * side, and the schedule is just the two move-day shifts.
+   */
+  const isInbound = inputs.moveType === 'Inbound';
+
   const pmCandidates = (() => {
     const qualified = state.teamMembers.filter((m) =>
       Object.values(m.phaseRoles).some(
@@ -269,7 +276,8 @@ export function InputFormPage() {
   }
 
   const isFormComplete = Boolean(
-    inputs && inputs.clientName && inputs.targetMoveDate && inputs.earliestStartDate && totalBudgetedHours(inputs.phaseBudgets) > 0
+    inputs && inputs.clientName && inputs.targetMoveDate &&
+      (isInbound || (inputs.earliestStartDate && totalBudgetedHours(inputs.phaseBudgets) > 0))
   );
 
   return (
@@ -437,15 +445,17 @@ export function InputFormPage() {
               options={[{ value: '', label: 'Unassigned' }, ...pmCandidates.map((m) => ({ value: m.id, label: m.name }))]}
             />
           </FormField>
-          <FormField label="Origin Address" hint="Where the move starts">
-            <input
-              type="text"
-              value={inputs.originAddress ?? ''}
-              onChange={(e) => update('originAddress', e.target.value)}
-              placeholder="Street, city, unit"
-              className={inputClass()}
-            />
-          </FormField>
+          {!isInbound && (
+            <FormField label="Origin Address" hint="Where the move starts">
+              <input
+                type="text"
+                value={inputs.originAddress ?? ''}
+                onChange={(e) => update('originAddress', e.target.value)}
+                placeholder="Street, city, unit"
+                className={inputClass()}
+              />
+            </FormField>
+          )}
           <FormField label="Destination Address" hint="Where the move ends">
             <input
               type="text"
@@ -478,14 +488,16 @@ export function InputFormPage() {
           }
         />
         <Card className="p-4 space-y-4">
-          <FormField label="Earliest Start Date" required hint="First visit / planning session">
-            <input
-              type="date"
-              value={inputs.earliestStartDate}
-              onChange={(e) => update('earliestStartDate', e.target.value)}
-              className={inputClass(!inputs.earliestStartDate)}
-            />
-          </FormField>
+          {!isInbound && (
+            <FormField label="Earliest Start Date" required hint="First visit / planning session">
+              <input
+                type="date"
+                value={inputs.earliestStartDate}
+                onChange={(e) => update('earliestStartDate', e.target.value)}
+                className={inputClass(!inputs.earliestStartDate)}
+              />
+            </FormField>
+          )}
           <FormField label="Target Move Date" required>
             <input
               type="date"
@@ -494,24 +506,30 @@ export function InputFormPage() {
               className={inputClass(!inputs.targetMoveDate)}
             />
           </FormField>
-          <FormField label="Hard Deadline">
-            <input
-              type="date"
-              value={inputs.hardDeadline}
-              onChange={(e) => update('hardDeadline', e.target.value)}
-              className={inputClass()}
-            />
-          </FormField>
-          <FormField label="Flexibility Level">
-            <SelectField
-              value={inputs.flexibilityLevel}
-              onChange={(v) => update('flexibilityLevel', v as FlexibilityLevel)}
-              options={state.lists.find(l => l.id === 'flexibility')?.items ?? ['Low', 'Medium', 'High']}
-            />
-          </FormField>
+          {!isInbound && (
+            <FormField label="Hard Deadline">
+              <input
+                type="date"
+                value={inputs.hardDeadline}
+                onChange={(e) => update('hardDeadline', e.target.value)}
+                className={inputClass()}
+              />
+            </FormField>
+          )}
+          {!isInbound && (
+            <FormField label="Flexibility Level">
+              <SelectField
+                value={inputs.flexibilityLevel}
+                onChange={(v) => update('flexibilityLevel', v as FlexibilityLevel)}
+                options={state.lists.find(l => l.id === 'flexibility')?.items ?? ['Low', 'Medium', 'High']}
+              />
+            </FormField>
+          )}
         </Card>
 
         {/* Section: Budget & Preferences */}
+        {!isInbound && (
+        <>
         <SectionHeader
           title="Budget & Preferences"
           icon={
@@ -724,6 +742,8 @@ export function InputFormPage() {
         </Card>
         </>
         )}
+        </>
+        )}
 
         {/* Section: Schedule Overrides */}
         <SectionHeader
@@ -802,7 +822,9 @@ export function InputFormPage() {
           </button>
           {!isFormComplete && (
             <p className="text-center text-xs text-ios-gray-600 mt-2">
-              Fill in Client Name, Dates, and Budgeted Hours to generate
+              {isInbound
+                ? 'Fill in Client Name and Target Move Date to generate'
+                : 'Fill in Client Name, Dates, and Budgeted Hours to generate'}
             </p>
           )}
         </div>

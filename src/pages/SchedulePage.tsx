@@ -12,13 +12,14 @@ import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSa
 import { applyScheduleEdit, type ScheduleEdit } from '../lib/scheduleEdits';
 import { applyShiftEdit } from '../lib/applyShiftEdit';
 import { totalBudgetedHours } from '../lib/budgets';
-import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload } from '../components/ScheduleCalendar';
+import { DragGhost, ScheduleCalendar, useShiftDrag, type DragPayload, type ExternalCalShift } from '../components/ScheduleCalendar';
 import { useIsWideLayout } from '../lib/useMediaQuery';
 import { can } from '../lib/access';
 import { ExportScheduleButton } from '../components/ExportPlanButton';
 import type { ScheduleEntry, ScheduleDay, TeamMember, ExperienceLevel, TeamMemberAvailability, PhaseId, RoleType } from '../types';
 
 const RAIL_WIDTH_KEY = 'st-planner-schedule-rail-width';
+const OTHER_SHIFTS_KEY = 'st-planner-show-other-shifts';
 const RAIL_MIN = 260;
 const RAIL_MAX = 620;
 
@@ -206,6 +207,22 @@ export function SchedulePage() {
   const [focusDate, setFocusDate] = useState<string | null>(null);
 
   /*
+   * Whether the calendar rail also shows shifts from other projects, greyed
+   * out under this project's own. Off by default: it answers "is that week
+   * already busy elsewhere", which is a question you ask, not a view you live
+   * in. Kept on the device so the answer sticks across reloads.
+   */
+  const [showOtherShifts, setShowOtherShifts] = useState(() => {
+    try { return localStorage.getItem(OTHER_SHIFTS_KEY) === '1'; } catch { return false; }
+  });
+  function toggleOtherShifts() {
+    setShowOtherShifts((v) => {
+      try { localStorage.setItem(OTHER_SHIFTS_KEY, v ? '0' : '1'); } catch { /* not persisted */ }
+      return !v;
+    });
+  }
+
+  /*
    * How wide the calendar rail is, kept on the device so it survives a reload.
    * Clamped so neither side can be dragged away to nothing.
    */
@@ -279,6 +296,30 @@ export function SchedulePage() {
   }
 
   const schedule = activeProject.schedule;
+
+  /*
+   * Other projects' shifts, by date, for the calendar rail overlay. Archived
+   * projects are out — their schedules are history, not bookings. One pill per
+   * project per day keeps a busy day readable; the title carries the detail.
+   */
+  const externalByDate: Map<string, ExternalCalShift[]> | null = showOtherShifts
+    ? (() => {
+        const map = new Map<string, ExternalCalShift[]>();
+        for (const p of state.projects) {
+          if (p.id === activeProject.id) continue;
+          if ((p.inputs.status ?? 'active') === 'archived') continue;
+          const client = p.inputs.clientName || 'Untitled';
+          for (const d of p.schedule?.days ?? []) {
+            const phaseNames = [...new Map(d.entries.map((e) => [e.phaseId, e.phaseName])).values()];
+            const arr = map.get(d.date) ?? [];
+            arr.push({ label: client, title: `${client}: ${phaseNames.join(', ')}` });
+            map.set(d.date, arr);
+          }
+        }
+        return map;
+      })()
+    : null;
+
   const budgetHours = totalBudgetedHours(activeProject.inputs.phaseBudgets);
   const budgetPct = budgetHours > 0 ? Math.round(((schedule?.totalScheduledHours ?? 0) / budgetHours) * 100) : 0;
 
@@ -567,6 +608,32 @@ export function SchedulePage() {
               className="hidden lg:block flex-shrink-0 overflow-y-auto border-r border-ios-gray-200 bg-ios-gray-50"
               style={{ width: railWidth }}
             >
+              {/*
+                See the week the way the whole business sees it. Not an <input>:
+                the lock's disabled fieldset would switch it off too, and looking
+                at other projects' bookings is reading, not editing.
+              */}
+              <div
+                role="switch"
+                aria-checked={showOtherShifts}
+                tabIndex={0}
+                onClick={toggleOtherShifts}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOtherShifts(); } }}
+                className="flex items-center gap-2 px-3 pt-3 -mb-1 cursor-pointer select-none"
+              >
+                <span
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                    showOtherShifts ? 'bg-teal-600 border-teal-600' : 'bg-white border-ios-gray-300'
+                  }`}
+                >
+                  {showOtherShifts && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-white">
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </span>
+                <span className="text-xs font-semibold text-teal-700">Show other projects’ shifts</span>
+              </div>
               <ScheduleCalendar
                 days={schedule.days}
                 activeDate={focusDate}
@@ -574,6 +641,7 @@ export function SchedulePage() {
                 dropDate={drag?.over ?? null}
                 dragging={!!drag}
                 disabled={scheduleLocked}
+                externalByDate={externalByDate}
               />
             </div>
           )}
@@ -627,6 +695,7 @@ export function SchedulePage() {
                   onToggle={() => toggleDay(day.date)}
                   hasOverride={activeProject.inputs.dateOverrides.some((o) => o.date === day.date)}
                   onEditDay={() => openEditor(day)}
+                  onEditShift={(phaseId) => openEditor(day, phaseId)}
                   onCopyDay={() => setCopyPicker({ fromDate: day.date, label: day.label })}
                   onRemoveDay={() => setRemoveDay(day)}
                   dragHandle={dragHandle}
@@ -753,6 +822,7 @@ function DaySection({
   onToggle,
   hasOverride,
   onEditDay,
+  onEditShift,
   memberMap,
   onPickMember,
   onAddRole,
@@ -772,6 +842,7 @@ function DaySection({
   onToggle: () => void;
   hasOverride: boolean;
   onEditDay: () => void;
+  onEditShift: (phaseId: string) => void;
   memberMap: Map<string, TeamMember>;
   onPickMember: (entry: ScheduleEntry) => void;
   onAddRole: (phaseId: string) => void;
@@ -904,6 +975,18 @@ function DaySection({
                   {phaseEntries[0].shift} ·{' '}
                   {timeFor(phaseEntries[0].phaseId, phaseEntries[0].shift, phaseEntries[0].hours)}
                 </span>
+                {/*
+                  Edit this one shift. The date line's pencil edits every shift
+                  on the day at once, which on a day carrying two shifts left no
+                  way to re-slot or re-date just one of them.
+                */}
+                <button
+                  onClick={() => onEditShift(phaseEntries[0].phaseId)}
+                  className="w-7 h-7 -my-1 flex items-center justify-center rounded-lg text-ios-gray-500 active:bg-ios-gray-200 lg:hover:bg-ios-gray-200 flex-shrink-0"
+                  aria-label={`Edit ${phaseName}`}
+                >
+                  <PencilIcon />
+                </button>
               </div>
               <div className="divide-y divide-ios-gray-100">
                 {phaseEntries.map((entry) => (
