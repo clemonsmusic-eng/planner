@@ -14,7 +14,6 @@ import type { AppState, CrmContact, Project, TabName, TeamMember, ProjectInputs,
 import {
   loadProjects, saveProjects,
   loadTeamMembers, saveTeamMembers,
-  loadCommunities, saveCommunities,
   loadLists, saveLists,
   loadPhaseTemplates, savePhaseTemplates,
   loadAuctionSettings, saveAuctionSettings,
@@ -44,7 +43,6 @@ type Action =
   | { type: 'SET_SCHEDULE'; id: string; schedule: ScheduleResult }
   | { type: 'SET_OVERRIDE'; id: string; inputs: ProjectInputs; schedule: ScheduleResult }
   | { type: 'UPDATE_TEAM_MEMBERS'; members: TeamMember[] }
-  | { type: 'UPDATE_COMMUNITIES'; communities: string[] }
   | { type: 'UPDATE_LISTS'; lists: ListCategory[] }
   | { type: 'UPDATE_PHASE_TEMPLATES'; phaseTemplates: PhaseTemplate[] }
   | { type: 'UPDATE_AUCTION_SETTINGS'; settings: AuctionAppSettings }
@@ -143,11 +141,6 @@ function reducer(state: AppState, action: Action): AppState {
     case 'UPDATE_TEAM_MEMBERS': {
       saveTeamMembers(action.members);
       return { ...state, teamMembers: action.members };
-    }
-
-    case 'UPDATE_COMMUNITIES': {
-      saveCommunities(action.communities);
-      return { ...state, communities: action.communities };
     }
 
     case 'UPDATE_LISTS': {
@@ -379,7 +372,6 @@ const initialState: AppState = {
   activeProjectId: null,
   activeTab: 'home',
   teamMembers: [],
-  communities: [],
   lists: [],
   phaseTemplates: [],
   auctionSettings: { hourlyRate: 95, performanceLevel: 'Average' },
@@ -426,7 +418,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       projects: loadProjects(),
       teamMembers: loadTeamMembers(),
-      communities: loadCommunities(),
       lists: loadLists(),
       phaseTemplates: loadPhaseTemplates(),
       auctionSettings: loadAuctionSettings(),

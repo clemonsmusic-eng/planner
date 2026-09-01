@@ -12,7 +12,7 @@ function createDefaultInputs(): ProjectInputs {
   return {
     clientName: '',
     projectName: '',
-    community: 'First Colonial Inn',
+    community: '',
     moveType: 'Full Move',
     status: 'active',
     targetMoveDate: '',

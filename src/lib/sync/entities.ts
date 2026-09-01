@@ -119,9 +119,6 @@ const nameOnly = (
   fromRow: (r) => r.name,
 });
 
-const communities = nameOnly(
-  'communities', 'communities', 'Communities', store.loadCommunities, store.saveCommunitiesLocal);
-
 const supplyCategories = nameOnly(
   'supplyCategories', 'supply_categories', 'Supply categories',
   store.loadSupplyCategories, store.saveSupplyCategoriesLocal);
@@ -320,7 +317,6 @@ const appSettings: Entity<Setting> = {
  */
 export const ENTITIES: Entity<any>[] = [
   teamMembers,
-  communities,
   lists,
   phaseTemplates,
   services,

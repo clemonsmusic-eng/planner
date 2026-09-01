@@ -1223,7 +1223,6 @@ export function SettingsPage() {
   const [members, setMembers] = useState<TeamMember[]>(
     state.teamMembers.map((m) => ({ ...m, availability: { ...m.availability } }))
   );
-  const [communities, setCommunities] = useState<string[]>([...state.communities]);
   const [lists, setLists] = useState<ListCategory[]>(state.lists.map(l => ({ ...l, items: [...l.items] })));
   const [phaseTemplates, setPhaseTemplates] = useState<PhaseTemplate[]>(
     state.phaseTemplates.map((t) => ({ ...t }))
@@ -1236,7 +1235,6 @@ export function SettingsPage() {
     state.services.map((c) => ({ ...c, services: [...c.services] }))
   );
   const [newServiceCategory, setNewServiceCategory] = useState('');
-  const [newCommunity, setNewCommunity] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
   const [openGroups, setOpenGroups] = useState<Set<SettingsGroupKey>>(new Set());
@@ -1365,23 +1363,6 @@ export function SettingsPage() {
     setIsDirty(true);
   }
 
-  function addCommunity() {
-    const trimmed = newCommunity.trim();
-    if (!trimmed) return;
-    // Sorted on the way in: a list this long is only usable in order, and
-    // appending put every new one at the bottom where nobody looks for it.
-    setCommunities((prev) =>
-      [...prev, trimmed].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base' }))
-    );
-    setNewCommunity('');
-    setIsDirty(true);
-  }
-
-  function removeCommunity(index: number) {
-    setCommunities((prev) => prev.filter((_, i) => i !== index));
-    setIsDirty(true);
-  }
-
   function updateChecklistSection(index: number, updated: ChecklistTemplateSection) {
     setChecklistTemplate((prev) => prev.map((sec, i) => (i === index ? updated : sec)));
     setIsDirty(true);
@@ -1418,7 +1399,6 @@ export function SettingsPage() {
 
   function save() {
     dispatch({ type: 'UPDATE_TEAM_MEMBERS', members });
-    dispatch({ type: 'UPDATE_COMMUNITIES', communities });
     dispatch({ type: 'UPDATE_LISTS', lists });
     dispatch({ type: 'UPDATE_PHASE_TEMPLATES', phaseTemplates });
     dispatch({ type: 'UPDATE_AUCTION_SETTINGS', settings: auctionSettings });
@@ -1612,48 +1592,6 @@ export function SettingsPage() {
             >
               Restore Default Template
             </button>
-          </div>
-        </>
-      ),
-    },
-    communities: {
-      title: 'Communities',
-      subtitle: "Senior communities in the project dropdown",
-      body: (
-        <>
-          <div className="px-4 py-3 space-y-2">
-            {communities.map((name, i) => (
-              <div
-                key={`${name}-${i}`}
-                className="flex items-center justify-between bg-ios-gray-50 rounded-xl px-4 min-h-[48px] border border-ios-gray-200"
-              >
-                <span className="text-sm text-teal-900 flex-1 py-3">{name}</span>
-                <button
-                  onClick={() => removeCommunity(i)}
-                  className="ml-2 w-8 h-8 flex items-center justify-center text-ios-gray-400 hover:text-red-500 transition-colors rounded-lg"
-                  aria-label={`Remove ${name}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2 pt-1">
-              <input
-                value={newCommunity}
-                onChange={(e) => setNewCommunity(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addCommunity()}
-                placeholder="Add a community…"
-                className="flex-1 min-h-[48px] rounded-xl border border-ios-gray-300 px-3 py-2 text-base bg-white"
-              />
-              <button
-                onClick={addCommunity}
-                className="bg-teal-600 text-white px-4 rounded-xl font-semibold text-sm min-h-[48px]"
-              >
-                Add
-              </button>
-            </div>
           </div>
         </>
       ),

@@ -152,14 +152,6 @@ export function loadCommunities(): string[] {
   return [...DEFAULT_COMMUNITIES];
 }
 
-export function saveCommunitiesLocal(communities: string[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_COMMUNITIES, JSON.stringify(communities));
-  } catch (e) {
-    console.error('Failed to save communities', e);
-  }
-}
-
 // ─── Lists ────────────────────────────────────────────────────────────────────
 
 export function loadLists(): ListCategory[] {
@@ -187,6 +179,11 @@ export function loadLists(): ListCategory[] {
         }
         // Migrate: add 'Long Distance Move', inserted after 'Full Move' to match
         // the default ordering rather than being appended to the end.
+        // Migrate: communities now live in the CRM as 'Community' entries, so
+        // the contact-type list needs the type the migration files them under.
+        if (l.id === 'crm-contact-type' && !l.items.includes('Community')) {
+          return { ...l, items: ['Community', ...l.items] };
+        }
         if (l.id === 'move-types') {
           const items = [...l.items];
           if (!items.includes('Long Distance Move')) {
@@ -500,14 +497,58 @@ export function saveAccess(access: AccessState): void {
  * job at that community.
  */
 export function loadCrmContacts(): CrmContact[] {
+  let contacts: CrmContact[] = [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CRM);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((c): c is CrmContact => !!c && typeof c.id === 'string');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        contacts = parsed.filter((c): c is CrmContact => !!c && typeof c.id === 'string');
+      }
+    }
+  } catch {}
+  return migrateCommunitiesIntoCrm(contacts);
+}
+
+/**
+ * Fold the old Communities settings list into the contact book.
+ *
+ * Communities used to be a bare name list edited in Settings; they are now CRM
+ * entries of type 'Community', which is also where their phone numbers and
+ * sales contacts already lived. Runs once per device: names not yet in the book
+ * become entries, ones already there (as any community-typed contact's company)
+ * are left alone, and the flag stops a deleted community from coming back.
+ */
+const STORAGE_KEY_COMMUNITIES_MIGRATED = 'st-planner-communities-in-crm';
+function migrateCommunitiesIntoCrm(contacts: CrmContact[]): CrmContact[] {
+  try {
+    if (localStorage.getItem(STORAGE_KEY_COMMUNITIES_MIGRATED)) return contacts;
+    const have = new Set(
+      contacts.map((c) => (c.company || c.name).trim().toLowerCase()).filter(Boolean)
+    );
+    const now = new Date().toISOString();
+    const added = loadCommunities()
+      .map((n) => n.trim())
+      .filter((n) => n && !have.has(n.toLowerCase()))
+      .map((name): CrmContact => ({
+        id: crypto.randomUUID(),
+        contactType: 'Community',
+        company: name,
+        name: '',
+        workPhone: '',
+        cellPhone: '',
+        email: '',
+        serviceDescription: '',
+        notes: '',
+        createdAt: now,
+        updatedAt: now,
+      }));
+    const merged = added.length > 0 ? [...contacts, ...added] : contacts;
+    if (added.length > 0) saveCrmContactsLocal(merged);
+    localStorage.setItem(STORAGE_KEY_COMMUNITIES_MIGRATED, '1');
+    return merged;
   } catch {
-    return [];
+    return contacts;
   }
 }
 
@@ -547,11 +588,6 @@ export const saveProjects: typeof saveProjectsLocal = (value) => {
 export const saveTeamMembers: typeof saveTeamMembersLocal = (value) => {
   saveTeamMembersLocal(value);
   observer?.('teamMembers', value);
-};
-
-export const saveCommunities: typeof saveCommunitiesLocal = (value) => {
-  saveCommunitiesLocal(value);
-  observer?.('communities', value);
 };
 
 export const saveLists: typeof saveListsLocal = (value) => {

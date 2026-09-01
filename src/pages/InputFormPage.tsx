@@ -183,6 +183,26 @@ export function InputFormPage() {
    */
   const isInbound = inputs.moveType === 'Inbound';
 
+  /*
+   * The Community dropdown reads from the CRM rather than a settings list —
+   * a community is a contact, and the book is where it is kept now. Any
+   * community-typed entry counts (Community, Community Sales, …), deduped on
+   * the company name. A value no longer in the book stays choosable so an old
+   * project doesn't render with its community apparently blanked.
+   */
+  const communityOptions = (() => {
+    const names = state.crmContacts
+      .filter((c) => (c.contactType || '').toLowerCase().startsWith('community'))
+      .map((c) => (c.company || c.name).trim())
+      .filter(Boolean);
+    const unique = [...new Set(names)].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    return inputs.community && !unique.includes(inputs.community)
+      ? [inputs.community, ...unique]
+      : unique;
+  })();
+
   const pmCandidates = (() => {
     const qualified = state.teamMembers.filter((m) =>
       Object.values(m.phaseRoles).some(
@@ -416,11 +436,12 @@ export function InputFormPage() {
               className={inputClass()}
             />
           </FormField>
-          <FormField label="Community" required>
+          <FormField label="Community" required hint="Managed in the CRM as Community contacts">
             <SelectField
               value={inputs.community}
               onChange={(v) => update('community', v)}
-              options={state.communities}
+              options={communityOptions}
+              placeholder="Select community…"
             />
           </FormField>
           <FormField label="Move Type" required>

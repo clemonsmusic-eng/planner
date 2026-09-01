@@ -41,7 +41,7 @@ export function HamburgerMenu() {
         inputs: {
           clientName: '',
           projectName: '',
-          community: state.communities[0] ?? '',
+          community: '',
           moveType: 'Full Move',
           status: 'draft',
           targetMoveDate: '',

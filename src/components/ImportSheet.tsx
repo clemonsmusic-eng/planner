@@ -28,7 +28,7 @@ function createImportedInputs(name: string): ProjectInputs {
   return {
     clientName: name,
     projectName: '',
-    community: 'First Colonial Inn',
+    community: '',
     moveType: 'Full Move',
     status: 'draft',
     targetMoveDate: '',

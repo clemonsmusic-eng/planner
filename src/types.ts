@@ -630,7 +630,6 @@ export interface AppState {
   activeProjectId: string | null;
   activeTab: TabName;
   teamMembers: TeamMember[];
-  communities: string[];
   lists: ListCategory[];
   phaseTemplates: PhaseTemplate[];
   auctionSettings: AuctionAppSettings;
