@@ -19,6 +19,7 @@ export const CSV_COLUMNS: { key: keyof ContactDetails; header: string }[] = [
   { key: 'workPhone', header: 'Work Phone' },
   { key: 'cellPhone', header: 'Cell Phone' },
   { key: 'email', header: 'E-mail' },
+  { key: 'address', header: 'Address' },
   { key: 'serviceDescription', header: 'Service Description' },
   { key: 'notes', header: 'Notes' },
 ];
@@ -66,6 +67,9 @@ export function contactsToVcf(contacts: CrmContact[]): Blob {
       ...(c.workPhone ? [`TEL;TYPE=WORK,VOICE:${escapeVcf(c.workPhone)}`] : []),
       ...(c.cellPhone ? [`TEL;TYPE=CELL,VOICE:${escapeVcf(c.cellPhone)}`] : []),
       ...(c.email ? [`EMAIL;TYPE=WORK:${escapeVcf(c.email)}`] : []),
+      // ADR is seven semicolon-separated components; a free-text address goes
+      // in the street one, which is what a phone shows when the rest are empty.
+      ...(c.address ? [`ADR;TYPE=WORK:;;${escapeVcf(c.address)};;;;`] : []),
       ...(notes ? [`NOTE:${escapeVcf(notes)}`] : []),
       'END:VCARD',
     ].join('\r\n');
@@ -112,6 +116,14 @@ const HEADER_ALIASES: Record<keyof ContactDetails, string[]> = {
   workPhone: ['work phone', 'business phone', 'office phone', 'phone', 'telephone', 'phone 1 value'],
   cellPhone: ['cell phone', 'mobile phone', 'mobile', 'cell', 'phone 2 value'],
   email: ['e-mail', 'email', 'email address', 'e-mail address', 'e-mail 1 value', 'email 1 value'],
+  address: [
+    'address',
+    'street',
+    'street address',
+    'mailing address',
+    'address 1 formatted',
+    'address 1 street',
+  ],
   serviceDescription: ['service description', 'service', 'services', 'description'],
   notes: ['notes', 'note', 'comments', 'remarks'],
 };
@@ -216,6 +228,32 @@ const unescapeVcf = (value: string) =>
     .replace(/\\\\/g, '\\')
     .trim();
 
+/**
+ * ADR's seven components, flattened back to one line.
+ *
+ * Split before unescaping, not after: a semicolon inside a component arrives
+ * escaped, and unescaping first would turn it into a component boundary and
+ * cut the address in half.
+ */
+function addressFromAdr(value: string): string {
+  const parts: string[] = [];
+  let current = '';
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch === '\\' && i + 1 < value.length) {
+      current += ch + value[i + 1];
+      i++;
+    } else if (ch === ';') {
+      parts.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts.map(unescapeVcf).filter(Boolean).join(', ');
+}
+
 export function parseVcf(text: string): ContactImportResult {
   const contacts: ImportedContact[] = [];
   const warnings: string[] = [];
@@ -226,7 +264,8 @@ export function parseVcf(text: string): ContactImportResult {
     const colon = line.indexOf(':');
     if (colon < 0) continue;
     const head = line.slice(0, colon).toUpperCase();
-    const value = unescapeVcf(line.slice(colon + 1));
+    const raw = line.slice(colon + 1);
+    const value = unescapeVcf(raw);
     const name = head.split(';')[0];
 
     if (name === 'BEGIN' && value.toUpperCase() === 'VCARD') {
@@ -272,6 +311,11 @@ export function parseVcf(text: string): ContactImportResult {
         break;
       case 'EMAIL':
         current.email ||= value;
+        break;
+      case 'ADR':
+        // Read from the raw value: the components are semicolon-separated, and
+        // `value` has already had escaped semicolons turned back into real ones.
+        current.address ||= addressFromAdr(raw);
         break;
       case 'NOTE':
         current.notes = value;

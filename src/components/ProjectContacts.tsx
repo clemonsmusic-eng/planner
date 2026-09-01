@@ -167,6 +167,15 @@ export function ContactFields({
       <FormField label="E-mail">
         <input type="email" value={value.email} onChange={(e) => onChange({ email: e.target.value })} className={field} />
       </FormField>
+      <FormField label="Address">
+        <textarea
+          value={value.address ?? ''}
+          onChange={(e) => onChange({ address: e.target.value })}
+          rows={2}
+          placeholder="Street, city, state ZIP"
+          className="w-full rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+        />
+      </FormField>
       <FormField label="Service Description">
         <input
           value={value.serviceDescription}

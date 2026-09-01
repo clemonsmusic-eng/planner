@@ -372,6 +372,12 @@ export interface ContactDetails {
   workPhone: string;
   cellPhone: string;
   email: string;
+  /**
+   * Where they are. Free text like the project's own address fields: these are
+   * postal addresses, not entries from a list, and a community's is what the
+   * Inputs tab copies into a job's destination.
+   */
+  address: string;
   serviceDescription: string;
   notes: string;
 }
@@ -565,30 +571,6 @@ export interface SupplyItem {
   consumable: boolean;
 }
 
-/**
- * Someone outside the team a job goes through — a community's sales office, a
- * disposal firm, a specialist mover. Kept in one book rather than retyped into
- * each project, because the same handful of people recur across every job at a
- * community.
- */
-export interface CrmContact extends ContactDetails {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** The fields that describe a contact, wherever it is kept. */
-export interface ContactDetails {
-  /** From the CRM Contact Type list in Settings, so it stays editable. */
-  contactType: string;
-  company: string;
-  name: string;
-  workPhone: string;
-  cellPhone: string;
-  email: string;
-  serviceDescription: string;
-  notes: string;
-}
 
 /**
  * A contact attached to one project.

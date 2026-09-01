@@ -189,6 +189,15 @@ export function CrmPage() {
                   <TextRow label="Work Phone" type="tel" value={contact.workPhone} onChange={(v) => update(contact.id, { workPhone: v })} />
                   <TextRow label="Cell Phone" type="tel" value={contact.cellPhone} onChange={(v) => update(contact.id, { cellPhone: v })} />
                   <TextRow label="E-mail" type="email" value={contact.email} onChange={(v) => update(contact.id, { email: v })} />
+                  <FormField label="Address">
+                    <textarea
+                      value={contact.address ?? ''}
+                      onChange={(e) => update(contact.id, { address: e.target.value })}
+                      rows={2}
+                      placeholder="Street, city, state ZIP"
+                      className="w-full rounded-xl border border-ios-gray-300 bg-white px-3 py-2 text-base text-teal-900"
+                    />
+                  </FormField>
                   <TextRow
                     label="Service Description"
                     value={contact.serviceDescription}
@@ -405,17 +414,19 @@ function contactsDocument(contacts: CrmContact[]): DocumentModel {
       {
         kind: 'table' as const,
         columns: [
-          { header: 'Company', weight: 24 },
-          { header: 'Contact', weight: 18 },
-          { header: 'Phone', weight: 20 },
-          { header: 'E-mail', weight: 20 },
-          { header: 'Service', weight: 18 },
+          { header: 'Company', weight: 20 },
+          { header: 'Contact', weight: 15 },
+          { header: 'Phone', weight: 17 },
+          { header: 'E-mail', weight: 18 },
+          { header: 'Address', weight: 18 },
+          { header: 'Service', weight: 12 },
         ],
         rows: group.map((c) => [
           c.company || '-',
           c.name || '-',
           [c.workPhone, c.cellPhone].filter(Boolean).join(' / ') || '-',
           c.email || '-',
+          (c.address || '').replace(/\s*\n\s*/g, ', ') || '-',
           c.serviceDescription || '-',
         ]),
       },

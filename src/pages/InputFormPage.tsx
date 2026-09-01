@@ -5,6 +5,7 @@ import { FormField } from '../components/FormField';
 import { ProjectContacts } from '../components/ProjectContacts';
 import { SelectField } from '../components/SelectField';
 import { BUDGET_GROUPS, totalBudgetedHours } from '../lib/budgets';
+import { communityAddress, communityRoster } from '../lib/contacts';
 import { lotPrepAllowance } from '../lib/scheduling';
 import { FloatingSaveButton, FloatingSaveSpacer } from '../components/FloatingSaveButton';
 import { LockButton } from '../components/LockButton';
@@ -190,6 +191,55 @@ export function InputFormPage() {
    * the company name. A value no longer in the book stays choosable so an old
    * project doesn't render with its community apparently blanked.
    */
+  /**
+   * Choosing a community pulls the building in with it.
+   *
+   * The destination address and the people a job there goes through are both
+   * already in the book against that community, and retyping them per job is
+   * how they end up stale on half the projects. So the pick fills them in.
+   *
+   * Nothing typed by hand is overwritten: the address is filled only when it
+   * is empty or still holds the community it is being changed away from. The
+   * roster rows are links carrying no local state of their own, so swapping
+   * one community's for another's loses nothing — an edit to a linked contact
+   * writes through to the CRM, not onto the project.
+   */
+  function selectCommunity(next: string) {
+    setInputs((prev) => {
+      if (!prev) return prev;
+      const previous = prev.community;
+      const oldRoster = communityRoster(state.crmContacts, previous);
+      const oldIds = new Set(oldRoster.map((c) => c.id));
+      const newRoster = communityRoster(state.crmContacts, next);
+
+      const kept = (prev.contacts ?? []).filter((row) => !(row.crmId && oldIds.has(row.crmId)));
+      const alreadyLinked = new Set(kept.map((row) => row.crmId).filter(Boolean));
+      const added = newRoster
+        .filter((c) => !alreadyLinked.has(c.id))
+        .map((c) => ({ id: crypto.randomUUID(), crmId: c.id }));
+
+      const current = (prev.destinationAddress ?? '').trim();
+      const inherited = communityAddress(state.crmContacts, previous);
+      const incoming = communityAddress(state.crmContacts, next);
+      const destinationAddress =
+        !current || current === inherited ? incoming || current : current;
+
+      return {
+        ...prev,
+        community: next,
+        destinationAddress,
+        contacts: [...kept, ...added],
+      };
+    });
+    setSaved(false);
+  }
+
+  /** What the pick brought in, so the form can say so rather than just changing. */
+  const communityImport = (() => {
+    const roster = communityRoster(state.crmContacts, inputs.community);
+    return { people: roster.length, address: communityAddress(state.crmContacts, inputs.community) };
+  })();
+
   const communityOptions = (() => {
     const names = state.crmContacts
       .filter((c) => (c.contactType || '').toLowerCase().startsWith('community'))
@@ -439,10 +489,22 @@ export function InputFormPage() {
           <FormField label="Community" required hint="Managed in the CRM as Community contacts">
             <SelectField
               value={inputs.community}
-              onChange={(v) => update('community', v)}
+              onChange={selectCommunity}
               options={communityOptions}
               placeholder="Select community…"
             />
+            {inputs.community && (communityImport.people > 0 || communityImport.address) && (
+              <p className="text-xs text-teal-700 mt-1.5">
+                {[
+                  communityImport.address ? 'Address filled in below' : null,
+                  communityImport.people > 0
+                    ? `${communityImport.people} contact${communityImport.people === 1 ? '' : 's'} pulled from the CRM`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            )}
           </FormField>
           <FormField label="Move Type" required>
             <SelectField
@@ -477,7 +539,10 @@ export function InputFormPage() {
               />
             </FormField>
           )}
-          <FormField label="Destination Address" hint="Where the move ends">
+          <FormField
+            label="Destination Address"
+            hint={communityImport.address ? 'From the community in the CRM — edit to override' : 'Where the move ends'}
+          >
             <input
               type="text"
               value={inputs.destinationAddress ?? ''}

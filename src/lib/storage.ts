@@ -179,10 +179,14 @@ export function loadLists(): ListCategory[] {
         }
         // Migrate: add 'Long Distance Move', inserted after 'Full Move' to match
         // the default ordering rather than being appended to the end.
-        // Migrate: communities now live in the CRM as 'Community' entries, so
-        // the contact-type list needs the type the migration files them under.
-        if (l.id === 'crm-contact-type' && !l.items.includes('Community')) {
-          return { ...l, items: ['Community', ...l.items] };
+        // Migrate: communities now live in the CRM as 'Community' entries, and
+        // a community's staff are filed under the roles a job actually goes
+        // through. Missing types are added; ones the user removed on purpose
+        // are not, since only absent-from-the-list is distinguishable here.
+        if (l.id === 'crm-contact-type') {
+          const wanted = ['Community', 'Sales Coordinator', 'Move-In Coordinator', 'Facilities Manager'];
+          const missing = wanted.filter((t) => !l.items.includes(t));
+          if (missing.length > 0) return { ...l, items: [...missing, ...l.items] };
         }
         if (l.id === 'move-types') {
           const items = [...l.items];
@@ -538,6 +542,7 @@ function migrateCommunitiesIntoCrm(contacts: CrmContact[]): CrmContact[] {
         workPhone: '',
         cellPhone: '',
         email: '',
+        address: '',
         serviceDescription: '',
         notes: '',
         createdAt: now,

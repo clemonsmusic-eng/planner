@@ -15,6 +15,7 @@ export const emptyContactDetails = (): ContactDetails => ({
   workPhone: '',
   cellPhone: '',
   email: '',
+  address: '',
   serviceDescription: '',
   notes: '',
 });
@@ -27,6 +28,7 @@ export const detailsOf = (c: ContactDetails): ContactDetails => ({
   workPhone: c.workPhone,
   cellPhone: c.cellPhone,
   email: c.email,
+  address: c.address,
   serviceDescription: c.serviceDescription,
   notes: c.notes,
 });
@@ -58,6 +60,44 @@ export function resolveContact(row: ProjectContact, crm: CrmContact[]): Resolved
 /** A one-line summary for a collapsed row and for the CRM picker. */
 export const contactSummary = (c: { company: string; name: string }) =>
   [c.company, c.name].filter(Boolean).join(' · ') || 'Untitled contact';
+
+/**
+ * Everyone filed under one community.
+ *
+ * A community is a company in the book, and the people a job there goes
+ * through — the sales coordinator, the move-in coordinator, facilities — are
+ * entries carrying that same company. So the roster is "everything at that
+ * address", which is also what makes it right to pull onto a job wholesale:
+ * these are the people you ring about that building, whoever they are.
+ *
+ * Matched on the company name because that is what the Inputs tab stores; a
+ * community entry that names itself in `name` rather than `company` counts too,
+ * since a one-person community office is often typed that way.
+ */
+export function communityRoster(crm: CrmContact[], community: string): CrmContact[] {
+  const key = community.trim().toLowerCase();
+  if (!key) return [];
+  return crm.filter(
+    (c) => c.company.trim().toLowerCase() === key || c.name.trim().toLowerCase() === key
+  );
+}
+
+/**
+ * The community's postal address, for a job's destination.
+ *
+ * The community's own entry answers first; failing that, any of its people who
+ * has one, since the building's address is the building's address whoever it
+ * was recorded against.
+ */
+export function communityAddress(crm: CrmContact[], community: string): string {
+  const roster = communityRoster(crm, community);
+  const isCommunity = (c: CrmContact) => c.contactType.trim().toLowerCase() === 'community';
+  return (
+    roster.find((c) => isCommunity(c) && c.address.trim())?.address.trim() ??
+    roster.find((c) => c.address.trim())?.address.trim() ??
+    ''
+  );
+}
 
 /**
  * Which projects point at a CRM entry.
@@ -97,6 +137,7 @@ export function normalizeProjectContacts(rows: unknown): ProjectContact[] {
           workPhone: text('workPhone'),
           cellPhone: text('cellPhone'),
           email: text('email'),
+          address: text('address'),
           serviceDescription: text('serviceDescription'),
           notes: text('notes'),
         },
